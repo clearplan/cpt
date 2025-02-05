@@ -10,50 +10,35 @@ Private Const THIS_MODULE As String = "cptSaveLocal_bas"
 Sub cptShowSaveLocal_frm()
   'objects
   Dim mySaveLocal_frm As cptSaveLocal_frm
-  Dim oRange As Excel.Range
-  Dim oListObject As ListObject
-  Dim rstProjects As Object 'ADODB.Recordset
-  Dim oSubProject As MSProject.SubProject
-  Dim oMasterProject As MSProject.Project
-  Dim oWorksheet As Excel.Worksheet
-  Dim oWorkbook As Excel.Workbook
-  Dim oExcel As Excel.Application
   Dim oTask As MSProject.Task
-  Dim rstSavedMap As Object 'ADODB.Recordset
   Dim dTypes As Scripting.Dictionary
-  Dim rstECF As Object 'ADODB.Recordset
+  Dim rstECF As adodb.Recordset
   'strings
   Dim strDir As String
   Dim strURL As String
-  Dim strSaved As String
   Dim strEntity As String
   Dim strGUID As String
   Dim strECF As String
   'longs
   Dim lngECF As Long
   Dim lngLCF As Long
-  Dim lngMismatchCount As Long
-  Dim lngLastRow As Long
-  Dim lngSubProject As Long
-  Dim lngProject As Long
-  Dim lngSubProjectCount As Long
+  Dim lngSubprojectCount As Long
   Dim lngField As Long
-  Dim lngFields As Long
   Dim lngType As Long
   Dim lngECFCount As Long
   'integers
   'doubles
   'booleans
+  Dim blnErrorTrapping As Boolean
   'variants
-  Dim vLine As Variant
-  Dim vEntity As Variant
   Dim vType As Variant
   'dates
 
   'prevent spawning
   If Not cptGetUserForm("cptSaveLocal_frm") Is Nothing Then Exit Sub
 
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
   'get server URL
   If Projects.Count = 0 Then GoTo exit_here
@@ -75,155 +60,18 @@ Sub cptShowSaveLocal_frm()
   dTypes.Add "Text", 30
   
   'if master/sub then ensure LCFs match
-  lngSubProjectCount = ActiveProject.Subprojects.Count
-  If lngSubProjectCount > 0 Then
-    If MsgBox(lngSubProjectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "Master/Sub Detected") = vbNo Then GoTo skip_it
-    Set oMasterProject = ActiveProject
-    Application.StatusBar = "Setting up Excel..."
-    'set up Excel
-    Set oExcel = CreateObject("Excel.Application")
-    oExcel.Visible = False
-    Set oWorkbook = oExcel.Workbooks.Add
-    oExcel.ScreenUpdating = False
-    oExcel.Calculation = xlCalculationManual
-    Set oWorksheet = oWorkbook.Sheets(1)
-    oExcel.ActiveWindow.Zoom = 85
-    oExcel.ActiveWindow.SplitRow = 1
-    oExcel.ActiveWindow.SplitColumn = 4
-    oExcel.ActiveWindow.FreezePanes = True
-    oWorksheet.Name = "Sync"
-    'set up headers
-    oWorksheet.[A1:D1] = Array("ENTITY", "TYPE", "CONSTANT", "NAME")
-    'capture master and subproject names
-    oWorksheet.Cells(1, 5) = oMasterProject.Name
-    oWorksheet.Columns.AutoFit
-    cptSpeed True
-    Application.StatusBar = "Opening subprojects..."
-    Set rstProjects = CreateObject("ADODB.Recordset")
-    rstProjects.Fields.Append "PROJECT", adVarChar, 200
-    rstProjects.Open
-    rstProjects.AddNew Array(0), Array(oMasterProject.Name)
-    For Each oSubProject In oMasterProject.Subprojects
-      FileOpenEx oSubProject.SourceProject.FullName, True
-      rstProjects.AddNew Array(0), Array(ActiveProject.Name)
-    Next oSubProject
-    rstProjects.MoveFirst
-    Do While Not rstProjects.EOF
-      Application.StatusBar = "Analyzing " & rstProjects(0) & "..."
-      DoEvents
-      lngLastRow = 1
-      Projects(CStr(rstProjects(0))).Activate
-      oWorksheet.Cells(1, 5 + CLng(rstProjects.AbsolutePosition) - 1) = rstProjects(0)
-      For Each vEntity In Array(pjTask, pjResource)
-        For lngType = 0 To dTypes.Count - 1
-          For lngField = 1 To dTypes.Items(lngType)
-            lngLastRow = lngLastRow + 1
-            If lngProject = 0 Then
-              oWorksheet.Cells(lngLastRow, 1) = Choose(vEntity + 1, "Task", "Resource")
-              oWorksheet.Cells(lngLastRow, 2) = dTypes.Keys(lngType)
-            End If
-            lngLCF = FieldNameToFieldConstant(dTypes.Keys(lngType) & lngField, vEntity)
-            If lngProject = 0 Then
-              oWorksheet.Cells(lngLastRow, 3) = lngLCF
-              oWorksheet.Cells(lngLastRow, 4) = FieldConstantToFieldName(lngLCF)
-            End If
-            oExcel.ActiveWindow.ScrollRow = lngLastRow
-            oWorksheet.Cells(lngLastRow, 5 + CLng(rstProjects.AbsolutePosition) - 1) = CustomFieldGetName(lngLCF)
-            oWorksheet.Cells.Columns.AutoFit
-          Next lngField
-        Next lngType
-      Next vEntity
-      rstProjects.MoveNext
-    Loop
-    'add a formula
-    oWorksheet.Cells(1, 5 + rstProjects.RecordCount) = "MATCH"
-    oWorksheet.Range(oWorksheet.Cells(2, 5 + rstProjects.RecordCount), oWorksheet.Cells(lngLastRow, 5 + rstProjects.RecordCount)).FormulaR1C1 = "=AND(EXACT(RC[-5],RC[-4]),EXACT(RC[-4],RC[-3]),EXACT(RC[-3],RC[-2]),EXACT(RC[-2],RC[-1]))"
-    Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
-    oListObject.TableStyle = ""
-    oListObject.HeaderRowRange.Font.Bold = True
-    'throw some shade
-    With oListObject.HeaderRowRange.Interior
-      .Pattern = xlSolid
-      .PatternColorIndex = xlAutomatic
-      .ThemeColor = xlThemeColorDark1
-      .TintAndShade = -0.149998474074526
-      .PatternTintAndShade = 0
-    End With
-
-    oListObject.Range.Borders(xlDiagonalDown).LineStyle = xlNone
-    oListObject.Range.Borders(xlDiagonalUp).LineStyle = xlNone
-    For Each vLine In Array(xlEdgeLeft, xlEdgeTop, xlEdgeBottom, xlEdgeRight, xlInsideVertical, xlInsideHorizontal)
-      With oListObject.Range.Borders(vLine)
-        .LineStyle = xlContinuous
-        .ThemeColor = 1
-        .TintAndShade = -0.249946592608417
-        .Weight = xlThin
-      End With
-    Next vLine
-    oExcel.Calculation = xlCalculationAutomatic
-    'add conditional formatting
-    Set oRange = oListObject.ListColumns("MATCH").DataBodyRange
-    oRange.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=FALSE"
-    oRange.FormatConditions(oRange.FormatConditions.Count).SetFirstPriority
-    With oRange.FormatConditions(1).Font
-        .Color = -16383844
-        .TintAndShade = 0
-    End With
-    With oRange.FormatConditions(1).Interior
-        .PatternColorIndex = xlAutomatic
-        .Color = 13551615
-        .TintAndShade = 0
-    End With
-    oRange.FormatConditions(1).StopIfTrue = False
-    oRange.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=TRUE"
-    oRange.FormatConditions(oRange.FormatConditions.Count).SetFirstPriority
-    With oRange.FormatConditions(1).Font
-        .Color = -16752384
-        .TintAndShade = 0
-    End With
-    With oRange.FormatConditions(1).Interior
-        .PatternColorIndex = xlAutomatic
-        .Color = 13561798
-        .TintAndShade = 0
-    End With
-    oRange.FormatConditions(1).StopIfTrue = False
-    'autofilter it
-    oListObject.Range.AutoFilter oRange.Column, False
-    oWorksheet.Columns.AutoFit
-    oExcel.ActiveWindow.ScrollRow = 1
-    oMasterProject.Activate
-    rstProjects.MoveFirst
-    Do While Not rstProjects.EOF
-      If CStr(rstProjects(0)) <> oMasterProject.Name Then
-        Projects(CStr(rstProjects(0))).Activate
-        Application.FileCloseEx pjDoNotSave
-      End If
-      rstProjects.MoveNext
-    Loop
-    cptSpeed False
-    oExcel.ScreenUpdating = True
-    oExcel.Visible = True
-    oExcel.WindowState = xlMaximized
-    lngMismatchCount = oRange.SpecialCells(xlCellTypeVisible).Count
-    If lngMismatchCount > 0 Then
-      oExcel.ActivateMicrosoftApp xlMicrosoftProject
-      MsgBox lngMismatchCount & " Local Custom Fields do not match between Master and all Subprojects!", vbCritical + vbOKOnly, "Warning"
-      Application.ActivateMicrosoftApp pjMicrosoftExcel
-      GoTo exit_here
-    Else
-      oWorkbook.Close False
-      oExcel.Quit
+  lngSubprojectCount = ActiveProject.Subprojects.Count
+  If lngSubprojectCount > 0 Then
+    If MsgBox(lngSubprojectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "Master/Sub Detected") = vbYes Then
+      cptAlignLCF ActiveProject
     End If
-    rstProjects.Close
   End If
-  
-skip_it:
 
   'get project guid
   If CLng(Left(Application.Build, 2)) < 12 Then
-    strGUID = ActiveProject.DatabaseProjectUniqueID
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
   Else
-    strGUID = ActiveProject.GetServerProjectGuid
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
   End If
   
   'capture starting view/table/filter/group
@@ -256,6 +104,8 @@ skip_it:
   'populate field types
   With mySaveLocal_frm
     .Caption = "Save Local (" & cptGetVersion("cptSaveLocal_frm") & ")"
+    .lboECF.Clear
+    .lboLCF.Clear
     .cboLCF.Clear
     .cboECF.Clear
     .cboECF.AddItem "All Types"
@@ -277,6 +127,8 @@ next_type:
     .cboLCF.Value = "Text"
     .optTasks = True 'trigger
     
+    '.Show False
+  
     'get enterprise custom task fields
     For lngField = 188776000 To 188778000 '2000 should do it for now
       If FieldConstantToFieldName(lngField) <> "<Unavailable>" Then
@@ -313,10 +165,17 @@ next_type:
     rstECF.Close
   
     'trigger lboECF refresh
-    .cboECF.Value = "All Types"
+    .cboECF.Value = "All Types" 'this gets user's savedmap
     
-    cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF 'trigger
-    
+    'update the table
+    For lngField = 0 To .lboECF.ListCount - 1
+      If Not IsNull(.lboECF.List(lngField, 3)) Then
+        lngECF = .lboECF.List(lngField, 0)
+        lngLCF = .lboECF.List(lngField, 3)
+        cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF
+      End If
+    Next lngField
+        
     cptSpeed False
     .Show 'modal to control changes to custom fields
   End With
@@ -324,25 +183,10 @@ next_type:
 exit_here:
   On Error Resume Next
   Set mySaveLocal_frm = Nothing
-  Set oRange = Nothing
-  Set oListObject = Nothing
-  Set rstProjects = Nothing
-  Set oSubProject = Nothing
-  Set oMasterProject = Nothing
-  If rstProjects.State Then rstProjects.Close
-  Set rstProjects = Nothing
   Application.StatusBar = ""
-  Set oWorksheet = Nothing
-  oExcel.Calculation = xlCalculationAutomatic
-  oExcel.ScreenUpdating = True
-  oExcel.Visible = True
-  Set oWorkbook = Nothing
-  Set oExcel = Nothing
   cptSpeed False
   oTask.Delete
   Set oTask = Nothing
-  Set rstSavedMap = Nothing
-  Set vType = Nothing
   Set dTypes = Nothing
   If rstECF.State Then rstECF.Close
   Set rstECF = Nothing
@@ -355,17 +199,22 @@ End Sub
 
 Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim rstSavedMap As Object 'ADODB.Recordset
+  Dim rstSavedMap As adodb.Recordset
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
   Dim oResources As Resources
   Dim oResource As Resource
   'strings
   Dim strErrors As String
+  Dim strURL As String
   Dim strGUID As String
   Dim strSavedMap As String
   Dim strMsg As String
   'longs
+  Dim lngTask As Long
+  Dim lngTasks As Long
+  Dim lngResource As Long
+  Dim lngResources As Long
   Dim lngType As Long
   Dim lngItems As Long
   Dim lngLCF As Long
@@ -374,17 +223,19 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'integers
   'doubles
   'booleans
+  Dim blnErrorTrapping As Boolean
   'variants
   'dates
-
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   'get project guid
   If CLng(Left(Application.Build, 2)) < 12 Then
-    strGUID = ActiveProject.DatabaseProjectUniqueID
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
   Else
-    strGUID = ActiveProject.GetServerProjectGuid
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
   End If
+  strURL = ActiveProject.ServerURL
   
   'save map
   Set rstSavedMap = CreateObject("ADODB.Recordset")
@@ -396,7 +247,6 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     rstSavedMap.Fields.Append "LCF", adBigInt
     rstSavedMap.Open
   Else
-    'todo: allow multiple maps per user
     'replace existing saved map
     rstSavedMap.Filter = "GUID<>'" & strGUID & "'"
     rstSavedMap.Open strSavedMap
@@ -422,15 +272,16 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   If lngType = pjTask Then
     On Error Resume Next
     If Not OutlineShowAllTasks Then
+      OptionsViewEx DisplaySummaryTasks:=True
       Sort "ID", , , , , , False, True
       OutlineShowAllTasks
     End If
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     SelectAll
     Set oTasks = ActiveSelection.Tasks
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If Not oTasks Is Nothing Then
-      lngItems = oTasks.Count
+      lngTasks = oTasks.Count
     Else
       MsgBox "There are no tasks in this schedule.", vbCritical + vbOKOnly, "No Tasks"
       GoTo exit_here
@@ -438,9 +289,9 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   ElseIf lngType = pjResource Then
     SelectAll
     Set oResources = ActiveSelection.Resources
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If Not oResources Is Nothing Then
-      lngItems = oResources.Count
+      lngResources = oResources.Count
     Else
       MsgBox "There are no resources in this schedule.", vbCritical + vbOKOnly, "No Resources"
       GoTo exit_here
@@ -448,49 +299,66 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   End If
   
   With mySaveLocal_frm
+  
+    'first save the mapping
+    For lngItem = 0 To .lboECF.ListCount - 1
+      If .lboECF.List(lngItem, 3) > 0 Then
+        lngECF = .lboECF.List(lngItem, 0)
+        lngLCF = .lboECF.List(lngItem, 3)
+        'no duplicates
+        'todo: does Filter = X AND (Y OR Z) work?
+        rstSavedMap.Filter = "GUID='" & strGUID & "' AND ECF=" & lngECF
+        If rstSavedMap.RecordCount = 1 Then
+          'overwrite it
+          rstSavedMap.Delete adAffectCurrent
+        End If
+        rstSavedMap.Filter = ""
+        rstSavedMap.Filter = "GUID='" & strGUID & "' AND LCF=" & lngLCF
+        If rstSavedMap.RecordCount = 1 Then
+          'overwrite it
+          rstSavedMap.Delete adAffectCurrent
+        End If
+        rstSavedMap.Filter = ""
+        'add the new record
+        rstSavedMap.AddNew Array(0, 1, 2, 3), Array(strURL, strGUID, lngECF, lngLCF)
+      End If
+    Next lngItem
+    
     If lngType = pjTask Then
+      
       For Each oTask In ActiveProject.Tasks
         If oTask Is Nothing Then GoTo next_task
         If oTask.ExternalTask Then GoTo next_task
-        On Error Resume Next
-        For lngItem = 0 To .lboECF.ListCount - 1
-          If .lboECF.List(lngItem, 3) > 0 Then
-            lngECF = .lboECF.List(lngItem, 0)
-            lngLCF = .lboECF.List(lngItem, 3)
-            'no duplicates
-            'todo: does Filter = X AND (Y OR Z) work?
-  '          rstSavedMap.Filter = "GUID='" & UCase(strGUID) & "' AND ECF=" & lngECF
-  '          If rstSavedMap.RecordCount = 1 Then
-              'overwrite it
-  '            rstSavedMap.Delete adAffectCurrent
-  '          End If
-  '          rstSavedMap.Filter = ""
-  '          rstSavedMap.Filter = "GUID='" & UCase(strGUID) & "' AND LCF=" & lngLCF
-  '          If rstSavedMap.RecordCount = 1 Then
-              'overwrite it
-  '            rstSavedMap.Delete adAffectCurrent
-  '          End If
-  '          rstSavedMap.Filter = ""
-            'add the new record
-  '          rstSavedMap.AddNew Array(0, 1, 2), Array(strGUID, lngECF, lngLCF)
-            'first clear the values
-            If Len(oTask.GetField(lngLCF)) > 0 Then oTask.SetField lngLCF, ""
+        rstSavedMap.Filter = "GUID='" & strGUID & "'"
+        If rstSavedMap.RecordCount > 0 Then
+          rstSavedMap.MoveFirst
+          Do While Not rstSavedMap.EOF
+            lngECF = rstSavedMap(2)
+            lngLCF = rstSavedMap(3)
             'if ECF is formula, then skip it
             If Len(CustomFieldGetFormula(lngECF)) > 0 Then GoTo next_task_mapping
+            'first clear the values
+            If Len(oTask.GetField(lngLCF)) > 0 Then oTask.SetField lngLCF, "" 'LCF is already emptied by Map
             If Len(oTask.GetField(lngECF)) > 0 Then
               oTask.SetField lngLCF, CStr(oTask.GetField(lngECF))
-              If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+              If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
               If oTask.GetField(lngLCF) <> CStr(oTask.GetField(lngECF)) Then
-                If MsgBox("There was an error copying from ECF " & CustomFieldGetName(lngECF) & " to LCF " & CustomFieldGetName(lngLCF) & " on Task UID " & oTask.UniqueID & "." & vbCrLf & vbCrLf & "Please validate data type mapping." & vbCrLf & vbCrLf & "Proceed anyway?", vbExclamation + vbYesNo, "Failed!") = vbNo Then
-                  GoTo exit_here
-                End If
+                'todo: build list of errors: error coping from ECF to LCF on UID
+                'todo: kick out errors
               End If
             End If
-          End If
 next_task_mapping:
-        Next lngItem
+            rstSavedMap.MoveNext
+          Loop
+        End If
 next_task:
+        lngTask = lngTask + 1
+        mySaveLocal_frm.lblStatus.Caption = "Saving ECF to LCF...(" & Format(lngTask / lngTasks, "0%") & ")"
+        mySaveLocal_frm.lblProgress.Width = (lngTask / lngTasks) * mySaveLocal_frm.lblStatus.Width
       Next oTask
+      mySaveLocal_frm.lblStatus.Caption = "Saving ECF to LCF...done."
+      mySaveLocal_frm.lblProgress.Width = mySaveLocal_frm.lblStatus.Width
+      DoEvents
     ElseIf lngType = pjResource Then
       'todo: how to handle enterprise resources?
       'todo: - copy down to master project?
@@ -520,7 +388,7 @@ next_task:
             If Len(CustomFieldGetFormula(lngECF)) > 0 Then GoTo next_resource_mapping
             If Len(oResource.GetField(lngECF)) > 0 Then
               oResource.SetField lngLCF, CStr(oResource.GetField(lngECF))
-              If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+              If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
               If oResource.GetField(lngLCF) <> CStr(oResource.GetField(lngECF)) Then
                 strMsg = "There was an error copying..." & vbCrLf
                 strMsg = strMsg & "- from ECF: '" & CustomFieldGetName(lngECF) & "'" & vbCrLf
@@ -540,10 +408,12 @@ next_resource:
       Next oResource
     End If
   End With
-
-'  rstSavedMap.Save strSavedMap, adPersistADTG
+  
+  rstSavedMap.Filter = 0
+  rstSavedMap.Save strSavedMap, adPersistADTG
 
   MsgBox "Enteprise Custom Fields saved locally.", vbInformation + vbOKOnly, "Complete"
+  mySaveLocal_frm.lblStatus.Caption = "Ready..."
 
 exit_here:
   On Error Resume Next
@@ -695,7 +565,7 @@ Sub cptGetAllFields(lngFrom As Long, lngTo As Long)
   'objects
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
-  Dim rst As Object 'ADODB.Recordset
+  Dim rst As adodb.Recordset
   Dim oExcel As Excel.Application
   'strings
   Dim strCustomName As String
@@ -766,7 +636,7 @@ End Sub
 
 Sub cptAnalyzeAutoMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim rstAvailable As Object 'ADODB.Recordset
+  Dim rstAvailable As adodb.Recordset
   Dim dTypes As Scripting.Dictionary
   'strings
   Dim strMsg As String
@@ -949,7 +819,7 @@ End Sub
 
 Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, lngLCF As Long)
   'objects
-  Dim rstSavedMap As Object 'ADODB.Recordset
+  Dim rstSavedMap As adodb.Recordset
   Dim oLookupTableEntry As LookupTableEntry
   Dim oOutlineCodeLocal As OutlineCode
   Dim oOutlineCode As OutlineCode
@@ -970,12 +840,14 @@ Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, ln
   'integers
   'doubles
   'booleans
+  Dim blnErrorTrapping As Boolean
   Dim blnProceed As Boolean
   'variants
   Dim vField As Variant
   'dates
-
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   'todo: deletecustomfield if overwriting
 
@@ -1076,7 +948,7 @@ next_formula_field:
     strECF = CustomFieldGetName(lngECF)
     On Error Resume Next
     Set oOutlineCode = GlobalOutlineCodes(strECF)
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If Not oOutlineCode Is Nothing Then
       'make it a picklist
       CustomFieldPropertiesEx lngLCF, pjFieldAttributeValueList
@@ -1122,20 +994,19 @@ next_formula_field:
     End If
   End With
   
-  strURL = ActiveProject.ServerURL
-  
   'update rstSavedMap
   If CLng(Left(Application.Build, 2)) < 12 Then
-    strGUID = ActiveProject.DatabaseProjectUniqueID
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
   Else
-    strGUID = ActiveProject.GetServerProjectGuid
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
   End If
+  strURL = ActiveProject.ServerURL
   
   Set rstSavedMap = CreateObject("ADODB.Recordset")
   strSavedMap = cptDir & "\settings\cpt-save-local.adtg"
   If Dir(strSavedMap) <> vbNullString Then
     rstSavedMap.Open strSavedMap
-    rstSavedMap.Filter = "GUID='" & UCase(strGUID) & "' AND ECF=" & lngECF
+    rstSavedMap.Filter = "GUID='" & strGUID & "' AND ECF=" & lngECF
     If Not rstSavedMap.EOF Then
       rstSavedMap.Fields(2) = lngLCF
     Else
@@ -1171,10 +1042,11 @@ End Sub
 
 Sub cptExportCFMap()
   'objects
-  Dim rstSavedMap As Object 'ADODB.Recordset
+  Dim rstSavedMap As adodb.Recordset
   'strings
   Dim strMsg As String
   Dim strSavedMapExport As String
+  Dim strURL As String
   Dim strGUID As String
   Dim strSavedMap As String
   'longs
@@ -1201,10 +1073,11 @@ Sub cptExportCFMap()
   If MsgBox(strMsg, vbExclamation + vbYesNo, "Important") = vbNo Then GoTo exit_here
 
   If CLng(Left(Application.Build, 2)) < 12 Then
-    strGUID = ActiveProject.DatabaseProjectUniqueID
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
   Else
-    strGUID = ActiveProject.GetServerProjectGuid
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
   End If
+  strURL = ActiveProject.ServerURL
   
   'prepare an export csv file
   lngFile = FreeFile
@@ -1219,21 +1092,21 @@ Sub cptExportCFMap()
   Set rstSavedMap = CreateObject("ADODB.Recordset")
   With rstSavedMap
     .Open strSavedMap, "Provider=MSPersist", , , adCmdFile
-    .Filter = "GUID='" & UCase(strGUID) & "'"
+    .Filter = "GUID='" & strGUID & "'"
     If .RecordCount = 0 Then
       MsgBox "You have no saved map for this project.", vbExclamation + vbOKOnly, "No Map"
+      Close #lngFile
     Else
       Print #lngFile, .GetString(adClipString, , ",", vbCrLf, vbNullString)
+      MsgBox "Map saved to '" & strSavedMapExport & "'", vbInformation + vbOKOnly, "Export Complete"
+      Close #lngFile
+      Shell "notepad.exe '" & strSavedMapExport & "'", vbNormalFocus
     End If
-    Close #lngFile
-    .Filter = 0
-    .Close
   End With
-  
-  MsgBox "Map saved to '" & strSavedMapExport & "'", vbInformation + vbOKOnly, "Export Complete"
     
 exit_here:
   On Error Resume Next
+  rstSavedMap.Filter = 0
   rstSavedMap.Close
   Set rstSavedMap = Nothing
   Close #lngFile
@@ -1245,7 +1118,7 @@ End Sub
 
 Sub cptImportCFMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim rstSavedMap As Object 'ADODB.Recordset
+  Dim rstSavedMap As adodb.Recordset
   Dim oStream As Scripting.TextStream
   Dim oFile As Scripting.File
   Dim oFSO As Scripting.FileSystemObject
@@ -1268,9 +1141,9 @@ Sub cptImportCFMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   strDir = cptDir
   'get guid
   If CLng(Left(Application.Build, 2)) < 12 Then
-    strGUID = ActiveProject.DatabaseProjectUniqueID
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
   Else
-    strGUID = ActiveProject.GetServerProjectGuid
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
   End If
     
   'borrow Excel's FileDialogFilePicker
@@ -1289,6 +1162,7 @@ Sub cptImportCFMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   End With
   'close Excel, with thanks...
   oExcel.Quit
+  If Len(strSavedMapImport) = 0 Then GoTo exit_here
   
   'stream the csv
   Set oFSO = CreateObject("Scripting.FileSystemObject")
@@ -1306,6 +1180,10 @@ Sub cptImportCFMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
       .Save strSavedMapImport, adPersistADTG
     End If
     .Open strDir & "\settings\cpt-save-local.adtg", "Provider=MSPersist", , , adCmdFile
+    
+    If mySaveLocal_frm.tglAutoMap Then mySaveLocal_frm.tglAutoMap = False
+    
+    'todo: does user want to overwrite or merge?
     
     Do Until oStream.AtEndOfStream
       aLine = Split(oStream.ReadLine, ",")
@@ -1349,8 +1227,8 @@ End Sub
 
 Sub cptUpdateECF(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional strFilter As String)
   'objects
-  Dim rstECF As Object 'ADODB.Recordset
-  Dim rstSavedMap As Object 'ADODB.Recordset
+  Dim rstECF As adodb.Recordset
+  Dim rstSavedMap As adodb.Recordset
   'strings
   Dim strDir As String
   Dim strGUID As String
@@ -1368,9 +1246,9 @@ Sub cptUpdateECF(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional strFilter A
   
   'get project guid
   If CLng(Left(Application.Build, 2)) < 12 Then
-    strGUID = ActiveProject.DatabaseProjectUniqueID
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
   Else
-    strGUID = ActiveProject.GetServerProjectGuid
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
   End If
   
   'open the ecf recordset
@@ -1406,7 +1284,7 @@ Sub cptUpdateECF(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional strFilter A
     If rstECF.RecordCount = 0 Then GoTo no_records
     rstECF.MoveFirst
     Do While Not rstECF.EOF
-      If UCase(rstECF("GUID")) = UCase(strGUID) And rstECF("pjType") = IIf(.optTasks, pjTask, pjResource) Then
+      If rstECF("GUID") = strGUID And rstECF("pjType") = IIf(.optTasks, pjTask, pjResource) Then
         If strFilter <> "" Then
           If InStr(UCase(rstECF("ECF_Name")), UCase(strFilter)) = 0 Then GoTo next_field
         End If
@@ -1415,7 +1293,7 @@ Sub cptUpdateECF(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional strFilter A
         .lboECF.List(.lboECF.ListCount - 1, 1) = rstECF("ECF_Name")
         .lboECF.List(.lboECF.ListCount - 1, 2) = rstECF("ENTITY")
         If blnExists Then
-          rstSavedMap.Filter = "GUID='" & UCase(strGUID) & "' AND ECF=" & rstECF("ECF") '& " AND ENTITY=" & IIf(.optTasks, pjTask, pjResource)
+          rstSavedMap.Filter = "GUID='" & strGUID & "' AND ECF=" & rstECF("ECF") '& " AND ENTITY=" & IIf(.optTasks, pjTask, pjResource)
           If Not rstSavedMap.EOF Then
             .lboECF.List(.lboECF.ListCount - 1, 3) = rstSavedMap("LCF")
             If Len(CustomFieldGetName(rstSavedMap("LCF"))) > 0 Then
@@ -1497,7 +1375,7 @@ err_here:
   Resume exit_here
 End Sub
 
-Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional lngECF As Long, Optional lngLCF As Long)
+Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional lngECF As Long, Optional lngLCF As Long, Optional blnReset As Boolean = False)
   'objects
   'strings
   'longs
@@ -1505,34 +1383,71 @@ Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional l
   'integers
   'doubles
   'booleans
+  Dim blnRefreshTaskTable As Boolean
+  Dim blnRefreshTaskView As Boolean
+  Dim blnRefreshResourceTable As Boolean
+  Dim blnRefreshResourceView As Boolean
   'variants
   'dates
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  Debug.Print "triggered!"
+  'create/overwrite the tables
+  If Not cptTableExists(".cptSaveLocal Task Table") Then
+    blnRefreshTaskTable = False
+    cptSpeed True
+    ViewApply "Gantt Chart"
+    TableEditEx ".cptSaveLocal Task Table", True, True, True, , "ID", , , , , , True, , , , , , , , False
+    TableEditEx ".cptSaveLocal Task Table", True, False, , , , "Unique ID", "UID", , , , True
+'    TableEditEx ".cptSaveLocal Resource Table", False, True, True, , "ID", , , , , , True, , , , , , , , False
+'    TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Unique ID", "UID", , , , True
+    If ActiveProject.Subprojects.Count > 0 Then
+      TableEditEx ".cptSaveLocal Task Table", True, False, , , , "Project", , 40, , , True
+'      TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Enterprise", , 15, pjCenter, , True
+    End If
+'    TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Name", , 30, , , True
+  Else
+    blnRefreshTaskTable = True
+  End If
+  If Not cptViewExists(".cptSaveLocal Task View") Then
+    blnRefreshTaskView = False
+    On Error Resume Next
+    ActiveProject.Views(".cptSaveLocal Task View").Delete
+'    ActiveProject.Views(".cptSaveLocal Resource View").Delete
+    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    ViewEditSingle ".cptSaveLocal Task View", True, , pjTaskSheet, , , ".cptSaveLocal Task Table", "All Tasks", "No Group"
+'    ViewEditSingle ".cptSaveLocal Resource View", True, , pjResourceSheet, , , ".cptSaveLocal Resource Table", "All Resources", "No Group"
+  Else
+    blnRefreshTaskView = True
+  End If
+  
   With mySaveLocal_frm
-    If Not .Visible Then
-      'create/overwrite the tables
-      cptSpeed True
-      ViewApply "Gantt Chart"
-      TableEditEx ".cptSaveLocal Task Table", True, True, True, , "ID", , , , , , True, , , , , , , , False
-      TableEditEx ".cptSaveLocal Task Table", True, False, , , , "Unique ID", "UID", , , , True
-      TableEditEx ".cptSaveLocal Resource Table", False, True, True, , "ID", , , , , , True, , , , , , , , False
-      TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Unique ID", "UID", , , , True
-      If ActiveProject.Subprojects.Count > 0 Then
-        TableEditEx ".cptSaveLocal Task Table", True, False, , , , "Project", , 40, , , True
-        TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Enterprise", , 15, pjCenter, , True
+    If Not .Visible Or blnReset Then
+      If blnRefreshTaskTable Then
+        'create/overwrite the tables
+        cptSpeed True
+        ViewApply "Gantt Chart"
+        TableEditEx ".cptSaveLocal Task Table", True, True, True, , "ID", , , , , , True, , , , , , , , False
+        TableEditEx ".cptSaveLocal Task Table", True, False, , , , "Unique ID", "UID", , , , True
+'        TableEditEx ".cptSaveLocal Resource Table", False, True, True, , "ID", , , , , , True, , , , , , , , False
+'        TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Unique ID", "UID", , , , True
+        If ActiveProject.Subprojects.Count > 0 Then
+          TableEditEx ".cptSaveLocal Task Table", True, False, , , , "Project", , 40, , , True
+'          TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Enterprise", , 15, pjCenter, , True
+        End If
+'      TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Name", , 30, , , True
       End If
-      TableEditEx ".cptSaveLocal Resource Table", False, False, , , , "Name", , 30, , , True
-      On Error Resume Next
-      ActiveProject.Views(".cptSaveLocal Task View").Delete
-      ActiveProject.Views(".cptSaveLocal Resource View").Delete
-      If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-      ViewEditSingle ".cptSaveLocal Task View", True, , pjTaskSheet, , , ".cptSaveLocal Task Table", "All Tasks", "No Group"
-      ViewEditSingle ".cptSaveLocal Resource View", True, , pjResourceSheet, , , ".cptSaveLocal Resource Table", "All Resources", "No Group"
+      If blnRefreshTaskView Then
+        On Error Resume Next
+        ActiveProject.Views(".cptSaveLocal Task View").Delete
+'        ActiveProject.Views(".cptSaveLocal Resource View").Delete
+        If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        ViewEditSingle ".cptSaveLocal Task View", True, , pjTaskSheet, , , ".cptSaveLocal Task Table", "All Tasks", "No Group"
+'        ViewEditSingle ".cptSaveLocal Resource View", True, , pjResourceSheet, , , ".cptSaveLocal Resource Table", "All Resources", "No Group"
+      End If
       'update the table
       For lngField = 0 To .lboECF.ListCount - 1
-        If Not IsNull(.lboECF.List(lngField, 3)) Then
+        If Not IsNull(.lboECF.List(lngField, 3)) And Len(.lboECF.List(lngField, 3)) > 0 Then
           lngECF = .lboECF.List(lngField, 0)
           lngLCF = .lboECF.List(lngField, 3)
           TableEditEx ".cptSaveLocal Task Table", True, False, False, , , FieldConstantToFieldName(lngECF), , , , , True, , , , , , , , False
@@ -1570,7 +1485,7 @@ Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional l
 
 exit_here:
   On Error Resume Next
-
+  
   Exit Sub
 err_here:
   Call cptHandleErr(THIS_MODULE, "cptUpdateSaveLocalView", Err, Erl)
@@ -1583,8 +1498,8 @@ Function cptLocalCustomFieldsMatch() As Boolean
   Dim oListObject As Excel.ListObject
   Dim dTypes As Scripting.Dictionary
   Dim oMasterProject As MSProject.Project
-  Dim oSubProject As MSProject.SubProject
-  Dim rstProjects As ADODB.Recordset
+  Dim oSubproject As MSProject.Subproject
+  Dim rstProjects As adodb.Recordset
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
   Dim oExcel As Excel.Application
@@ -1649,10 +1564,10 @@ Function cptLocalCustomFieldsMatch() As Boolean
   rstProjects.Fields.Append "PROJECT", adVarChar, 200
   rstProjects.Open
   rstProjects.AddNew Array(0), Array(oMasterProject.Name)
-  For Each oSubProject In oMasterProject.Subprojects
-    FileOpenEx oSubProject.SourceProject.FullName, True
+  For Each oSubproject In oMasterProject.Subprojects
+    FileOpenEx oSubproject.SourceProject.FullName, True
     rstProjects.AddNew Array(0), Array(ActiveProject.Name)
-  Next oSubProject
+  Next oSubproject
   rstProjects.MoveFirst
   Do While Not rstProjects.EOF
     Application.StatusBar = "Analyzing " & rstProjects(0) & "..."
@@ -1806,7 +1721,7 @@ exit_here:
   Set oListObject = Nothing
   Set dTypes = Nothing
   Set oMasterProject = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   If rstProjects.State Then rstProjects.Close
   Set rstProjects = Nothing
   Set oWorksheet = Nothing
@@ -1818,3 +1733,79 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "cptLocalCustomFieldsMatch", Err, Erl)
   Resume exit_here
 End Function
+
+Sub cptDeleteCFMap(mySaveLocal_frm As cptSaveLocal_frm)
+  'objects
+  Dim oRecordset As adodb.Recordset
+  'strings
+  Dim strSavedMap As String
+  Dim strDir As String
+  Dim strGUID As String
+  'longs
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If MsgBox("Would you like to export your map first?" & vbCrLf & vbCrLf & "(This cannot be undone.)", vbQuestion + vbYesNo, "Backup?") = vbYes Then
+    cptExportCFMap
+  End If
+
+  'get project guid
+  If CLng(Left(Application.Build, 2)) < 12 Then
+    strGUID = UCase(ActiveProject.DatabaseProjectUniqueID)
+  Else
+    strGUID = UCase(ActiveProject.GetServerProjectGuid)
+  End If
+
+  'open recordset, delete records
+  strSavedMap = cptDir & "\settings\cpt-save-local.adtg"
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  oRecordset.Open strSavedMap
+  oRecordset.Filter = "GUID='" & strGUID & "'"
+  If oRecordset.RecordCount > 0 Then
+    oRecordset.MoveFirst
+    Do While Not oRecordset.EOF
+      oRecordset.Delete adAffectCurrent
+      oRecordset.MoveNext
+    Loop
+    oRecordset.Filter = 0
+    oRecordset.Save strSavedMap, adPersistADTG
+  End If
+  
+  'todo: delete the LCF?
+  'todo: if so: delete the task data?
+  
+  With mySaveLocal_frm
+    For lngItem = .lboECF.ListCount - 1 To 0 Step -1
+      If Len(.lboECF.List(lngItem, 3)) > 0 Then
+        CustomFieldDelete .lboECF.List(lngItem, 3)
+        .lboECF.List(lngItem, 3) = ""
+        .lboECF.List(lngItem, 4) = ""
+      End If
+    Next lngItem
+    'todo: status bar
+    cptUpdateLCF mySaveLocal_frm
+  End With
+  
+  cptUpdateSaveLocalView mySaveLocal_frm, blnReset:=True
+
+exit_here:
+  On Error Resume Next
+  If oRecordset.State Then
+    oRecordset.Filter = 0
+    oRecordset.Close
+  End If
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptSaveLocal_bas", "cptDeleteCFMap", Err, Erl)
+  Resume exit_here
+End Sub
