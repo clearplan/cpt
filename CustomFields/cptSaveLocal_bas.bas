@@ -1809,3 +1809,88 @@ err_here:
   Call cptHandleErr("cptSaveLocal_bas", "cptDeleteCFMap", Err, Erl)
   Resume exit_here
 End Sub
+
+Sub cptDeleteLCFAndTaskData(ByRef mySaveLocal_frm As cptSaveLocal_frm)
+  'objects
+  Dim oTasks As MSProject.Tasks
+  Dim oTask As MSProject.Task
+  'strings
+  Dim strFieldName As String
+  Dim strCustomFieldName As String
+  'longs
+  Dim lngTask As Long
+  Dim lngTasks As Long
+  Dim lngLCF As Long
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnDeleteTaskData As Boolean
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  With mySaveLocal_frm
+    If .lboLCF.ListCount = 0 Then GoTo exit_here
+    If IsNull(.lboLCF) Then GoTo exit_here
+    For lngItem = 0 To .lboLCF.ListCount - 1
+      If .lboLCF.Selected(lngItem) Then
+        lngLCF = CLng(.lboLCF.List(lngItem, 0))
+        strCustomFieldName = CustomFieldGetName(lngLCF)
+        If Len(strCustomFieldName) > 0 Then
+          strFieldName = strCustomFieldName
+        Else
+          strFieldName = FieldConstantToFieldName(lngLCF)
+        End If
+        blnDeleteTaskData = MsgBox("Delete Task Data for LCF '" & strFieldName & "'?", vbQuestion + vbYesNo, "Please Confirm") = vbYes
+        If CustomFieldDelete(lngLCF) Then
+          .lboLCF.List(lngItem, 1) = FieldConstantToFieldName(lngLCF)
+          If blnDeleteTaskData Then
+            If ActiveProject.Subprojects.Count > 0 Then
+              ActiveWindow.TopPane.Activate
+              If ActiveWindow.TopPane.View.Type <> pjTaskItem Then ViewApply "Gantt Chart"
+              GroupClear
+              FilterClear
+              Sort "ID", , , , , , False, True
+              OptionsViewEx DisplaySummaryTasks:=True
+              OutlineShowTasks pjTaskOutlineShowLevelMax
+            End If
+            SelectAll
+            Set oTasks = ActiveSelection.Tasks
+            lngTasks = oTasks.Count
+            Application.Calculation = pjManual
+            For Each oTask In oTasks
+              If oTask Is Nothing Then GoTo next_task
+              If oTask.ExternalTask Then GoTo next_task
+              If Not oTask.Active Then GoTo next_task
+              If Len(oTask.GetField(lngLCF)) > 0 Then oTask.SetField lngLCF, vbNullString
+next_task:
+              lngTask = lngTask + 1
+              .lboLCF.List(lngItem, 1) = "deleting...(" & Format(lngTask / lngTasks, "0%") & ")"
+              Application.StatusBar = "Deleting task data for '" & strFieldName & "'...(" & Format(lngTask / lngTasks, "0%") & ")"
+              DoEvents
+            Next oTask
+            Application.Calculation = pjAutomatic
+          End If
+          .lboLCF.List(lngItem, 1) = FieldConstantToFieldName(lngLCF)
+        Else
+          MsgBox "Could not delete LCF '" & strFieldName & "'!" & vbCrLf & vbCrLf & "Please do so manually using the CustomFields button on this form.", vbExclamation + vbOKOnly
+        End If
+      End If
+    Next lngItem
+  End With
+  
+exit_here:
+  On Error Resume Next
+  Application.StatusBar = ""
+  Set oTasks = Nothing
+  Set oTask = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptSaveLocal_bas", "cptDeleteLCFAndTaskData", Err, Erl)
+  Resume exit_here
+End Sub

@@ -70,6 +70,10 @@ Private Sub cmdDeleteMap_Click()
   cptDeleteCFMap Me
 End Sub
 
+Private Sub cmdDeleteTaskData_Click()
+  cptDeleteLCFAndTaskData Me
+End Sub
+
 Private Sub cmdExportMap_Click()
   cptExportCFMap
 End Sub
