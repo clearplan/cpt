@@ -737,6 +737,9 @@ Public Function cptBuildRibbonTab()
     If cptModuleExists("cptFieldBuilder_bas") And cptModuleExists("cptFieldBuilder_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBuilder"" imageMso=""CustomFieldDialog"" label=""Field Builder"" onAction=""cptShowFieldBuilder_frm"" supertip=""A little help building common custom field pick lists, etc."" />" 'size=""large""
     End If
+    If ActiveProject.Subprojects.Count > 0 Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnalyzeLCF"" imageMso=""CustomFieldDialog"" label=""Master/Sub LCF Alignment"" onAction=""cptAnalyzeLCF"" supertip=""Analyze LCF usage between a Master project and Subprojects."" />" 'size=""large""
+    End If
     If cptModuleExists("cptSaveLocal_bas") And cptModuleExists("cptSaveLocal_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bECFtoLCF"" imageMso=""CustomFieldDialog"" label=""ECF to LCF"" onAction=""cptShowSaveLocal_frm"" supertip=""Save Enterprise Custom Field (ECF) settings (and, optionally, task-level data) to Local Custom Fields (LCF). Settings are saved (by project) between sessions."" />" 'size=""large""
     End If

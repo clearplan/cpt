@@ -27,8 +27,10 @@ End Sub
 
 Private Sub chkAutoSwitch_Click()
   If Not Me.Visible Then Exit Sub
-  If Me.cboLCF <> Me.lboECF.List(Me.lboECF.ListIndex, 2) Then
-    Me.cboLCF = Me.lboECF.List(Me.lboECF.ListIndex, 2)
+  If Not IsNull(Me.lboLCF.Value) Then
+    If Me.cboLCF <> Me.lboECF.List(Me.lboECF.ListIndex, 2) Then
+      Me.cboLCF = Me.lboECF.List(Me.lboECF.ListIndex, 2)
+    End If
   End If
 End Sub
 
@@ -64,6 +66,10 @@ err_here:
   
 End Sub
 
+Private Sub cmdDeleteMap_Click()
+  cptDeleteCFMap Me
+End Sub
+
 Private Sub cmdExportMap_Click()
   cptExportCFMap
 End Sub
@@ -83,6 +89,7 @@ Private Sub cmdSaveLocal_Click()
 End Sub
 
 Private Sub cmdUnmap_Click()
+  'todo: make this cmdUnMapECFtoLCF
   'objects
   Dim oTableField As Object
   Dim rstSavedMap As Object 'ADODB.Recordset
@@ -227,7 +234,7 @@ Private Sub lboECF_Change()
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   Me.lblShowFormula.Visible = False
   If Me.Visible Then
-    If Me.ActiveControl.Name = "lboECF" Then
+    If Me.ActiveControl.Name = "lboECF" Or Me.ActiveControl.Name = "cmdImportMap" Then
       If Me.tglAutoMap Then
         For lngItem = 0 To Me.lboECF.ListCount - 1
           If Me.lboECF.Selected(lngItem) Then lngItems = lngItems + 1
@@ -348,6 +355,14 @@ exit_here:
 err_here:
   Call cptHandleErr("cptSaveLocal_frm", "lboECF_Click", Err, Erl)
   Resume exit_here
+End Sub
+
+Private Sub lboECF_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+  'todo: if mapped, then unmap
+  'todo: if unmapped, then map
+  If Not IsNull(Me.lboECF) And Not IsNull(Me.lboLCF) Then
+    Call cptMapECFtoLCF(Me, Me.lboECF, Me.lboLCF)
+  End If
 End Sub
 
 Private Sub optResources_Click()
