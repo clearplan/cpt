@@ -4077,3 +4077,266 @@ err_here:
 
 End Function
 
+
+Sub cptAnalyzeLCF()
+  If ActiveProject.Subprojects.Count > 0 Then
+    cptAlignLCF ActiveProject
+  Else
+    MsgBox "This project has no Subprojects.", vbInformation + vbOKOnly, "Analyze LCFs"
+  End If
+End Sub
+
+Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
+  'objects
+  Dim oRange As Excel.Range
+  Dim oListObject As Excel.ListObject
+  Dim dTypes As Scripting.Dictionary
+  Dim oWorksheet As Excel.Worksheet
+  Dim oSubproject As MSProject.Subproject
+  Dim oRecordset As adodb.Recordset
+  Dim oWorkbook As Excel.Workbook
+  Dim oExcel As Excel.Application
+  'strings
+  Dim strCustomFormula As String
+  Dim strFormula As String
+  'longs
+  Dim lngLastCol As Long
+  Dim lngMismatchCount As Long
+  Dim lngLCF As Long
+  Dim lngProject As Long
+  Dim lngField As Long
+  Dim lngType As Long
+  Dim lngLastRow As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  Dim vRange As Variant
+  Dim vBorder As Variant
+  Dim vType As Variant
+  Dim vEntity As Variant
+  'dates
+  
+  If oMasterProject.Subprojects.Count = 0 Then
+    MsgBox oMasterProject.Name & " has no Subprojects.", vbExclamation + vbOKOnly, "Not a Master Project"
+    GoTo exit_here
+  End If
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  'setup array of types/counts
+  Set dTypes = CreateObject("Scripting.Dictionary")
+  'record: field type, number of available custom fields
+  For Each vType In Array("Cost", "Date", "Duration", "Finish", "Start", "Outline Code")
+    dTypes.Add vType, 10
+  Next
+  dTypes.Add "Flag", 20
+  dTypes.Add "Number", 20
+  dTypes.Add "Text", 30
+  
+  cptSpeed True
+  Application.StatusBar = "Setting up Excel..."
+  'set up Excel
+  Set oExcel = CreateObject("Excel.Application")
+  oExcel.Visible = Not blnErrorTrapping
+  Set oWorkbook = oExcel.Workbooks.Add
+  oExcel.ScreenUpdating = IIf(blnErrorTrapping, xlCalculationAutomatic, xlManual)
+  oExcel.Calculation = Not blnErrorTrapping
+  Set oWorksheet = oWorkbook.Sheets(1)
+  oExcel.ActiveWindow.Zoom = 85
+  oExcel.ActiveWindow.SplitRow = 1
+  oExcel.ActiveWindow.SplitColumn = 5
+  oExcel.ActiveWindow.FreezePanes = True
+  oWorksheet.Name = "cptAlignLCF"
+  'set up headers
+  oWorksheet.[A1:E1] = Split("ENTITY,TYPE,CONSTANT,NAME,ATTRIBUTE", ",")
+  'capture master and subproject names
+  cptSpeed blnErrorTrapping
+  Application.StatusBar = "Opening subprojects..."
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  oRecordset.Fields.Append "PROJECT", adVarChar, 200
+  oRecordset.Open
+  oRecordset.AddNew Array(0), Array(oMasterProject.Name)
+  For Each oSubproject In oMasterProject.Subprojects
+    FileOpenEx oSubproject.SourceProject.FullName, True
+    oRecordset.AddNew Array(0), Array(ActiveProject.Name)
+  Next oSubproject
+  oRecordset.MoveFirst
+  Do While Not oRecordset.EOF
+    Application.StatusBar = "Analyzing " & oRecordset(0) & "..."
+    DoEvents
+    Projects(CStr(oRecordset(0))).Activate
+    lngLastRow = 1
+    lngLastCol = oWorksheet.[A1].End(xlToRight).Column + 1
+    oWorksheet.Cells(1, lngLastCol) = oRecordset(0)
+    For Each vEntity In Array(pjTask)
+      For lngType = 0 To dTypes.Count - 1
+        For lngField = 1 To dTypes.Items(lngType)
+          lngLCF = FieldNameToFieldConstant(dTypes.Keys(lngType) & lngField, vEntity)
+          If oRecordset.AbsolutePosition = 1 Then
+            lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row + 1
+            oWorksheet.Cells(lngLastRow, 1) = Choose(vEntity + 1, "Task", "Resource")
+            oWorksheet.Cells(lngLastRow, 2) = dTypes.Keys(lngType)
+            oWorksheet.Cells(lngLastRow, 3) = lngLCF
+            oWorksheet.Cells(lngLastRow, 4) = FieldConstantToFieldName(lngLCF)
+            oWorksheet.Cells(lngLastRow, 5) = "Custom Field Name"
+            oWorksheet.Columns(5).AutoFit
+          Else
+            lngLastRow = lngLastRow + 1
+          End If
+          If Not blnErrorTrapping Then oExcel.ActiveWindow.ScrollRow = lngLastRow
+          'get custom field names
+          oWorksheet.Cells(lngLastRow, lngLastCol) = CustomFieldGetName(lngLCF)
+          'get formula
+          If oRecordset.AbsolutePosition = 1 Then
+            vRange = oWorksheet.Range(oWorksheet.Cells(lngLastRow, 1), oWorksheet.Cells(lngLastRow, 4))
+            lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row + 1
+            oWorksheet.Range(oWorksheet.Cells(lngLastRow, 1), oWorksheet.Cells(lngLastRow, 4)) = vRange
+            oWorksheet.Cells(lngLastRow, 5) = "Formula"
+          Else
+            lngLastRow = lngLastRow + 1
+          End If
+          strCustomFormula = CustomFieldGetFormula(lngLCF)
+          If Len(strCustomFormula) > 0 Then
+            oWorksheet.Cells(lngLastRow, lngLastCol) = strCustomFormula
+          End If
+          'get sorted picklist
+          If oRecordset.AbsolutePosition = 1 Then
+            vRange = oWorksheet.Range(oWorksheet.Cells(lngLastRow, 1), oWorksheet.Cells(lngLastRow, 4))
+            lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row + 1
+            oWorksheet.Range(oWorksheet.Cells(lngLastRow, 1), oWorksheet.Cells(lngLastRow, 4)) = vRange
+            oWorksheet.Cells(lngLastRow, 5) = "PickList"
+          Else
+            lngLastRow = lngLastRow + 1
+          End If
+          On Error Resume Next
+          Dim vItem As Variant
+          vItem = Application.CustomFieldValueListGetItem(lngLCF, pjValueListValue, 1)
+          If Err Is Nothing Then
+            Debug.Print "found one!"
+            Stop
+          Else
+            Err.Clear
+          End If
+          If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        Next lngField
+        'format column
+      Next lngType
+    Next vEntity
+    oWorksheet.Columns(lngLastCol).WrapText = True
+    oWorksheet.Columns(lngLastCol).ColumnWidth = 60
+    oRecordset.MoveNext
+  Loop
+  oWorksheet.Range(oWorksheet.Cells(2, 1), oWorksheet.Cells(lngLastRow, lngLastCol)).VerticalAlignment = xlCenter
+  oWorksheet.Rows.AutoFit
+  'add a formula
+  oWorksheet.Columns(6).Insert
+  oWorksheet.Cells(1, 6) = "MATCH"
+  Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
+  oListObject.TableStyle = ""
+  oListObject.Name = "LCF"
+  oListObject.HeaderRowRange.Font.Bold = True
+  lngLastCol = oWorksheet.[A1].End(xlToRight).Column
+  strFormula = "=AND(IF(COUNTA(UNIQUE(RC[1]:RC" & lngLastCol & ",TRUE,FALSE))>1,FALSE,TRUE),IF([@CONSTANT]=R[1]C3,R[1]C,TRUE))"
+  oListObject.ListColumns("MATCH").DataBodyRange.FormulaR1C1 = strFormula
+  'throw some shade
+  With oListObject.HeaderRowRange.Interior
+    .Pattern = xlSolid
+    .PatternColorIndex = xlAutomatic
+    .ThemeColor = xlThemeColorDark1
+    .TintAndShade = -0.149998474074526
+    .PatternTintAndShade = 0
+  End With
+  oListObject.Range.Borders(xlDiagonalDown).LineStyle = xlNone
+  oListObject.Range.Borders(xlDiagonalUp).LineStyle = xlNone
+  For Each vBorder In Array(xlEdgeLeft, xlEdgeTop, xlEdgeBottom, xlEdgeRight, xlInsideVertical, xlInsideHorizontal)
+    With oListObject.Range.Borders(vBorder)
+      .LineStyle = xlContinuous
+      .ThemeColor = 1
+      .TintAndShade = -0.249946592608417
+      .Weight = xlThin
+    End With
+  Next vBorder
+  oExcel.Calculation = xlCalculationAutomatic
+  'add conditional formatting
+  Set oRange = oListObject.ListColumns("MATCH").DataBodyRange
+  oRange.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=FALSE"
+  oRange.FormatConditions(oRange.FormatConditions.Count).SetFirstPriority
+  With oRange.FormatConditions(1).Font
+    .Color = -16383844
+    .TintAndShade = 0
+  End With
+  With oRange.FormatConditions(1).Interior
+    .PatternColorIndex = xlAutomatic
+    .Color = 13551615
+    .TintAndShade = 0
+  End With
+  oRange.FormatConditions(1).StopIfTrue = False
+  oRange.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=TRUE"
+  oRange.FormatConditions(oRange.FormatConditions.Count).SetFirstPriority
+  With oRange.FormatConditions(1).Font
+    .Color = -16752384
+    .TintAndShade = 0
+  End With
+  With oRange.FormatConditions(1).Interior
+    .PatternColorIndex = xlAutomatic
+    .Color = 13561798
+    .TintAndShade = 0
+  End With
+  oRange.FormatConditions(1).StopIfTrue = False
+  'autofilter it
+  oListObject.Range.AutoFilter oRange.Column, False
+  oWorksheet.Columns.AutoFit
+  oExcel.ActiveWindow.ScrollRow = 1
+  oExcel.ActiveWindow.FreezePanes = False
+  oExcel.ActiveWindow.SplitRow = 1
+  oExcel.ActiveWindow.SplitColumn = 6
+  oExcel.ActiveWindow.FreezePanes = True
+  oMasterProject.Activate
+  If MsgBox("Keep subprojects open?", vbQuestion + vbYesNo, "Confirm") = vbNo Then
+    oRecordset.MoveFirst
+    Do While Not oRecordset.EOF
+      If CStr(oRecordset(0)) <> oMasterProject.Name Then
+        Projects(CStr(oRecordset(0))).Activate
+        Application.FileCloseEx pjDoNotSave
+      End If
+      oRecordset.MoveNext
+    Loop
+  End If
+  cptSpeed False
+  oExcel.ScreenUpdating = True
+  oExcel.Visible = True
+  oExcel.WindowState = xlMaximized
+  lngMismatchCount = oWorksheet.Evaluate("IFERROR(COUNTIFS(LCF[ATTRIBUTE],""Custom Field Name"",LCF[MATCH],FALSE),0)")
+  If lngMismatchCount > 0 Then
+    oExcel.ActivateMicrosoftApp xlMicrosoftProject
+    MsgBox Format(lngMismatchCount, "#,##0") & " Local Custom Fields do not match between Master and Subprojects.", vbCritical + vbOKOnly, "Warning"
+    Application.ActivateMicrosoftApp pjMicrosoftExcel
+    GoTo exit_here
+  Else
+    oExcel.ActivateMicrosoftApp xlMicrosoftProject
+    MsgBox lngMismatchCount & " mismatched Local Custom Fields (LCFs) found!", vbInformation + vbOKCancel, "Well Done!"
+    oWorkbook.Close False
+    oExcel.Quit 'we created, we destroy
+  End If
+
+exit_here:
+  On Error Resume Next
+  cptSpeed False
+  Set oRange = Nothing
+  Set oListObject = Nothing
+  Set dTypes = Nothing
+  Set oWorksheet = Nothing
+  Set oSubproject = Nothing
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+  Set oWorkbook = Nothing
+  Set oExcel = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptCore_bas", "cptAlignLCF", Err, Erl)
+  Resume exit_here
+End Sub
