@@ -4100,6 +4100,11 @@ End Sub
 
 Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   'objects
+  Dim oUnrelated As Scripting.Dictionary
+  Dim oProject As MSProject.Project
+  Dim oListRow As Excel.ListRow
+  Dim oShaded As Excel.Range
+  Dim oRelated As Scripting.Dictionary
   Dim oFormulaSheet As Excel.Worksheet
   Dim oLookupSheet As Excel.Worksheet
   Dim oLookupTableEntry As MSProject.LookupTableEntry
@@ -4113,6 +4118,9 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   Dim oWorkbook As Excel.Workbook
   Dim oExcel As Excel.Application
   'strings
+  Dim strMsg As String
+  Dim strDescription As String
+  Dim strItem As String
   Dim strCFN As String
   Dim strFN As String
   Dim strSheetName As String
@@ -4120,6 +4128,9 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   Dim strCustomFormula As String
   Dim strFormula As String
   'longs
+  Dim lngCustomFieldTotalItems As Long
+  Dim lngCustomFieldItem As Long
+  Dim lngCustomFieldItems As Long
   Dim lngRow As Long
   Dim lngCol As Long
   Dim lngItem As Long
@@ -4133,6 +4144,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   'integers
   'doubles
   'booleans
+  Dim blnKeepOpen As Boolean
   Dim blnErrorTrapping As Boolean
   Dim blnIsLoaded As Boolean
   'variants
@@ -4143,23 +4155,43 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   Dim vType As Variant
   Dim vEntity As Variant
   'dates
+  Dim dTimer As Date
 
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  
+  dTimer = Now
+  
   If oMasterProject.Subprojects.Count = 0 Then
     MsgBox oMasterProject.Name & " has no Subprojects.", vbExclamation + vbOKOnly, "Not a Master Project"
     GoTo exit_here
   End If
 
   'are subprojects already open/loaded?
-  For Each oSubproject In oMasterProject.Subprojects
-    blnIsLoaded = CBool(oSubproject.IsLoaded)
-    If Not blnIsLoaded Then Exit For
-  Next oSubproject
-  If Not blnIsLoaded Then 'ask permission
-    If MsgBox("SubProjects must be opened (read-only) for analysis." & vbCrLf & vbCrLf & "Proceed?", vbQuestion + vbYesNo, "Confirm") = vbNo Then
-      GoTo exit_here
+  'oSubproject.IsLoaded is glitchy
+  Set oRelated = CreateObject("Scripting.Dictionary")
+  oRelated.Add oMasterProject.FullName, oMasterProject.FullName
+  If MsgBox("SubProjects must be opened (read-only) for analysis." & vbCrLf & vbCrLf & "Proceed?", vbQuestion + vbYesNo, "Confirm") = vbYes Then
+    Application.DisplayAlerts = False
+    For Each oSubproject In oMasterProject.Subprojects
+      blnIsLoaded = oSubproject.IsLoaded 'Not Projects(oSubproject.SourceProject.FullName) Is Nothing 'unless proven otherwise
+      oRelated.Add oSubproject.SourceProject.FullName, oSubproject.SourceProject.FullName
+    Next oSubproject
+    Application.DisplayAlerts = True
+  End If
+  
+  'close unrelated projects
+  If Projects.Count <> oRelated.Count Then
+    Set oUnrelated = CreateObject("Scripting.Dictionary")
+    If MsgBox("Close unrelated project files?", vbQuestion + vbYesNo, "Recommendation:") = vbYes Then
+      For Each oProject In Projects
+        If Not oRelated.Exists(oProject.FullName) Then
+          oUnrelated.Add oProject.FullName, oProject.ReadOnly
+          oProject.Activate
+          Application.ActiveWindow.WindowState = pjMaximized
+          FileCloseEx pjPromptSave
+        End If
+      Next oProject
     End If
   End If
 
@@ -4191,7 +4223,8 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   dTypes.Add "Flag", 20
   dTypes.Add "Number", 20
   dTypes.Add "Text", 30
-
+  lngCustomFieldItems = (6 * 10) + 20 + 20 + 30
+  'lngCustomFieldItems = lngCustomFieldItems * (oMasterProject.Subprojects.Count + 1)
   cptSpeed True
   Application.StatusBar = "Setting up Excel..."
   'set up Excel
@@ -4209,6 +4242,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   oWorksheet.Outline.SummaryRow = xlSummaryAbove
   'set up headers
   oWorksheet.[A1:G1] = Split("INDEX,ENTITY,TYPE,CONSTANT,NAME,ATTRIBUTE,MATCH", ",")
+  
   oRecordset.MoveFirst
   Do While Not oRecordset.EOF 'effectively: for each project+subproject
     Application.StatusBar = "Analyzing " & oRecordset(0) & "..."
@@ -4216,7 +4250,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
     Projects(CStr(oRecordset(0))).Activate
     lngLastRow = 1
     lngLastCol = oWorksheet.[A1].End(xlToRight).Column + 1
-    oWorksheet.Cells(1, lngLastCol) = oRecordset(0)
+    oWorksheet.Cells(1, lngLastCol) = oRecordset.AbsolutePosition - 1 & ": " & oRecordset(0)
     For Each vEntity In Array(pjTask) 'options: pjTask,pjResource,pjProject
       For lngType = 0 To dTypes.Count - 1 'loop through various field types (e.g., Cost,Date...)
         For lngField = 1 To dTypes.Items(lngType) 'loop through field count (e.g., Text1..Text30)
@@ -4259,10 +4293,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
             Set oFormulaSheet = oWorkbook.Sheets.Add(After:=oWorkbook.Sheets(oWorkbook.Sheets.Count))
             oFormulaSheet.Name = "Formulae"
             oExcel.ActiveWindow.Zoom = 85
-            'todo: fix hyperlinks
-            '=HYPERLINK("#Formulae!"&ADDRESS(MATCH("Duration2",FORMULAS[NAME],0),6))
-            'oFormulaSheet.[A1].Formula = "=HYPERLINK(""#cptAlignLCF!A1"",""BACK"")"
-            oFormulaSheet.Hyperlinks.Add oFormulaSheet.[A1], "", "cptAlignLCF!A1", "Click to Return", "BACK"
+            oFormulaSheet.[A1].Formula = "=HYPERLINK(""#cptAlignLCF!A1"",""BACK"")"
             oFormulaSheet.[A2:H2] = Split("ENTITY,TYPE,CONSTANT,NAME,PROJECT,CUSTOM NAME,MATCH,FORMULA", ",")
           End If
           lngRow = oFormulaSheet.[A1048576].End(xlUp).Row + 1
@@ -4271,21 +4302,29 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
           oFormulaSheet.Cells(lngRow, 5) = oRecordset.AbsolutePosition - 1 & ": " & oRecordset(0)
           oFormulaSheet.Cells(lngRow, 6) = strCFN
           oFormulaSheet.Cells(lngRow, 8) = strCustomFormula
-          'todo: fix hyperlinks
           If Len(strCFN) > 0 Then
-            oFormulaSheet.Hyperlinks.Add oFormulaSheet.Cells(lngRow, 6), "", "cptAlignLCF!" & oWorksheet.Cells(lngLastRow, lngLastCol).Address(False, False), "Click to Return"
+                         '=HYPERLINK("#cptAlignLCF!"&ADDRESS(MATCH([@CONSTANT],cptAlignLCF!D:D,0),MATCH("NAME",LCF[#Headers],0)),"Cost1")
+            strFormula = "=HYPERLINK(""#cptAlignLCF!""&ADDRESS(MATCH(RC3,cptAlignLCF!C4,0)+1,MATCH(""NAME"",cptAlignLCF!R1C1:R1C7,0)),""" & strCFN & """)"
+            oFormulaSheet.Cells(lngRow, 6).FormulaR1C1 = strFormula
           Else
-            oFormulaSheet.Hyperlinks.Add oFormulaSheet.Cells(lngRow, 6), "", "cptAlignLCF!" & oWorksheet.Cells(lngLastRow, lngLastCol).Address(False, False), "Click to Return", strFN
+                         '=HYPERLINK("#cptAlignLCF!"&ADDRESS(MATCH([@CONSTANT],cptAlignLCF!D:D,0),MATCH("NAME",LCF[#Headers],0)),"Cost1")
+            strFormula = "=HYPERLINK(""#cptAlignLCF!""&ADDRESS(MATCH(RC3,cptAlignLCF!C4,0)+1,MATCH(""NAME"",cptAlignLCF!R1C1:R1C7,0)),""[" & strFN & "]"")"
+            oFormulaSheet.Cells(lngRow, 6).FormulaR1C1 = strFormula
           End If
           oWorksheet.Activate
           oWorksheet.Cells(lngLastRow, lngLastCol) = IIf(Len(strCustomFormula) > 50, Left(strCustomFormula, 47) & "...", strCustomFormula)
           If Len(strCustomFormula) > 0 Then
-            'todo: fix hyperlinks
-            oWorksheet.Hyperlinks.Add oWorksheet.Cells(lngLastRow, lngLastCol), "", "Formulae!" & oFormulaSheet.Cells(lngRow, 6).Address(False, False), "Click to Review"
+            'add hyperlink to LCF Worksheet
+                         '=HYPERLINK("#Formulae!"&ADDRESS(FILTER(ROW(FORMULAS[CONSTANT]),(FORMULAS[CONSTANT]=[@CONSTANT])*(FORMULAS[PROJECT]=I$2)),6),"formula")
+            'number of custom fields is a known quantity
+            'number of projects (master+subprojects) is a known quantity
+            lngCustomFieldTotalItems = lngCustomFieldItems * (1 + oMasterProject.Subprojects.Count)
+            strFormula = oFormulaSheet.Range(oFormulaSheet.[C2].End(xlToRight).Offset(-1), oFormulaSheet.[A1].Offset(lngCustomFieldTotalItems + 2)).Address(True, True, xlR1C1)
+            strFormula = "=HYPERLINK(""#Formulae!""&ADDRESS(FILTER(ROW(Formulae!" & strFormula & "),(Formulae!R1C3:R" & (lngCustomFieldTotalItems + 3) & "C3=RC4)*(Formulae!R1C5:R" & (lngCustomFieldTotalItems + 3) & "C5=R1C)),6),""" & Replace(oWorksheet.Cells(lngLastRow, lngLastCol), Chr(34), Chr(34) & Chr(34)) & """)"
+            oWorksheet.Cells(lngLastRow, lngLastCol).Formula2R1C1 = strFormula
           End If
 
           'get sorted picklist
-          'todo: test when a subproject outline code (or picklist) is longer than the master)
           If oRecordset.AbsolutePosition = 1 Then
             vRange = oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 5))
             lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row + 1
@@ -4305,11 +4344,11 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
                 For lngItem = 1 To oLookupTable.Count
                   If oWorksheet.Cells(lngLastRow, 4) <> lngLCF Then
                     If oRecordset.AbsolutePosition > 1 Then
-                      Stop 'insert a row
+                      oWorksheet.Rows(lngLastRow).Insert
                     End If
+                    oWorksheet.Cells(lngLastRow, 1) = lngLastRow - 1
                     vArray = oWorksheet.Range(oWorksheet.Cells(lngLastRow - 1, 2), oWorksheet.Cells(lngLastRow - 1, 6))
                     oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 6)) = vArray
-                    oWorksheet.Cells(lngLastRow, 1) = lngLastRow - 1
                   End If
                   Set oLookupTableEntry = oLookupTable.Item(lngItem)
                   oWorksheet.Cells(lngLastRow, lngLastCol) = oLookupTableEntry.Level & ": " & oLookupTableEntry.Name & " - " & oLookupTableEntry.Description
@@ -4324,39 +4363,73 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
             On Error Resume Next
             vItem = Application.CustomFieldValueListGetItem(lngLCF, pjValueListValue, 1)
             If Len(vItem) > 0 Then
-              For lngItem = 1 To 1000
+              For lngItem = 1 To 1000 'surely 1000 is enough?
                 If IsError(Application.CustomFieldValueListGetItem(lngLCF, pjValueListValue, lngItem)) Then Exit For
-                strPickList = strPickList & Application.CustomFieldValueListGetItem(lngLCF, pjValueListValue, lngItem)
-                strPickList = strPickList & " - " & Application.CustomFieldValueListGetItem(lngLCF, pjValueListDescription, lngItem) & vbLf
+                strItem = ""
+                strItem = Application.CustomFieldValueListGetItem(lngLCF, pjValueListValue, lngItem)
+                strDescription = ""
+                strDescription = Application.CustomFieldValueListGetItem(lngLCF, pjValueListDescription, lngItem)
+                If oWorksheet.Cells(lngLastRow, 4) <> lngLCF Then
+                  If oRecordset.AbsolutePosition > 1 Then
+                    oWorksheet.Rows(lngLastRow).Insert
+                  End If
+                  oWorksheet.Cells(lngLastRow, 1) = lngLastRow - 1
+                  vArray = oWorksheet.Range(oWorksheet.Cells(lngLastRow - 1, 2), oWorksheet.Cells(lngLastRow - 1, 6))
+                  oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 6)) = vArray
+                End If
+                oWorksheet.Cells(lngLastRow, lngLastCol) = strItem & " - " & strDescription
+                If lngItem > 1 Then oWorksheet.Rows(lngLastRow).OutlineLevel = 2
+                lngLastRow = lngLastRow + 1
               Next lngItem
             End If
             vItem = vbNullString
           End If
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+          lngCustomFieldItem = lngCustomFieldItem + 1
+          If oRecordset.AbsolutePosition = 1 Then
+            Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+          Else
+            Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+          End If
         Next lngField
-        'format column
       Next lngType
     Next vEntity
     oWorksheet.Columns(lngLastCol).ColumnWidth = 55
     oRecordset.MoveNext
+    If oRecordset.AbsolutePosition = 1 Then
+      Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+    Else
+      Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+    End If
+    lngCustomFieldItem = 0
   Loop
-
+  
+  Application.StatusBar = "Reindexing..."
+  
+  'renumber index
+  oWorksheet.Range("A2:A" & lngLastRow).FormulaR1C1 = "=ROW(RC)-1"
+  vArray = oWorksheet.Range("A2:A" & lngLastRow)
+  oWorksheet.Range("A2:A" & lngLastRow) = vArray
+  
   oWorksheet.Rows.AutoFit
-  'make formula listobject
-  Set oListObject = oFormulaSheet.ListObjects.Add(xlSrcRange, oFormulaSheet.Range(oFormulaSheet.[A2].End(xlToRight), oFormulaSheet.[A2].End(xlDown)), , xlYes)
+  
+  'make formulas listobject
+  Set oListObject = oFormulaSheet.ListObjects.Add(xlSrcRange, oFormulaSheet.Range(oFormulaSheet.[A2].End(xlDown), oFormulaSheet.[A2].End(xlToRight)), , xlYes)
   oListObject.TableStyle = ""
   oListObject.Name = "FORMULAS"
-
-  'make main listobject
+  
+  'work on main listobject
   Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
   oListObject.TableStyle = ""
   oListObject.Name = "LCF"
+  Set oListObject = oWorksheet.ListObjects("LCF")
   oListObject.HeaderRowRange.Font.Bold = True
   lngLastCol = oWorksheet.[A1].End(xlToRight).Column
   'pull formula match from formulae worksheet
   strFormula = "=IF([@ATTRIBUTE]=""Formula"",XLOOKUP([@CONSTANT],FORMULAS[CONSTANT],FORMULAS[MATCH],""<!>"",0,1),AND(IF(COUNTA(UNIQUE(RC[1]:RC12,TRUE,FALSE))>1,FALSE,TRUE),IF([@CONSTANT]=R[1]C3,R[1]C,TRUE)))"
   oListObject.ListColumns("MATCH").DataBodyRange.FormulaR1C1 = strFormula
   'throw some shade
+  Application.StatusBar = "Formatting Table..."
   With oListObject.HeaderRowRange.Interior
     .Pattern = xlSolid
     .PatternColorIndex = xlAutomatic
@@ -4376,6 +4449,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   Next vBorder
   oExcel.Calculation = xlCalculationAutomatic
   'add conditional formatting
+  Application.StatusBar = "Adding Conditional Formatting..."
   Set oRange = oListObject.ListColumns("MATCH").DataBodyRange
   oRange.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=FALSE"
   oRange.FormatConditions(oRange.FormatConditions.Count).SetFirstPriority
@@ -4401,12 +4475,29 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
     .TintAndShade = 0
   End With
   oRange.FormatConditions(1).StopIfTrue = False
-  'autofilter it
-  oListObject.Range.AutoFilter oRange.Column, False
   oWorksheet.Columns.AutoFit
   oExcel.ActiveWindow.DisplayGridlines = False
-  oWorksheet.Outline.ShowLevels 1
-
+  
+  'add shading
+  For Each oListRow In oListObject.ListRows
+    If cptRegEx(oListRow.Range(ColumnIndex:=5), "[0-9]{1,}$") Mod 2 = 0 Then
+      If oShaded Is Nothing Then
+        Set oShaded = oListRow.Range
+      Else
+        Set oShaded = oExcel.Union(oShaded, oListRow.Range)
+      End If
+    End If
+  Next oListRow
+  
+  With oShaded.Interior
+    .Pattern = xlSolid
+    .PatternColorIndex = xlAutomatic
+    .ThemeColor = xlThemeColorDark1
+    .TintAndShade = -4.99893185216834E-02
+    .PatternTintAndShade = 0
+  End With
+  
+  Application.StatusBar = "Building Formulae Table..."
   oFormulaSheet.Activate
   oExcel.ActiveWindow.ScrollRow = 1
   oExcel.ActiveWindow.FreezePanes = False
@@ -4426,6 +4517,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
     .Apply
   End With
   'format it
+  Application.StatusBar = "Formatting Formulae Table..."
   oListObject.HeaderRowRange.Font.Bold = True
   oFormulaSheet.Columns.AutoFit
   With oListObject.HeaderRowRange.Interior
@@ -4449,6 +4541,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   strFormula = "=IF(COUNTA(UNIQUE(FILTER([FORMULA],[CONSTANT]=[@CONSTANT])))>1,FALSE,TRUE)"
   oListObject.ListColumns("MATCH").DataBodyRange.Formula = strFormula
   'add conditional formatting
+  Application.StatusBar = "Adding Conditional Formatting to Formulae Table..."
   Set oRange = oListObject.ListColumns("MATCH").DataBodyRange
   oRange.FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=FALSE"
   oRange.FormatConditions(oRange.FormatConditions.Count).SetFirstPriority
@@ -4478,12 +4571,52 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   oListObject.Range.AutoFilter oRange.Column, False
   oWorksheet.Activate
   oWorksheet.Rows(1).Insert
-  oWorksheet.Cells(1, 1).AddComment "DO NOT SORT"
-  oWorksheet.Range(oWorksheet.Cells(1, 1), oWorksheet.Cells(1, 2)).Merge True
+  oWorksheet.Cells(1, 1).Value = "DO NOT SORT"
+  oWorksheet.Range(oWorksheet.Cells(1, 1), oWorksheet.Cells(1, 2)).Merge (True)
   oWorksheet.Cells(1, 1).Style = "Note"
-
+  oWorksheet.Cells(1, 1).Font.Bold = True
+  oWorksheet.Cells(1, 1).HorizontalAlignment = xlCenter
+  For Each vBorder In Array(xlEdgeLeft, xlEdgeTop, xlEdgeBottom, xlEdgeRight, xlInsideVertical, xlInsideHorizontal)
+    With oWorksheet.[A1:B1].Borders(vBorder)
+      .LineStyle = xlContinuous
+      .ThemeColor = 1
+      .TintAndShade = -0.249946592608417
+      .Weight = xlThin
+    End With
+  Next vBorder
+  
+  'autofilter it
+  Set oListObject = oWorksheet.ListObjects("LCF")
+  oListObject.Range.AutoFilter oRange.Column, False
+  'group it
+  oWorksheet.Outline.ShowLevels 1
+  
   oMasterProject.Activate
-  If MsgBox("Keep subprojects open?", vbQuestion + vbYesNo, "Confirm") = vbNo Then
+  Application.StatusBar = "Wrapping up..."
+  cptSpeed False
+  oExcel.ScreenUpdating = True
+  oExcel.Visible = True
+  oExcel.WindowState = xlMaximized
+  lngMismatchCount = oWorksheet.Evaluate("IFERROR(COUNTIFS(LCF[ATTRIBUTE],""Custom Field Name"",LCF[MATCH],FALSE),0)")
+  Application.StatusBar = "Result: " & Format(lngMismatchCount, "#,##0") & IIf(lngMismatchCount = 1, " discrepancy.", " discrepancies.")
+  If lngMismatchCount > 0 Then
+    oExcel.ActivateMicrosoftApp xlMicrosoftProject
+    strMsg = Format(lngMismatchCount, "#,##0") & " Local Custom Fields do not match between Master and Subprojects."
+    strMsg = strMsg & vbCrLf & vbCrLf & "Runtime: " & Format(Now - dTimer, "nn:ss")
+    MsgBox strMsg, vbCritical + vbOKOnly, "Warning"
+    blnKeepOpen = MsgBox("Keep subprojects open?", vbQuestion + vbYesNo, "Confirm") = vbYes
+    Application.ActivateMicrosoftApp pjMicrosoftExcel
+  Else
+    oExcel.ActivateMicrosoftApp xlMicrosoftProject
+    strMsg = lngMismatchCount & " mismatched Local Custom Fields (LCFs) found!"
+    strMsg = vbCrLf & vbCrLf & "Runtime: " & Format(Now - dTimer, "nn:ss")
+    MsgBox strMsg, vbInformation + vbOKCancel, "Well Done!"
+    blnKeepOpen = MsgBox("Keep subprojects open?", vbQuestion + vbYesNo, "Confirm") = vbYes
+    oWorkbook.Close False
+    oExcel.Quit 'we created, we destroy
+  End If
+
+  If Not blnKeepOpen Then
     oRecordset.MoveFirst
     Do While Not oRecordset.EOF
       If CStr(oRecordset(0)) <> oMasterProject.Name Then
@@ -4493,25 +4626,27 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
       oRecordset.MoveNext
     Loop
   End If
-  cptSpeed False
-  oExcel.ScreenUpdating = True
-  oExcel.Visible = True
-  oExcel.WindowState = xlMaximized
-  lngMismatchCount = oWorksheet.Evaluate("IFERROR(COUNTIFS(LCF[ATTRIBUTE],""Custom Field Name"",LCF[MATCH],FALSE),0)")
-  If lngMismatchCount > 0 Then
-    oExcel.ActivateMicrosoftApp xlMicrosoftProject
-    MsgBox Format(lngMismatchCount, "#,##0") & " Local Custom Fields do not match between Master and Subprojects.", vbCritical + vbOKOnly, "Warning"
-    Application.ActivateMicrosoftApp pjMicrosoftExcel
-    GoTo exit_here
-  Else
-    oExcel.ActivateMicrosoftApp xlMicrosoftProject
-    MsgBox lngMismatchCount & " mismatched Local Custom Fields (LCFs) found!", vbInformation + vbOKCancel, "Well Done!"
-    oWorkbook.Close False
-    oExcel.Quit 'we created, we destroy
+
+  If oUnrelated.Count > 0 Then
+    If MsgBox("Reopen unrelated Projects?", vbQuestion + vbYesNo, "Reopen?") = vbYes Then
+      For lngItem = 0 To oUnrelated.Count - 1
+        On Error Resume Next
+        If Not FileOpenEx(oUnrelated.Keys(lngItem), oUnrelated.Items(lngItem)) Then
+          MsgBox "Couldn't find '" & oUnrelated.Keys(lngItem) & "'!", vbExclamation + vbOKOnly, "Missing?"
+        End If
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      Next lngItem
+    End If
   End If
 
 exit_here:
   On Error Resume Next
+  Set oUnrelated = Nothing
+  Set oProject = Nothing
+  Set oListRow = Nothing
+  Set oShaded = Nothing
+  Application.StatusBar = ""
+  Set oRelated = Nothing
   If Not oMasterProject Is Nothing Then
     oMasterProject.Activate
   End If
@@ -4534,5 +4669,9 @@ exit_here:
   Exit Sub
 err_here:
   Call cptHandleErr("cptCore_bas", "cptAlignLCF", Err, Erl)
+  If Not oWorkbook Is Nothing Then
+    oWorkbook.Close False
+    oExcel.Quit
+  End If
   Resume exit_here
 End Sub
