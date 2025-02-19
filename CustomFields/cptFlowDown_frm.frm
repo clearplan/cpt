@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptFlowDown_frm 
    Caption         =   "LCF FlowDown"
-   ClientHeight    =   5655
+   ClientHeight    =   6540
    ClientLeft      =   120
    ClientTop       =   465
    ClientWidth     =   12150
@@ -17,58 +17,40 @@ Attribute VB_Exposed = False
 Option Explicit
 Private oLCF As ADODB.Recordset
 
-Private Sub cptUpdateLCFList()
-  Dim strDataTypes As String
-  Dim oControl As Control
-  Dim lngItem As Long
-  For lngItem = 0 To Me.lboSubprojects.ListCount - 1
-    Me.lboSubprojects.List(lngItem, 2) = "..."
-  Next lngItem
-  For Each oControl In Me.Controls
-    If Left(oControl.Name, 3) = "chk" Then
-      If oControl.Name = "chkFilter" Then GoTo next_control
-      If Me.Controls(oControl.Name).Value = True Then
-        If oControl.Name = "chkOutlineCode" Then
-          strDataTypes = strDataTypes & "Outline Code,"
-        Else
-          strDataTypes = strDataTypes & Replace(oControl.Name, "chk", "") & ","
-        End If
-      End If
-    End If
-next_control:
-  Next oControl
-  If Len(strDataTypes) > 0 Then
-    strDataTypes = Left(strDataTypes, Len(strDataTypes) - 1)
-    Me.lboMasterLCF.List = cptGetCustomFields("t", strDataTypes, "c,fn,cfn")
-  Else
-    Me.lboMasterLCF.Clear
-  End If
-End Sub
-
 Private Sub cboMoveTo_Change()
   If Me.ActiveControl.Name = "cboMoveTo" Then cptUpdateLCFMoveToPreview Me
 End Sub
 
 Private Sub chkCost_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
 Private Sub chkDate_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
 Private Sub chkDuration_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
+
+Private Sub chkFinish_Click()
+  cptUpdateLCFList Me
+End Sub
+
 Private Sub chkFlag_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
 Private Sub chkNumber_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
 Private Sub chkOutlineCode_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
+
+Private Sub chkStart_Click()
+  cptUpdateLCFList Me
+End Sub
+
 Private Sub chkText_Click()
-  cptUpdateLCFList
+  cptUpdateLCFList Me
 End Sub
 
 Private Sub cmdCancel_Click()
@@ -201,28 +183,32 @@ Private Sub cmdUnload_Click()
   For Each oSubproject In oProject.Subprojects
     If oSubproject.IsLoaded Then
       Projects(Replace(Dir(oSubproject.Path), ".mpp", "")).Activate
-      FileCloseEx pjDoNotSave
+      FileCloseEx pjPromptSave
     End If
   Next oSubproject
   Me.lboSubprojects.Enabled = False
   oProject.Activate
   Set oSubproject = Nothing
-  Set oSubproject = Nothing
-  
+  Set oProject = Nothing
 End Sub
 
 Private Sub lboMasterLCF_AfterUpdate()
   'objects
   Dim oProject As MSProject.Project
   Dim oSubproject As MSProject.Subproject
+  Dim oOutlineCode As MSProject.OutlineCode
   'strings
-  Dim strPicklist As String
+  Dim strLookup As String
+  Dim strCFN As String
   Dim strFN As String
   'longs
+  Dim lngLCF As Long
   Dim lngItem As Long
   'integers
   'doubles
   'booleans
+  Dim blnHasLookup As Boolean
+  Dim blnHasFormula As Boolean
   Dim blnFilter As Boolean
   'variants
   'dates
@@ -231,7 +217,10 @@ Private Sub lboMasterLCF_AfterUpdate()
 
   'ScreenUpdating = False
   'Calculation = pjManual
-
+  If IsNull(Me.lboMasterLCF.Value) Then Exit Sub
+  lngLCF = CLng(Me.lboMasterLCF.Value)
+  strFN = FieldConstantToFieldName(lngLCF)
+  strCFN = CustomFieldGetName(lngLCF)
   'clear subproject lookup
   For lngItem = 0 To Me.lboSubprojects.ListCount - 1
     Me.lboSubprojects.List(lngItem, 2) = "..."
@@ -247,7 +236,7 @@ Private Sub lboMasterLCF_AfterUpdate()
     Application.OptionsViewEx DisplayNameIndent:=False, DisplaySummaryTasks:=False
     ViewApply "Task Entry", True
     TableEditEx "LCF FlowDown Table", True, True, True, , "Unique ID"
-    TableEditEx "LCF FlowDown Table", True, False, False, , , Me.lboMasterLCF.List(Me.lboMasterLCF.ListIndex, 1)
+    TableEditEx "LCF FlowDown Table", True, False, False, , , strFN
     TableApply "LCF FlowDown Table"
     ColumnBestFit Column:=1
     ColumnBestFit Column:=2
@@ -256,53 +245,65 @@ Private Sub lboMasterLCF_AfterUpdate()
     SetSplitBar 2
     DoEvents
     FilterClear
-    strFN = FieldConstantToFieldName(Me.lboMasterLCF.Value)
     If InStr(strFN, "Cost") > 0 Then
       SetAutoFilter strFN, Criteria1:=">0"
     ElseIf InStr(strFN, "Date") > 0 Then
       SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:="NA"
     ElseIf InStr(strFN, "Duration") > 0 Then
       SetAutoFilter strFN, Criteria1:=">0"
+    ElseIf InStr(strFN, "Finish") > 0 Then
+      SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:="NA"
     ElseIf InStr(strFN, "Flag") > 0 Then
       SetAutoFilter strFN, FilterType:=pjAutoFilterFlagYes
     ElseIf InStr(strFN, "Number") > 0 Then
       SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:=0
+    ElseIf InStr(strFN, "Start") > 0 Then
+      SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:="NA"
     Else
       SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:=""
     End If
     SelectBeginning
     DoEvents
   End If
-  Me.lblFormula.Visible = Len(CustomFieldGetFormula(Me.lboMasterLCF.Value)) > 0
-  strPicklist = ""
-  Dim oOutlineCode As MSProject.OutlineCode
-  On Error Resume Next
+  blnHasFormula = False
+  blnHasFormula = Len(CustomFieldGetFormula(lngLCF)) > 0
+  Me.lblFormula.Visible = blnHasFormula
   
-  If InStr(FieldConstantToFieldName(Me.lboMasterLCF.Value), "Outline Code") > 0 Then
+  blnHasLookup = False
+  strLookup = ""
+  On Error Resume Next
+  If InStr(FieldConstantToFieldName(lngLCF), "Outline Code") > 0 Then
     Set oOutlineCode = Nothing
-    Set oOutlineCode = ActiveProject.OutlineCodes(CustomFieldGetName(Me.lboMasterLCF.Value))
+    Set oOutlineCode = ActiveProject.OutlineCodes(strCFN)
     If Not oOutlineCode Is Nothing Then
-      If oOutlineCode.LookupTable.Count > 0 Then
-        strPicklist = "has items"
-      End If
+      blnHasLookup = oOutlineCode.LookupTable.Count > 0
     Else
-      strPicklist = ""
+      blnHasLookup = False
     End If
   Else
     On Error Resume Next
-    strPicklist = CustomFieldValueListGetItem(Me.lboMasterLCF.Value, pjValueListValue, 1)
+    strLookup = CustomFieldValueListGetItem(lngLCF, pjValueListValue, 1)
+    blnHasLookup = Len(strLookup) > 0
   End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If Len(strPicklist) > 1 Then
-    Me.lblPickList.Visible = True
+    
+  Me.lblFormula.Visible = blnHasFormula
+  Me.lblLookup.Visible = blnHasLookup
+  If blnHasFormula And blnHasLookup Then
+    Me.optNone.Value = True
+    MsgBox "LCF '" & strCFN & "' has a formula AND a lookup - please choose which you want to work with in the 'options' section of the form.", vbExclamation + vbOKOnly, "Ambiguity Uncovered"
+  ElseIf blnHasFormula Then
+    Me.optFormula.Value = True
+  ElseIf blnHasLookup Then
+    Me.optLookup.Value = True
   Else
-    Me.lblPickList.Visible = False
+    Me.optNone.Value = True
   End If
 
   'populate subproject LCF CustomFieldName
   Set oProject = Projects(Me.cboMasterProject.Value)
   For lngItem = 0 To Me.lboSubprojects.ListCount - 1
-    oLCF.Filter = "SP=" & lngItem + 1 & " AND FC=" & Me.lboMasterLCF.Value
+    oLCF.Filter = "SP=" & lngItem + 1 & " AND FC=" & lngLCF
     If Not oLCF.EOF Then
       Me.lboSubprojects.List(lngItem, 2) = oLCF(3)
       DoEvents
@@ -313,7 +314,7 @@ Private Sub lboMasterLCF_AfterUpdate()
       Application.OptionsViewEx DisplayNameIndent:=False, DisplaySummaryTasks:=False
       ViewApply "Gantt Chart", True
       TableEditEx "LCF FlowDown Table", True, True, True, , "Unique ID"
-      TableEditEx "LCF FlowDown Table", True, False, False, , , Me.lboMasterLCF.List(Me.lboMasterLCF.ListIndex, 1)
+      TableEditEx "LCF FlowDown Table", True, False, False, , , strFN
       TableApply "LCF FlowDown Table"
       ColumnBestFit Column:=1
       ColumnBestFit Column:=2
@@ -328,17 +329,23 @@ Private Sub lboMasterLCF_AfterUpdate()
         SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:="NA"
       ElseIf InStr(strFN, "Duration") > 0 Then
         SetAutoFilter strFN, Criteria1:=">0"
+      ElseIf InStr(strFN, "Finish") > 0 Then
+        SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:="NA"
       ElseIf InStr(strFN, "Flag") > 0 Then
         SetAutoFilter strFN, FilterType:=pjAutoFilterFlagYes
       ElseIf InStr(strFN, "Number") > 0 Then
         SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:=0
-      Else
+      ElseIf InStr(strFN, "Start") > 0 Then
+        SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:="NA"
+      Else 'Text, Outline Code
         SetAutoFilter strFN, FilterType:=pjAutoFilterCustom, Test1:="does not equal", Criteria1:=""
       End If
       SelectBeginning
       DoEvents
     End If
   Next lngItem
+  Me.cmdTake.Enabled = Not IsNull(Me.lboMasterLCF.Value)
+  
   Projects(Me.cboMasterProject.Value).Activate
 
 exit_here:
@@ -379,7 +386,9 @@ Private Sub stxtSearch_Change()
   If Len(Me.stxtSearch.Text) > 0 Then
     Me.lboMasterLCF.ListIndex = -1
     Me.lboMasterLCF.Enabled = False
+    Me.cmdTake.Enabled = False
     Me.tglMove = False
+    Me.tglMove.Enabled = False
     Me.chkCost.Enabled = False
     Me.chkDate.Enabled = False
     Me.chkDuration.Enabled = False
@@ -387,6 +396,9 @@ Private Sub stxtSearch_Change()
     Me.chkNumber.Enabled = False
     Me.chkOutlineCode.Enabled = False
     Me.chkText.Enabled = False
+    Me.optFormula.Enabled = False
+    Me.optLookup.Enabled = False
+    Me.optNone.Enabled = False
     oLCF.Filter = "CFN Like '%" & strText & "%'"
     If Not oLCF.EOF Then
       oLCF.MoveFirst
@@ -402,6 +414,7 @@ Private Sub stxtSearch_Change()
     End If
   Else
     Me.lboMasterLCF.Enabled = True
+    Me.cmdTake.Enabled = Not IsNull(Me.lboMasterLCF.Value)
     Me.chkCost.Enabled = True
     Me.chkDate.Enabled = True
     Me.chkDuration.Enabled = True
@@ -409,6 +422,9 @@ Private Sub stxtSearch_Change()
     Me.chkNumber.Enabled = True
     Me.chkOutlineCode.Enabled = True
     Me.chkText.Enabled = True
+    Me.optFormula.Enabled = True
+    Me.optLookup.Enabled = True
+    Me.optNone.Enabled = True
     For Each oSubproject In oProject.Subprojects
       Me.lboSubprojects.AddItem
       Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubproject.Index
@@ -423,15 +439,27 @@ End Sub
 
 Private Sub tglMove_Click()
   Me.lblMoveTo.Visible = Me.tglMove
+  Me.lboHeader.Visible = Me.tglMove
   Me.lboMoveLCF.Visible = Me.tglMove
   Me.cboMoveTo.Visible = Me.tglMove
   Me.cmdMoveLCF.Visible = Me.tglMove
   If Me.tglMove Then
+    Me.cboMoveTo.Clear
+    Me.lboMoveLCF.Clear
+    Me.lboHeader.Clear
+    Me.lboHeader.AddItem
+    Me.lboHeader.List(0, 0) = "UID"
+    Me.lboHeader.List(0, 1) = "FROM"
+    Me.lboHeader.List(0, 2) = "> TO"
+    Me.lboMoveLCF.Top = Me.lboHeader.Top + Me.lboHeader.Height + 1
     Me.lboSubprojects.Height = 108.75
-    Me.lboMoveLCF.Height = 95
+    Me.lboSubprojects.IntegralHeight = True
+    Me.lboMoveLCF.Height = Me.lboMasterLCF.Height - (Me.lboMoveLCF.Top - Me.lboMasterLCF.Top)
+    Me.lboMoveLCF.IntegralHeight = True
     If Not IsNull(Me.lboSubprojects.Value) Then cptUpdateMoveToLCF Me, oLCF
   Else
     Me.lboSubprojects.Height = Me.lboMasterLCF.Height
+    Me.lboSubprojects.IntegralHeight = True
   End If
 End Sub
 
@@ -481,7 +509,7 @@ Private Sub UserForm_Initialize()
       oLCF.Fields.Append "CFN", adVarChar, 100
       oLCF.Open
       'get master LCFs
-      vLCF = cptGetCustomFields("t", "Cost,Date,Duration,Flag,Number,Outline Code,Text", "c,fn,cfn")
+      vLCF = cptGetCustomFields("t", "Cost,Date,Duration,Finish,Flag,Number,Outline Code,Start,Text", "c,fn,cfn")
       For lngRow = 0 To UBound(vLCF, 1)
         oLCF.AddNew Array(0, 1, 2, 3), Array(0, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
       Next lngRow
@@ -502,18 +530,17 @@ Private Sub UserForm_Initialize()
           Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubproject.Index
           Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oSubproject.InsertedProjectSummary.Name
           If Not oSubproject.IsLoaded Then FileOpenEx oSubproject.Path, False
-          vLCF = cptGetCustomFields("t", "Cost,Date,Duration,Flag,Number,Outline Code,Text", "c,fn,cfn")
+          vLCF = cptGetCustomFields("t", "Cost,Date,Duration,Finish,Flag,Number,Outline Code,Start,Text", "c,fn,cfn")
           For lngRow = 0 To UBound(vLCF, 1)
             oLCF.AddNew Array(0, 1, 2, 3), Array(oSubproject.Index, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
           Next lngRow
           oLCF.Update
         End If
       Next oSubproject
+      oProject.Activate
+      WindowArrangeAll
     End If
-    oProject.Activate
-    Exit For
   Next oProject
-  WindowArrangeAll
   
   'todo: only show the form if a master project is loaded
   'todo: save selections?
@@ -526,9 +553,10 @@ Private Sub UserForm_Initialize()
   Me.chkText.Value = True
   Me.lblFormula.Visible = False
   Me.lblFormula.Top = Me.lboMasterLCF.Top + Me.lboMasterLCF.Height + 1
-  Me.lblPickList.Visible = False
-  Me.lblPickList.Top = Me.lboMasterLCF.Top + Me.lboMasterLCF.Height + 1
-
+  Me.lblLookup.Visible = False
+  Me.lblLookup.Top = Me.lboMasterLCF.Top + Me.lboMasterLCF.Height + 1
+  Me.cmdTake.Enabled = False
+  
 exit_here:
   On Error Resume Next
   Set oSubproject = Nothing
@@ -542,8 +570,8 @@ End Sub
 
 Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   Set oLCF = Nothing
-  If Not IsNull(Me.cboMasterProject) Then
-    Projects(Me.cboMasterProject.Value).Activate
+  If Not IsNull(Me.cboMasterProject.Value) Then
+    If Me.cboMasterProject.Value <> "" Then Projects(Me.cboMasterProject.Value).Activate
   End If
   Unload Me
   'Cancel = True
