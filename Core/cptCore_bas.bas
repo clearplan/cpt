@@ -4091,8 +4091,6 @@ Sub cptAnalyzeLCF()
         cptAlignLCF oProject
         Exit For
       End If
-    Else
-      MsgBox "This project has no Subprojects.", vbInformation + vbOKOnly, "Analyze LCFs"
     End If
   Next oProject
   Set oProject = Nothing
@@ -4124,7 +4122,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   Dim strCFN As String
   Dim strFN As String
   Dim strSheetName As String
-  Dim strPickList As String
+  Dim strLookup As String
   Dim strCustomFormula As String
   Dim strFormula As String
   'longs
@@ -4324,13 +4322,13 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
             oWorksheet.Cells(lngLastRow, lngLastCol).Formula2R1C1 = strFormula
           End If
 
-          'get sorted picklist
+          'get sorted lookup
           If oRecordset.AbsolutePosition = 1 Then
             vRange = oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 5))
             lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row + 1
             oWorksheet.Cells(lngLastRow, 1) = lngLastRow - 1
             oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 5)) = vRange
-            oWorksheet.Cells(lngLastRow, 6) = "PickList"
+            oWorksheet.Cells(lngLastRow, 6) = "Lookup"
           Else
             lngLastRow = lngLastRow + 1
           End If
@@ -4387,7 +4385,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
           lngCustomFieldItem = lngCustomFieldItem + 1
           If oRecordset.AbsolutePosition = 1 Then
-            Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+            Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") | " & Format(Now - dTimer, "nn:ss")
           Else
             Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
           End If
@@ -4397,7 +4395,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
     oWorksheet.Columns(lngLastCol).ColumnWidth = 55
     oRecordset.MoveNext
     If oRecordset.AbsolutePosition = 1 Then
-      Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+      Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") | " & Format(Now - dTimer, "nn:ss")
     Else
       Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
     End If
@@ -4426,7 +4424,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   oListObject.HeaderRowRange.Font.Bold = True
   lngLastCol = oWorksheet.[A1].End(xlToRight).Column
   'pull formula match from formulae worksheet
-  strFormula = "=IF([@ATTRIBUTE]=""Formula"",XLOOKUP([@CONSTANT],FORMULAS[CONSTANT],FORMULAS[MATCH],""<!>"",0,1),AND(IF(COUNTA(UNIQUE(RC[1]:RC12,TRUE,FALSE))>1,FALSE,TRUE),IF([@CONSTANT]=R[1]C3,R[1]C,TRUE)))"
+  strFormula = "=IF([@ATTRIBUTE]=""Formula"",AND(R[1]C,XLOOKUP([@CONSTANT],FORMULAS[CONSTANT],FORMULAS[MATCH],""<!>"",0,1)),AND(IF(COUNTA(UNIQUE(RC[1]:RC12,TRUE,FALSE))>1,FALSE,TRUE),IF([@CONSTANT]=R[1]C4,R[1]C,TRUE)))"
   oListObject.ListColumns("MATCH").DataBodyRange.FormulaR1C1 = strFormula
   'throw some shade
   Application.StatusBar = "Formatting Table..."
@@ -4597,7 +4595,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
   oExcel.ScreenUpdating = True
   oExcel.Visible = True
   oExcel.WindowState = xlMaximized
-  lngMismatchCount = oWorksheet.Evaluate("IFERROR(COUNTIFS(LCF[ATTRIBUTE],""Custom Field Name"",LCF[MATCH],FALSE),0)")
+  lngMismatchCount = oWorksheet.Evaluate("SUM(IF(UNIQUE(FILTER(LCF[CONSTANT],LCF[MATCH]=FALSE,0))>0,1,0))")
   Application.StatusBar = "Result: " & Format(lngMismatchCount, "#,##0") & IIf(lngMismatchCount = 1, " discrepancy.", " discrepancies.")
   If lngMismatchCount > 0 Then
     oExcel.ActivateMicrosoftApp xlMicrosoftProject
@@ -4627,15 +4625,17 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
     Loop
   End If
 
-  If oUnrelated.Count > 0 Then
-    If MsgBox("Reopen unrelated Projects?", vbQuestion + vbYesNo, "Reopen?") = vbYes Then
-      For lngItem = 0 To oUnrelated.Count - 1
-        On Error Resume Next
-        If Not FileOpenEx(oUnrelated.Keys(lngItem), oUnrelated.Items(lngItem)) Then
-          MsgBox "Couldn't find '" & oUnrelated.Keys(lngItem) & "'!", vbExclamation + vbOKOnly, "Missing?"
-        End If
-        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-      Next lngItem
+  If Not oUnrelated Is Nothing Then
+    If oUnrelated.Count > 0 Then
+      If MsgBox("Reopen unrelated Projects?", vbQuestion + vbYesNo, "Reopen?") = vbYes Then
+        For lngItem = 0 To oUnrelated.Count - 1
+          On Error Resume Next
+          If Not FileOpenEx(oUnrelated.Keys(lngItem), oUnrelated.Items(lngItem)) Then
+            MsgBox "Couldn't find '" & oUnrelated.Keys(lngItem) & "'!", vbExclamation + vbOKOnly, "Missing?"
+          End If
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        Next lngItem
+      End If
     End If
   End If
 
