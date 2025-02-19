@@ -45,6 +45,10 @@ next_control:
   End If
 End Sub
 
+Private Sub cboMoveTo_Change()
+  If Me.ActiveControl.Name = "cboMoveTo" Then cptUpdateLCFMoveToPreview Me
+End Sub
+
 Private Sub chkCost_Click()
   cptUpdateLCFList
 End Sub
@@ -101,6 +105,10 @@ Private Sub cmdLoad_Click()
   Set oProject = Nothing
 End Sub
 
+Private Sub cmdMoveLCF_Click()
+  cptMoveLCF Me, oLCF
+End Sub
+
 Private Sub cmdTake_Click()
   'objects
   Dim oMP As MSProject.Project
@@ -121,7 +129,8 @@ Private Sub cmdTake_Click()
   'dates
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    
+  MsgBox "isolate this to only the selected subproject", vbExclamation + vbOKOnly, "todo" 'todo
+  GoTo exit_here
   lngLCF = Me.lboMasterLCF.Value
   If lngLCF = 0 Then Exit Sub
   Set oMP = Projects(Me.cboMasterProject.Value)
@@ -180,7 +189,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptLCFFlowDown_frm", "cmdTake_Click", Err, Erl)
+  Call cptHandleErr("cptFlowDown_frm", "cmdTake_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -207,6 +216,7 @@ Private Sub lboMasterLCF_AfterUpdate()
   Dim oProject As MSProject.Project
   Dim oSubproject As MSProject.Subproject
   'strings
+  Dim strPicklist As String
   Dim strFN As String
   'longs
   Dim lngItem As Long
@@ -227,6 +237,9 @@ Private Sub lboMasterLCF_AfterUpdate()
     Me.lboSubprojects.List(lngItem, 2) = "..."
     DoEvents
   Next lngItem
+  Me.lboSubprojects.ListIndex = -1
+  Me.cboMoveTo.Clear
+  Me.lboMoveLCF.Clear
   blnFilter = Me.chkFilter
   'update Table to show only selected LCF
   If blnFilter Then
@@ -261,7 +274,30 @@ Private Sub lboMasterLCF_AfterUpdate()
     DoEvents
   End If
   Me.lblFormula.Visible = Len(CustomFieldGetFormula(Me.lboMasterLCF.Value)) > 0
-  'todo: if picklist then
+  strPicklist = ""
+  Dim oOutlineCode As MSProject.OutlineCode
+  On Error Resume Next
+  
+  If InStr(FieldConstantToFieldName(Me.lboMasterLCF.Value), "Outline Code") > 0 Then
+    Set oOutlineCode = Nothing
+    Set oOutlineCode = ActiveProject.OutlineCodes(CustomFieldGetName(Me.lboMasterLCF.Value))
+    If Not oOutlineCode Is Nothing Then
+      If oOutlineCode.LookupTable.Count > 0 Then
+        strPicklist = "has items"
+      End If
+    Else
+      strPicklist = ""
+    End If
+  Else
+    On Error Resume Next
+    strPicklist = CustomFieldValueListGetItem(Me.lboMasterLCF.Value, pjValueListValue, 1)
+  End If
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If Len(strPicklist) > 1 Then
+    Me.lblPickList.Visible = True
+  Else
+    Me.lblPickList.Visible = False
+  End If
 
   'populate subproject LCF CustomFieldName
   Set oProject = Projects(Me.cboMasterProject.Value)
@@ -303,7 +339,6 @@ Private Sub lboMasterLCF_AfterUpdate()
       DoEvents
     End If
   Next lngItem
-  
   Projects(Me.cboMasterProject.Value).Activate
 
 exit_here:
@@ -312,19 +347,92 @@ exit_here:
   Calculation = pjAutomatic
   Set oProject = Nothing
   Set oSubproject = Nothing
+  Set oOutlineCode = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptLCFFlowDown_frm", "lboMasterLCF_AfterUpdate", Err, Erl)
+  Call cptHandleErr("cptFlowDown_frm", "lboMasterLCF_AfterUpdate", Err, Erl)
   Resume exit_here
 
 End Sub
 
 Private Sub lboSubprojects_AfterUpdate()
   
-  On Error Resume Next
-  Projects(Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 1)).Activate
+  If Not IsNull(Me.lboSubprojects.ListIndex) Then
+    Projects(Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 1)).Activate
+    Me.tglMove.Enabled = True
+    cptUpdateMoveToLCF Me, oLCF
+    Me.lboMoveLCF.Clear
+  Else
+    Me.tglMove.Enabled = False
+  End If
   
+End Sub
+
+Private Sub stxtSearch_Change()
+  Dim oProject As MSProject.Project
+  Dim oSubproject As MSProject.Subproject
+  Dim strText As String
+  strText = Me.stxtSearch.Text
+  Me.lboSubprojects.Clear
+  Set oProject = Projects(Me.cboMasterProject.Value)
+  If Len(Me.stxtSearch.Text) > 0 Then
+    Me.lboMasterLCF.ListIndex = -1
+    Me.lboMasterLCF.Enabled = False
+    Me.tglMove = False
+    Me.chkCost.Enabled = False
+    Me.chkDate.Enabled = False
+    Me.chkDuration.Enabled = False
+    Me.chkFlag.Enabled = False
+    Me.chkNumber.Enabled = False
+    Me.chkOutlineCode.Enabled = False
+    Me.chkText.Enabled = False
+    oLCF.Filter = "CFN Like '%" & strText & "%'"
+    If Not oLCF.EOF Then
+      oLCF.MoveFirst
+      Do While Not oLCF.EOF
+        If oLCF(0) > 0 And oLCF(3) <> oLCF(2) Then
+          Me.lboSubprojects.AddItem
+          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oLCF(0)
+          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oProject.Subprojects(oLCF(0)).InsertedProjectSummary.Name
+          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 2) = oLCF(2) & " (" & oLCF(3) & ")"
+        End If
+        oLCF.MoveNext
+      Loop
+    End If
+  Else
+    Me.lboMasterLCF.Enabled = True
+    Me.chkCost.Enabled = True
+    Me.chkDate.Enabled = True
+    Me.chkDuration.Enabled = True
+    Me.chkFlag.Enabled = True
+    Me.chkNumber.Enabled = True
+    Me.chkOutlineCode.Enabled = True
+    Me.chkText.Enabled = True
+    For Each oSubproject In oProject.Subprojects
+      Me.lboSubprojects.AddItem
+      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubproject.Index
+      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oSubproject.InsertedProjectSummary.Name
+      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 2) = "..."
+    Next oSubproject
+  End If
+  oLCF.Filter = 0
+  Set oSubproject = Nothing
+  Set oProject = Nothing
+End Sub
+
+Private Sub tglMove_Click()
+  Me.lblMoveTo.Visible = Me.tglMove
+  Me.lboMoveLCF.Visible = Me.tglMove
+  Me.cboMoveTo.Visible = Me.tglMove
+  Me.cmdMoveLCF.Visible = Me.tglMove
+  If Me.tglMove Then
+    Me.lboSubprojects.Height = 108.75
+    Me.lboMoveLCF.Height = 95
+    If Not IsNull(Me.lboSubprojects.Value) Then cptUpdateMoveToLCF Me, oLCF
+  Else
+    Me.lboSubprojects.Height = Me.lboMasterLCF.Height
+  End If
 End Sub
 
 Private Sub UserForm_Initialize()
@@ -383,7 +491,6 @@ Private Sub UserForm_Initialize()
           'adjust the view
           On Error Resume Next
           Projects(oSubproject.SourceProject.Name).Activate
-          'EditGoTo oSubproject.InsertedProjectSummary.ID
           ActiveWindow.TopPane.Activate
           FilterClear
           GroupClear
@@ -429,12 +536,15 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptLCFlowDown_frm", "UserForm_Initialize", Err, Erl)
+  Call cptHandleErr("cptFlowDown_frm", "UserForm_Initialize", Err, Erl)
   Resume exit_here
 End Sub
 
 Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   Set oLCF = Nothing
+  If Not IsNull(Me.cboMasterProject) Then
+    Projects(Me.cboMasterProject.Value).Activate
+  End If
   Unload Me
   'Cancel = True
 '  If CloseMode = VbQueryClose.vbFormControlMenu Then
