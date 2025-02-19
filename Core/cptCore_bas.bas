@@ -3187,7 +3187,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         Next lngItem
         If IsEmpty(oComboBox.List(oComboBox.ListCount - 1, 0)) Then oComboBox.RemoveItem (oComboBox.ListCount - 1)
       End If
-      If lngField > 0 And InStr(strSetting, "|") > 0 Then
+      If lngField > 0 And InStr(strSetting, "|") > 0 And oRequiredFields(vControl) Then
         If lngField > 188776000 And FieldConstantToFieldName(lngField) = "<Unavailable>" Then
           If cptCustomFieldExists(CStr(Split(strSetting, "|")(1))) > 0 Then
             lngField = FieldNameToFieldConstant(Split(strSetting, "|")(1))
