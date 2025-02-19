@@ -3310,9 +3310,9 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr(THIS_MODULE, "cptValidMap", Err, Erl)
+  Call cptHandleErr("cptCore_bas", "cptValidMap", Err, Erl)
   Resume exit_here
-    
+
 End Function
 
 Function cptValidPath(strFullName As String) As String
@@ -3349,12 +3349,11 @@ Function cptValidPath(strFullName As String) As String
     strReason = "folder does not exist"
     GoTo exit_here
   End If
-'  'ensure folder is not read-only
-  'todo: this returns false positive on some systems...(?)
-'  If (oFolder.Attributes And ReadOnly) = 1 Then
-'    strReason = "folder is read-only"
-'    GoTo exit_here
-'  End If
+  'ensure folder is not read-only
+  If oFolder.Attributes And ReadOnly Then
+    strReason = "folder is read-only"
+    GoTo exit_here
+  End If
   'test for illegal characters in filename
   strFileName = Replace(strFullName, oFSO.GetParentFolderName(strFullName), "")
   For Each v In Split("<,>,?,[,],:,|,*", ",")
@@ -3386,7 +3385,7 @@ exit_here:
   End If
   Exit Function
 err_here:
-  Call cptHandleErr(THIS_MODULE, "cptValidPath()", Err, Erl)
+  Call cptHandleErr("cptCore_bas", "cptValidPath()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3438,7 +3437,7 @@ exit_here:
   
 err_here:
   On Error Resume Next
-  cptHandleErr THIS_MODULE, "cptGetShortPath", Err, Erl
+  cptHandleErr "cptCore_bas", "cptGetShortPath", Err, Erl
   strShortPath = ""
   Resume exit_here
 
