@@ -4381,7 +4381,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
           If oRecordset.AbsolutePosition = 1 Then
             Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") | " & Format(Now - dTimer, "nn:ss")
           Else
-            Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+            Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") | " & Format(Now - dTimer, "nn:ss")
           End If
         Next lngField
       Next lngType
@@ -4391,7 +4391,7 @@ Sub cptAlignLCF(ByRef oMasterProject As MSProject.Project)
     If oRecordset.AbsolutePosition = 1 Then
       Application.StatusBar = "Analyzing Master Project...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") | " & Format(Now - dTimer, "nn:ss")
     Else
-      Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") & | " & Format(Now - dTimer, "nn:ss")
+      Application.StatusBar = "Analyzing Subproject " & oRecordset.AbsolutePosition - 1 & " of " & oRecordset.RecordCount - 1 & "...(" & Format(lngCustomFieldItem / lngCustomFieldItems, "0%") & ") | " & Format(Now - dTimer, "nn:ss")
     End If
     lngCustomFieldItem = 0
   Loop
