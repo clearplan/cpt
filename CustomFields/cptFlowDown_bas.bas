@@ -128,17 +128,37 @@ next_task:
 End Sub
 
 Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Recordset)
-  Dim oProject As MSProject.Project
+  'objects
+  Dim oLookupTableTo As MSProject.LookupTable
+  Dim oLookupTableFrom As MSProject.LookupTable
+  Dim oOutlineCodeFrom As MSProject.OutlineCode
+  Dim oOutlineCodeTo As MSProject.OutlineCode
+  Dim oSubproject As MSProject.Project
   Dim oTask As MSProject.Task
-  Dim lngFrom As Long
+  'strings
+  Dim strValue As String
+  Dim strDescription As String
+  Dim strFormula As String
+  Dim strCFN As String
   Dim strFromType As String
-  Dim lngTo As Long
   Dim strToType As String
+  'longs
+  Dim lngFrom As Long
+  Dim lngTo As Long
   Dim lngItem As Long
   Dim lngUID As Long
-  Dim strCFN As String
-  'todo: if lookup
-  'todo: if outlinecode
+  'integers
+  'doubles
+  'booleans
+  Dim blnHasFormula As Boolean
+  Dim blnHasLookup As Boolean
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    
   'todo: if formula
   '   > check all other fields for references to lngFrom and replace with lngTo
   'todo: if formula AND lookup
@@ -155,29 +175,98 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
   'todo: move Text -> Text
   
   cptSpeed True
+  
   With myFlowDown_frm
-    Set oProject = Projects(.lboSubprojects.List(.lboSubprojects.ListIndex, 1))
-    oProject.Activate
+    
     lngFrom = FieldNameToFieldConstant(.lboSubprojects.List(.lboSubprojects.ListIndex, 2))
     strFromType = cptRegEx(FieldConstantToFieldName(lngFrom), "(Cost|Date|Duration|Finish|Flag|Number|Outline Code|Start|Text)")
     lngTo = .cboMoveTo.Value
     strToType = cptRegEx(FieldConstantToFieldName(lngTo), "(Cost|Date|Duration|Finish|Flag|Number|Outline Code|Start|Text)")
+    
+    Set oSubproject = Projects(.lboSubprojects.List(.lboSubprojects.ListIndex, 1))
+    oSubproject.Activate
+    
+    blnHasFormula = cptHasFormula(oSubproject, lngFrom)
+    If blnHasFormula Then 'get it
+      strFormula = CustomFieldGetFormula(lngFrom)
+    End If
+    'todo: if strFormula contains [Cost|Date|Duration|Finish|Flag|Number|Outline Code|Start]
+    'todo: has the other custom field been moved already?
+    'todo: replace formula with CFN and prompt?
+    blnHasLookup = cptHasLookup(oSubproject, lngFrom)
+    
     strCFN = CustomFieldGetName(lngFrom)
     CustomFieldRename lngFrom, strCFN & "_OLD"
     CustomFieldDelete lngTo
     CustomFieldRename lngTo, strCFN
-    'todo: move formula
-    'todo: move lookup
-    'todo: move Outline Code
+    If blnHasFormula Then
+      CustomFieldDelete lngFrom
+      CustomFieldSetFormula lngTo, strFormula
+    End If
+    If .optFormula Then CustomFieldPropertiesEx lngTo, pjFieldAttributeFormula
+    
+    'move lookup
+    If blnHasLookup Then
+      On Error Resume Next
+      Set oOutlineCodeFrom = oSubproject.OutlineCodes(strCFN & "_OLD")
+      If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      If Not oOutlineCodeFrom Is Nothing Then
+        'some settings must be made manually
+        Set oOutlineCodeTo = oSubproject.OutlineCodes(strCFN)
+        For lngItem = 1 To oOutlineCodeFrom.CodeMask.Count
+          oOutlineCodeTo.CodeMask.Add oOutlineCodeFrom.CodeMask(lngItem).Sequence, oOutlineCodeFrom.CodeMask(lngItem).Length, oOutlineCodeFrom.CodeMask(lngItem).Separator
+        Next lngItem
+        Set oLookupTableFrom = oOutlineCodeFrom.LookupTable
+        Set oLookupTableTo = oOutlineCodeTo.LookupTable
+        'load from bottom to top
+        For lngItem = oLookupTableFrom.Count To 1 Step -1
+          oLookupTableTo.AddChild oLookupTableFrom.Item(lngItem).Name
+        Next lngItem
+        'indent from top to bottom
+        For lngItem = 1 To oLookupTableFrom.Count
+          oLookupTableTo.Item(lngItem).Level = oLookupTableFrom.Item(lngItem).Level
+          oLookupTableTo.Item(lngItem).Description = oLookupTableFrom.Item(lngItem).Description
+        Next lngItem
+        If Len(oOutlineCodeFrom.DefaultValue) > 0 Then
+          oOutlineCodeTo.DefaultValue = oOutlineCodeFrom.DefaultValue
+        End If
+        oOutlineCodeTo.OnlyLookUpTableCodes = oOutlineCodeFrom.OnlyLookUpTableCodes
+        oOutlineCodeTo.OnlyCompleteCodes = oOutlineCodeFrom.OnlyCompleteCodes
+        If oOutlineCodeFrom.OnlyCompleteCodes Then
+          oOutlineCodeTo.OnlyLeaves = oOutlineCodeFrom.OnlyLeaves
+          oOutlineCodeTo.RequiredCode = oOutlineCodeFrom.RequiredCode
+        End If
+        oOutlineCodeTo.SortOrder = oOutlineCodeFrom.SortOrder
+      Else 'picklist
+        'todo: some settings must be made manually
+        On Error Resume Next
+        For lngItem = 1 To 1000 'surely 1000 items is enough?
+          strValue = CustomFieldValueListGetItem(lngFrom, pjValueListValue, lngItem)
+          If Len(strValue) = 0 Then Exit For
+          strDescription = CustomFieldValueListGetItem(lngFrom, pjValueListDescription, lngItem)
+          CustomFieldValueListAdd lngTo, strValue, strDescription
+          strValue = ""
+          strDescription = ""
+        Next lngItem
+      End If
+    End If
+    If .optLookup Then CustomFieldPropertiesEx lngTo, pjFieldAttributeValueList
+    
+    'now move task-level data (if not a formula
     For lngItem = 0 To .lboMoveLCF.ListCount - 1
       lngUID = .lboMoveLCF.List(lngItem, 0)
-      Set oTask = oProject.Tasks.UniqueID(lngUID)
-      If Len(.lboMoveLCF.List(lngItem, 1)) > 0 Then
-        oTask.SetField lngTo, oTask.GetField(lngFrom)
-        .lboMoveLCF.List(lngItem, 2) = .lboMoveLCF.List(lngItem, 1)
+      Set oTask = oSubproject.Tasks.UniqueID(lngUID)
+      If .optFormula Then
+        oTask.SetField lngFrom, ""
       Else
-        oTask.SetField lngTo, ""
-        .lboMoveLCF.List(lngItem, 2) = ""
+        If Len(.lboMoveLCF.List(lngItem, 1)) > 0 Then
+          'todo: does this string-only operation move Cost and Duration accurately?
+          oTask.SetField lngTo, oTask.GetField(lngFrom)
+          .lboMoveLCF.List(lngItem, 2) = .lboMoveLCF.List(lngItem, 1)
+        Else
+          oTask.SetField lngTo, ""
+          .lboMoveLCF.List(lngItem, 2) = ""
+        End If
       End If
       .lboMoveLCF.List(lngItem, 1) = ""
       oTask.SetField lngFrom, ""
@@ -204,11 +293,26 @@ next_task:
     Next lngItem
     DoEvents
   End With
-  cptSpeed False
   Application.StatusBar = "Moving LCF...done."
   CustomFieldDelete lngFrom
+  myFlowDown_frm.lblFormula1.Visible = False
+  myFlowDown_frm.lblLookup2.Visible = False
+
+exit_here:
+  On Error Resume Next
+  cptSpeed False
+  Application.StatusBar = ""
+  Set oLookupTableTo = Nothing
+  Set oLookupTableFrom = Nothing
   Set oTask = Nothing
-  Set oProject = Nothing
+  Set oOutlineCodeFrom = Nothing
+  Set oOutlineCodeTo = Nothing
+  Set oSubproject = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptFlowDown_bas", "cptMoveLCF", Err, Erl)
+  Resume exit_here
 End Sub
 
 Sub cptUpdateLCFList(ByRef myFlowDown_frm As cptFlowDown_frm)
