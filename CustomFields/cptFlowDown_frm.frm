@@ -195,7 +195,6 @@ End Sub
 Private Sub lboMasterLCF_AfterUpdate()
   'objects
   Dim oProject As MSProject.Project
-  Dim oSubproject As MSProject.Subproject
   Dim oOutlineCode As MSProject.OutlineCode
   'strings
   Dim strLookup As String
@@ -215,8 +214,7 @@ Private Sub lboMasterLCF_AfterUpdate()
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  'ScreenUpdating = False
-  'Calculation = pjManual
+  'cptSpeed True
   If IsNull(Me.lboMasterLCF.Value) Then Exit Sub
   lngLCF = CLng(Me.lboMasterLCF.Value)
   strFN = FieldConstantToFieldName(lngLCF)
@@ -265,29 +263,9 @@ Private Sub lboMasterLCF_AfterUpdate()
     SelectBeginning
     DoEvents
   End If
-  blnHasFormula = False
-  blnHasFormula = Len(CustomFieldGetFormula(lngLCF)) > 0
+  blnHasFormula = cptHasFormula(ActiveProject, lngLCF)
   Me.lblFormula.Visible = blnHasFormula
-  
-  blnHasLookup = False
-  strLookup = ""
-  On Error Resume Next
-  If InStr(FieldConstantToFieldName(lngLCF), "Outline Code") > 0 Then
-    Set oOutlineCode = Nothing
-    Set oOutlineCode = ActiveProject.OutlineCodes(strCFN)
-    If Not oOutlineCode Is Nothing Then
-      blnHasLookup = oOutlineCode.LookupTable.Count > 0
-    Else
-      blnHasLookup = False
-    End If
-  Else
-    On Error Resume Next
-    strLookup = CustomFieldValueListGetItem(lngLCF, pjValueListValue, 1)
-    blnHasLookup = Len(strLookup) > 0
-  End If
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    
-  Me.lblFormula.Visible = blnHasFormula
+  blnHasLookup = cptHasLookup(ActiveProject, lngLCF)
   Me.lblLookup.Visible = blnHasLookup
   If blnHasFormula And blnHasLookup Then
     Me.optNone.Value = True
@@ -353,7 +331,6 @@ exit_here:
   ScreenUpdating = True
   Calculation = pjAutomatic
   Set oProject = Nothing
-  Set oSubproject = Nothing
   Set oOutlineCode = Nothing
 
   Exit Sub
@@ -364,16 +341,42 @@ err_here:
 End Sub
 
 Private Sub lboSubprojects_AfterUpdate()
+  Dim oProject As MSProject.Project
+  Dim lngLCF As Long
+  Dim blnHasFormula As Boolean
+  Dim blnHasLookup As Boolean
+  Dim strCFN As String
   
+  Me.lblFormula1.Visible = False
+  Me.lblFormula1.Left = Me.lblLookup2.Left
+  Me.lblLookup2.Visible = False
   If Not IsNull(Me.lboSubprojects.ListIndex) Then
-    Projects(Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 1)).Activate
+    Set oProject = Projects(Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 1))
+    oProject.Activate
     Me.tglMove.Enabled = True
     cptUpdateMoveToLCF Me, oLCF
     Me.lboMoveLCF.Clear
+    strCFN = Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 2)
+    lngLCF = FieldNameToFieldConstant(strCFN)
+    blnHasFormula = cptHasFormula(oProject, lngLCF)
+    Me.lblFormula1.Visible = blnHasFormula
+    blnHasLookup = cptHasLookup(oProject, lngLCF)
+    Me.lblLookup2.Visible = blnHasLookup
+    If blnHasFormula And blnHasLookup Then
+      Me.lblFormula1.Left = Me.cmdMoveLCF.Left
+      Me.optNone.Value = True
+      MsgBox "LCF '" & strCFN & "' has a formula AND a lookup - please choose which you want to work with in the 'options' section of the form.", vbExclamation + vbOKOnly, "Ambiguity Uncovered"
+    ElseIf blnHasFormula Then
+      Me.optFormula.Value = True
+    ElseIf blnHasLookup Then
+      Me.optLookup.Value = True
+    Else
+      Me.optNone.Value = True
+    End If
   Else
     Me.tglMove.Enabled = False
   End If
-  
+  Set oProject = Nothing
 End Sub
 
 Private Sub stxtSearch_Change()
