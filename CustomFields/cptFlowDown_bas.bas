@@ -5,13 +5,21 @@ Option Explicit
 Sub cptShowLCFFlowDown_frm()
   Dim oProject As MSProject.Project
   Dim myFlowDown_frm As cptFlowDown_frm
+  Dim blnMaster As Boolean
+  'the boolean should never actually come into play since
+  'the ribbon menu only appears if the activeproject has subprojects
+  'but just in case someone triggers this manually...
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   Set myFlowDown_frm = New cptFlowDown_frm
+  blnMaster = False
   With myFlowDown_frm
     For Each oProject In Projects
       If oProject.Subprojects.Count > 0 Then
         .cboMasterProject.AddItem oProject.Name
+        blnMaster = True
       End If
     Next
+    If Not blnMaster Then GoTo exit_here
     .lblFormula.Visible = False
     .lblLookup.Visible = False
     .lboSubprojects.Height = .lboMasterLCF.Height
@@ -22,8 +30,14 @@ Sub cptShowLCFFlowDown_frm()
     .tglMove = False
     .Show
   End With
+exit_here:
+  On Error Resume Next
   Set oProject = Nothing
   Set myFlowDown_frm = Nothing
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptFlowDown_bas", "cptShowLCFFlowDown_frm", Err, Erl)
+  Resume exit_here
 End Sub
 
 Sub cptUpdateMoveToLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Recordset)
@@ -161,7 +175,6 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
     
   'todo: if formula
   '   > check all other fields for references to lngFrom and replace with lngTo
-  'todo: if formula AND lookup
   'todo: move Cost -> Cost,Number,Text?
   'todo: move Date -> Date,Start,Finish
   'todo: move Duration -> Duration,Number
@@ -211,7 +224,7 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
       Set oOutlineCodeFrom = oSubproject.OutlineCodes(strCFN & "_OLD")
       If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
       If Not oOutlineCodeFrom Is Nothing Then
-        'some settings must be made manually
+        'first copy the codemask
         Set oOutlineCodeTo = oSubproject.OutlineCodes(strCFN)
         For lngItem = 1 To oOutlineCodeFrom.CodeMask.Count
           oOutlineCodeTo.CodeMask.Add oOutlineCodeFrom.CodeMask(lngItem).Sequence, oOutlineCodeFrom.CodeMask(lngItem).Length, oOutlineCodeFrom.CodeMask(lngItem).Separator
@@ -230,6 +243,7 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
         If Len(oOutlineCodeFrom.DefaultValue) > 0 Then
           oOutlineCodeTo.DefaultValue = oOutlineCodeFrom.DefaultValue
         End If
+        'todo: some settings must be made manually
         oOutlineCodeTo.OnlyLookUpTableCodes = oOutlineCodeFrom.OnlyLookUpTableCodes
         oOutlineCodeTo.OnlyCompleteCodes = oOutlineCodeFrom.OnlyCompleteCodes
         If oOutlineCodeFrom.OnlyCompleteCodes Then
@@ -343,4 +357,220 @@ next_control:
       .lboMasterLCF.Clear
     End If
   End With
+End Sub
+
+Sub cptTakeLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Recordset)
+  'objects
+  Dim oDict As Scripting.Dictionary
+  Dim oOutlineCodeFrom As MSProject.OutlineCode
+  Dim oOutlineCodeTo As MSProject.OutlineCode
+  Dim oMP As MSProject.Project
+  Dim oSP As MSProject.Project
+  Dim oTask As MSProject.Task
+  'strings
+  Dim strDescription As String
+  Dim strValue As String
+  Dim strFN As String
+  Dim strMsg As String
+  Dim strFormula As String
+  Dim strCFN As String
+  'longs
+  Dim lngLookupItem As Long
+  Dim lngLCF As Long
+  Dim lngItem As Long
+  Dim lngTask As Long
+  Dim lngTasks As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  Dim blnHasLookup As Boolean
+  Dim blnHasFormula As Boolean
+  Dim blnSingle As Boolean
+  Dim blnClearTaskData As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  Select Case MsgBox("Take LCF for ALL subprojects?", vbExclamation + vbYesNoCancel, "Take how much?")
+    Case vbYes
+      blnSingle = False
+    Case vbNo
+      blnSingle = True
+    Case vbCancel
+      GoTo exit_here
+  End Select
+  If IsNull(myFlowDown_frm.lboMasterLCF.Value) Then GoTo exit_here
+  lngLCF = myFlowDown_frm.lboMasterLCF.Value
+  If lngLCF = 0 Then Exit Sub
+  Set oMP = Projects(myFlowDown_frm.cboMasterProject.Value)
+  oMP.Activate
+  strFN = FieldConstantToFieldName(lngLCF)
+  strCFN = CustomFieldGetName(lngLCF)
+  If Not myFlowDown_frm.optFormula Then
+    Select Case MsgBox("Clear subproject task data in LCF '" & strCFN & "' (" & strFN & ")?", vbQuestion + vbYesNoCancel, "Overwrite?")
+      Case vbYes
+        blnClearTaskData = True
+      Case vbNo
+        blnClearTaskData = False
+      Case vbCancel
+        GoTo exit_here
+    End Select
+  End If
+  cptSpeed True
+  For lngItem = 0 To myFlowDown_frm.lboSubprojects.ListCount - 1
+    If blnSingle And Not myFlowDown_frm.lboSubprojects.Selected(lngItem) Then GoTo next_subproject
+    myFlowDown_frm.lboSubprojects.List(lngItem, 2) = "..."
+    DoEvents
+    Set oSP = Projects(myFlowDown_frm.lboSubprojects.List(lngItem, 1))
+    lngTask = 0
+    lngTasks = oSP.Tasks.Count
+    oSP.Activate
+    'todo: before doing anything, ensure LCF doesn't already exist on another field
+    'todo: rename existing to *_OLD
+    'todo: prompt user what to do
+    'todo: create the new; delete the old
+    'delete the LCF
+    CustomFieldDelete lngLCF
+    'rename the LCF
+    'todo: what if name already exists? check oLCF
+    CustomFieldRename lngLCF, strCFN
+    'formula
+    blnHasFormula = cptHasFormula(oMP, lngLCF)
+    If blnHasFormula Then
+      'todo: formula dependencies (other fields)
+      oMP.Activate
+      strFormula = CustomFieldGetFormula(lngLCF)
+      oSP.Activate
+      CustomFieldSetFormula lngLCF, strFormula
+    End If
+    blnHasLookup = cptHasLookup(oMP, lngLCF)
+    If blnHasLookup Then
+      'move lookup
+      If InStr(strFN, "Outline Code") > 0 Then
+        oMP.Activate
+        Set oOutlineCodeFrom = oMP.OutlineCodes(strCFN)
+        oSP.Activate
+        Set oOutlineCodeTo = oSP.OutlineCodes(strCFN)
+        'first copy the code mask
+        For lngLookupItem = 1 To oOutlineCodeFrom.CodeMask.Count
+          oOutlineCodeTo.CodeMask.Add oOutlineCodeFrom.CodeMask(lngLookupItem).Sequence, oOutlineCodeFrom.CodeMask(lngLookupItem).Length, oOutlineCodeFrom.CodeMask.Item(lngLookupItem).Separator
+        Next lngLookupItem
+        'then copy the lookup table items (bottom-up)
+        For lngLookupItem = oOutlineCodeFrom.LookupTable.Count To 1 Step -1
+          oOutlineCodeTo.LookupTable.AddChild oOutlineCodeFrom.LookupTable.Item(lngLookupItem).Name
+        Next lngLookupItem
+        'then indent the lookup table structure (top-down)
+        For lngLookupItem = 1 To oOutlineCodeTo.LookupTable.Count
+          oOutlineCodeTo.LookupTable.Item(lngLookupItem).Level = oOutlineCodeFrom.LookupTable.Item(lngLookupItem).Level
+          oOutlineCodeTo.LookupTable.Item(lngLookupItem).Description = oOutlineCodeFrom.LookupTable.Item(lngLookupItem).Description
+        Next lngLookupItem
+        If Len(oOutlineCodeFrom.DefaultValue) > 0 Then
+          oOutlineCodeTo.DefaultValue = oOutlineCodeFrom.DefaultValue
+        End If
+        'some settings must be made manually
+        oOutlineCodeTo.OnlyLookUpTableCodes = oOutlineCodeFrom.OnlyLookUpTableCodes
+        oOutlineCodeTo.OnlyCompleteCodes = oOutlineCodeFrom.OnlyCompleteCodes
+        If oOutlineCodeFrom.OnlyCompleteCodes Then
+          oOutlineCodeTo.OnlyLeaves = oOutlineCodeFrom.OnlyLeaves
+          oOutlineCodeTo.RequiredCode = oOutlineCodeFrom.RequiredCode
+        End If
+        oOutlineCodeTo.SortOrder = oOutlineCodeFrom.SortOrder
+      Else 'it's a value list
+        Set oDict = CreateObject("Scripting.Dictionary")
+        'get lookup
+        oMP.Activate
+        For lngLookupItem = 1 To 1000 'surely that's enough?
+          strValue = ""
+          strDescription = ""
+          On Error Resume Next
+          strValue = CustomFieldValueListGetItem(lngLCF, pjValueListValue, lngLookupItem)
+          If Len(strValue) = 0 Then Exit For
+          strDescription = CustomFieldValueListGetItem(lngLCF, pjValueListDescription, lngLookupItem)
+          If Not oDict.Exists(strValue) Then
+            oDict.Add strValue, strDescription
+          End If
+        Next lngLookupItem
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        'set lookup
+        oSP.Activate
+        For lngLookupItem = 0 To oDict.Count - 1
+          CustomFieldValueListAdd lngLCF, oDict.Keys(lngLookupItem), oDict.Items(lngLookupItem)
+        Next lngLookupItem
+      End If
+    End If
+    If InStr(strFN, "Outline Code") = 0 Then
+      If blnHasLookup And blnHasFormula Then
+        oSP.Activate
+        strMsg = "LCF '" & strCFN & "' (" & strFN & ") has both a Lookup and a Formula." & vbCrLf
+        strMsg = strMsg & "Both will be imported, but you must decide which one should be applied." & vbCrLf & vbCrLf
+        strMsg = strMsg & "Click Yes to use the Lookup." & vbCrLf
+        strMsg = strMsg & "Click No to use the Formula." & vbCrLf
+        strMsg = strMsg & "Click Cancel to use niether (option: None)."
+        Select Case MsgBox(strMsg, vbQuestion + vbYesNoCancel, "Please choose:")
+          Case vbYes
+            CustomFieldPropertiesEx lngLCF, pjFieldAttributeValueList
+          Case vbNo
+            CustomFieldPropertiesEx lngLCF, pjFieldAttributeFormula
+          Case vbCancel
+            CustomFieldPropertiesEx lngLCF, pjFieldAttributeNone
+        End Select
+      ElseIf blnHasLookup Then
+        CustomFieldPropertiesEx lngLCF, pjFieldAttributeValueList
+      ElseIf blnHasFormula Then
+        CustomFieldPropertiesEx lngLCF, pjFieldAttributeFormula
+      Else
+        CustomFieldPropertiesEx lngLCF, pjFieldAttributeNone
+      End If
+    End If
+    SetAutoFilter strCFN, pjAutoFilterIn, "does not equal", ""
+    If Not myFlowDown_frm.optFormula Then
+      If blnClearTaskData Then
+        'now delete the data
+        For Each oTask In oSP.Tasks
+          If oTask Is Nothing Then GoTo next_task
+          If oTask.ExternalTask Then GoTo next_task
+          If oTask.GetField(lngLCF) <> "" Then oTask.SetField lngLCF, ""
+next_task:
+          lngTask = lngTask + 1
+          myFlowDown_frm.lboSubprojects.List(lngItem, 2) = "(" & Format(lngTask / lngTasks, "0%") & ")"
+          DoEvents
+        Next oTask
+      End If
+    End If
+    'update listbox
+    myFlowDown_frm.lboSubprojects.List(lngItem, 2) = strCFN
+    DoEvents
+next_subproject:
+  Next lngItem
+
+  strMsg = "Certain LCF settings cannot be read programmatically and so must be transferred/applied manually, e.g.:" & vbCrLf & vbCrLf
+  strMsg = strMsg & "- Lookups & Outline Codes: display indenting in lookup table (default: true)" & vbCrLf
+  strMsg = strMsg & "- Lookups: default value (default: none)" & vbCrLf
+  strMsg = strMsg & "- Lookups: allow new values (default: false)" & vbCrLf
+  strMsg = strMsg & "- Lookups: display order for lookup table (default: by row number)" & vbCrLf
+  strMsg = strMsg & "- Lookups: data entry options (allow new?) (default: false)" & vbCrLf
+  strMsg = strMsg & "- Lookups & Outline Codes: data entry options (lowest level only?) (default: false)" & vbCrLf
+  strMsg = strMsg & "- calculation for task and group summary rows (default: none)" & vbCrLf
+  strMsg = strMsg & "- calculation for assignment rows (default: none)" & vbCrLf
+  strMsg = strMsg & "- values to display (data or graphical indicators) (default: data)" & vbCrLf & vbCrLf
+  strMsg = strMsg & "Please review and apply these settings manually." & vbCrLf & vbCrLf
+  strMsg = strMsg & "Hint: take screenshots of the Custom Fields dialogs between master and sub(s) and compare."
+  MsgBox strMsg, vbInformation + vbOKOnly, "One more step..."
+
+exit_here:
+  On Error Resume Next
+  cptSpeed False
+  Set oDict = Nothing
+  Set oOutlineCodeFrom = Nothing
+  Set oOutlineCodeTo = Nothing
+  Set oTask = Nothing
+  Set oSP = Nothing
+  Set oMP = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptFlowDown_bas", "cptTakeLCF", Err, Erl)
+  Resume exit_here
 End Sub
