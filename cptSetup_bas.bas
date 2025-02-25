@@ -738,7 +738,10 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBuilder"" imageMso=""CustomFieldDialog"" label=""Field Builder"" onAction=""cptShowFieldBuilder_frm"" supertip=""A little help building common custom field pick lists, etc."" />" 'size=""large""
     End If
     If ActiveProject.Subprojects.Count > 0 Then
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnalyzeLCF"" imageMso=""CustomFieldDialog"" label=""Master/Sub LCF Alignment"" onAction=""cptAnalyzeLCF"" supertip=""Analyze LCF usage between a Master project and Subprojects."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnalyzeLCF"" imageMso=""CustomFieldDialog"" label=""Master/Sub LCF Alignment"" onAction=""cptAnalyzeLCF"" supertip=""Analyze Local Custom Field (LCF) usage between a Master project and its Subprojects."" />" 'size=""large""
+      If cptModuleExists("cptFlowDown_bas") And cptModuleExists("cptFlowDown_frm") Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFlowDown"" imageMso=""CustomFieldDialog"" label=""LCF FlowDown"" onAction=""cptShowLCFFlowDown_frm"" supertip=""Flow Down Local Custom Field (LCF) settings from a Master project to its Subprojects."" />" 'size=""large""
+      End If
     End If
     If cptModuleExists("cptSaveLocal_bas") And cptModuleExists("cptSaveLocal_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bECFtoLCF"" imageMso=""CustomFieldDialog"" label=""ECF to LCF"" onAction=""cptShowSaveLocal_frm"" supertip=""Save Enterprise Custom Field (ECF) settings (and, optionally, task-level data) to Local Custom Fields (LCF). Settings are saved (by project) between sessions."" />" 'size=""large""
@@ -941,7 +944,9 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   'booleans
   Dim blnMaster As Boolean
   Dim blnInactive As Boolean
+  
   Dim blnCPL As Boolean
+  Dim blnErrorTrapping As Boolean
   Dim blnResourceLoaded As Boolean
   Dim blnBeta As Boolean
   'variants
@@ -950,8 +955,9 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   strErrNumber = CStr(Err.Number)
   strErrDescription = Err.Description
   strErrSource = Err.Source
-
-  If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   'todo: has the code been modified?
   'todo: not until CurrentVersions.xml is revised
@@ -1279,6 +1285,7 @@ err_here:
   MsgBox Err.Number & ": " & Err.Description & vbCrLf & "Source: cptSetup_bas.cptHandleErr()", vbExclamation + vbOKOnly, "Error"
   Resume exit_here
 End Sub
+
 
 Function cptIncrement(ByRef lngCleanUp As Long) As Long
   lngCleanUp = lngCleanUp + 1
