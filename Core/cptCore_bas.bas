@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.14.2</cpt_version>
+'<cpt_version>v1.14.3</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
@@ -1997,14 +1997,11 @@ try_again:
   On Error Resume Next
   For Each vMyHeader In Split(strMyHeaders, ",")
     If vMyHeader = "" Then Exit For
-    Debug.Print FieldNameToFieldConstant(vMyHeader)
-    If Err.Number > 0 Then
+    If cptCustomFieldExists(CStr(vMyHeader)) = 0 Then
       vResponse = MsgBox("Custom Field '" & vMyHeader & "' not found!" & vbCrLf & vbCrLf & "OK = skip; Cancel = try again", vbExclamation + vbOKCancel, "Invalid Field")
       If vResponse = vbCancel Then
-        Err.Clear
         GoTo try_again
       Else
-        Err.Clear
         strMyHeaders = Replace(strMyHeaders, vMyHeader & ",", "")
       End If
     End If

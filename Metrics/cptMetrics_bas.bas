@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.0</cpt_version>
+'<cpt_version>v1.5.1</cpt_version>
 Option Explicit
 
 Sub cptGetBAC()
@@ -954,6 +954,10 @@ Sub cptLateStartsFinishes()
   'get other fields
   strMyHeaders = cptGetMyHeaders("Late Starts and Finishes", True) 'todo: get rid of this
   If strMyHeaders = "" Then GoTo exit_here
+  If Len(strMyHeaders) <> Len(cptRemoveIllegalCharacters(strMyHeaders)) Then
+    MsgBox "Please (at least temporarily) rename the custom field without any illegal characters." & vbCrLf & vbCrLf & strMyHeaders, vbExclamation + vbOKOnly, "Illegal Character"
+    GoTo exit_here
+  End If
   
   'get excel
   On Error Resume Next
