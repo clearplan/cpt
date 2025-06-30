@@ -1,15 +1,6 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.5.3</cpt_version>
+'<cpt_version>v1.5.4</cpt_version>
 Option Explicit
-
-Sub cptReplicateProcess()
-  MsgBox "feature not yet released", vbOKOnly + vbInformation, "todo"
-  'select a process (group of tasks)
-  'define the sequence
-  'provide number of units
-  'replicate the process
-  'define products; define steps; define count; replicate
-End Sub
 
 Sub cptBulkAppend()
   'objects
@@ -266,7 +257,7 @@ Sub cptFindDuplicateTaskNames()
   'objects
   Dim oTask As MSProject.Task
   Dim oDict As Scripting.Dictionary
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubproject As MSProject.SubProject
   Dim oShell As Object
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
@@ -769,52 +760,92 @@ End Sub
 
 Sub cptCheckAnnoyances()
   'objects
+  Dim oDict As Scripting.Dictionary
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
   'strings
+  Dim strInactive As String
+  Dim strInactiveList As String
   Dim strElapsed As String
   Dim strElapsedList As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strTimes As String
   Dim strTimesList As String
   Dim strDurations As String
   Dim strDurationsList As String
   Dim strFilter As String
   'longs
+  Dim lngItem As Long
+  Dim lngInactive As Long
+  Dim lngTask As Long
+  Dim lngTasks As Long
   Dim lngFile As Long
   Dim lngCount As Long
   'integers
   'doubles
   'booleans
+  Dim blnProjectStandard As Boolean
   Dim blnErrorTrapping As Boolean
   'variants
   'dates
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  
+  blnProjectStandard = Application.Edition = pjEditionStandard
+  Set oDict = CreateObject("Scripting.Dictionary")
+  If ActiveProject.Subprojects.Count > 0 Then
+    ActiveWindow.TopPane.Activate
+    FilterClear
+    GroupClear
+    Sort "ID", , , , , , False, True
+    OptionsViewEx DisplaySummaryTasks:=True
+    SelectAll
+    OutlineShowAllTasks
+    SelectAll
+    lngTasks = ActiveSelection.Tasks.Count
+  Else
+    lngTasks = ActiveProject.Tasks.Count
+  End If
+  
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.Summary Then GoTo next_task
-    If Not oTask.Active Then GoTo next_task
+    If Not oTask.Active Then
+      If blnProjectStandard Then
+        lngInactive = lngInactive + 1
+        strInactiveList = strInactiveList & oTask.UniqueID & vbTab
+        strInactive = strInactive & oTask.UniqueID & ",INACTIVE,"
+        If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+        GoTo next_task
+      Else
+        GoTo next_task
+      End If
+    End If
     If IsDate(oTask.ActualFinish) Then GoTo next_task
     If oTask.Duration = 0 Then GoTo next_task 'todo: skip milestones or not?
     If TimeValue(oTask.Finish) <> "5:00:00 PM" Or TimeValue(oTask.Start) <> "8:00:00 AM" Then
       strTimesList = strTimesList & oTask.UniqueID & vbTab
       strTimes = strTimes & oTask.UniqueID & "," & TimeValue(oTask.Start) & "," & TimeValue(oTask.Finish) & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
     If InStr(oTask.DurationText, ".") > 0 Then
       strDurationsList = strDurationsList & oTask.UniqueID & vbTab
       strDurations = strDurations & oTask.UniqueID & "," & oTask.DurationText & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
     If Left(cptRegEx(oTask.DurationText, "[A-z]{1,}"), 1) = "e" Then
       strElapsedList = strElapsedList & oTask.UniqueID & vbTab
       strElapsed = strElapsed & oTask.UniqueID & "," & oTask.DurationText & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
+    'todo: Assignments without work
 next_task:
+    lngTask = lngTask + 1
+    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")"
   Next oTask
   
-  strFilter = strTimesList & strDurationsList & strElapsedList
+  strFilter = strTimesList & strDurationsList & strElapsedList & strInactiveList
   If Len(strFilter) = 0 Then
     MsgBox "No annoyances!", vbInformation + vbOKOnly, "Well Done"
   Else
@@ -840,45 +871,56 @@ next_task:
     MsgBox Format(lngCount, "#,##0") & " annoyance" & IIf(lngCount > 1, "s", "") & " found!", vbInformation + vbOKOnly, "Annoyances"
     If MsgBox("View report?", vbQuestion + vbYesNo, "Annoyances") = vbYes Then
       lngFile = FreeFile
-      strFile = Environ("tmp") & "\annoyances.txt"
-      Open strFile For Output As #1
+      strFileName = Environ("tmp") & "\annoyances.txt"
+      Open strFileName For Output As lngFile
       If Len(strTimes) > 0 Then
-        Print #1, "===== ODD TIMES ARE ANNOYING ====="
-        Print #1, "UID,START,FINISH"
-        Print #1, strTimes
-        Print #1, "UID LIST: " & Replace(strTimesList, vbTab, ",")
-        Print #1, vbCrLf
+        Print #lngFile, "===== ODD TIMES ARE ANNOYING ====="
+        Print #lngFile, "UID,START,FINISH"
+        Print #lngFile, strTimes
+        Print #lngFile, "UID LIST: " & Replace(strTimesList, vbTab, ",")
+        Print #lngFile, vbCrLf
       End If
       If Len(strDurations) > 0 Then
-        Print #1, "===== FRACTIONAL DURATIONS ARE ANNOYING ====="
-        Print #1, "UID,DURATION"
-        Print #1, strDurations
-        Print #1, "UID LIST: " & Replace(strDurationsList, vbTab, ",")
-        Print #1, vbCrLf
+        Print #lngFile, "===== FRACTIONAL DURATIONS ARE ANNOYING ====="
+        Print #lngFile, "UID,DURATION"
+        Print #lngFile, strDurations
+        Print #lngFile, "UID LIST: " & Replace(strDurationsList, vbTab, ",")
+        Print #lngFile, vbCrLf
       End If
       If Len(strElapsed) > 0 Then
-        Print #1, "===== ELAPSED DURATIONS ARE ANNOYING ====="
-        Print #1, "UID,DURATION"
-        Print #1, strElapsed
-        Print #1, "UID LIST: " & Replace(strElapsedList, vbTab, ",")
-        Print #1, vbCrLf
+        Print #lngFile, "===== ELAPSED DURATIONS ARE ANNOYING ====="
+        Print #lngFile, "UID,DURATION"
+        Print #lngFile, strElapsed
+        Print #lngFile, "UID LIST: " & Replace(strElapsedList, vbTab, ",")
+        Print #lngFile, vbCrLf
       End If
-  '    If Len(strTimes) > 0 And Len(strDurations) > 0 Then
-        Print #1, "COMBINED UID LIST: " & Replace(strFilter, vbTab, ",")
-  '    End If
-      Close #1
-      Shell "notepad.exe """ & strFile & """", vbNormalFocus
+      If blnProjectStandard And Len(strInactive) > 0 Then
+        Print #lngFile, "===== INACTIVE TASKS IN PROJECT STANDARD ARE ANNOYING ====="
+        Print #lngFile, "===== AND WILL PROBABLY LEAD TO ANOMALOUS CALCULATIONS ===="
+        Print #lngFile, "UID,ACTIVE"
+        Print #lngFile, strInactive
+        Print #lngFile, "UID LIST: " & Replace(strInactiveList, vbTab, ",")
+        Print #lngFile, vbCrLf
+      End If
+      strFilter = ""
+      For lngItem = 0 To oDict.Count - 1
+        strFilter = strFilter & oDict.Keys(lngItem) & ","
+      Next lngItem
+      Print #lngFile, "COMBINED UID LIST: " & Replace(strFilter, vbTab, ",")
+      Close #lngFile
+      Shell "notepad.exe """ & strFileName & """", vbNormalFocus
     End If
   End If
   
 exit_here:
   On Error Resume Next
+  Set oDict = Nothing
   Set oTasks = Nothing
   Set oTask = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("foo", "bar", Err, Erl)
+  Call cptHandleErr("cptText_bas", "cptCheckAnnoyances", Err, Erl)
   Resume exit_here
 End Sub
 
