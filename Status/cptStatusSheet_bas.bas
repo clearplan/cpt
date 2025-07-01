@@ -1331,10 +1331,7 @@ Private Sub cptAddLegend(ByRef oWorksheet As Excel.Worksheet, dtStatus As Date)
   oWorksheet.Cells(4, 2) = "Task is within two week look-ahead. Please review forecast dates."
   'complete
   oWorksheet.Cells(5, 1).Style = "Explanatory Text"
-'  oWorksheet.Cells(5, 1).Font.TintAndShade = 0
-'  oWorksheet.Cells(5, 1).Interior.PatternColorIndex = -4105
-'  oWorksheet.Cells(5, 1).Interior.Color = 15921906
-'  oWorksheet.Cells(5, 1).Interior.TintAndShade = 0
+  oWorksheet.Cells(5, 1) = "AaBbCc"
   oWorksheet.Cells(5, 2) = "Task is complete."
   'summary
   oWorksheet.Cells(6, 1) = "AaBbCc"
@@ -1427,6 +1424,7 @@ Private Sub cptCopyData(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef oWo
   Dim blnProtect As Boolean
   Dim blnValidation As Boolean
   Dim blnConditionalFormats As Boolean
+  Dim blnMilestones As Boolean
   'variants
   'dates
   Dim dtStatus As Date
@@ -1519,7 +1517,7 @@ try_again:
   lngAFCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Finish", lookat:=xlPart).Column
   lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find("New EV%", lookat:=xlWhole).Column
   lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find("EVT", lookat:=xlWhole).Column
-  'todo: add Milestones EVT
+  'todo: add Milestone EVT
   lngETCCol = oWorksheet.Rows(lngHeaderRow).Find("New ETC", lookat:=xlWhole).Column
   lngBLWCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
   lngLastCol = oWorksheet.Cells(lngHeaderRow, 1).End(xlToRight).Column
@@ -2147,7 +2145,6 @@ next_task:
       oRecordset.AddNew Array(0, 1, 2), Array("AssignmentETC", "=AND(" & strETC & ">0," & strEVP & "=1)", "BAD")
     End If
     
-    Dim blnMilestones As Boolean
     If blnMilestones Then 'assumes COBRA and field values = COBRA codes
       'todo: AS>0,EVT='E',EVP<>50
       'todo: oRecordset.AddNew Array(0,1),Array("NS", "=AND(" & strAS & "," & strEVT & "='E'," & strEVP & "<>.5)")
@@ -2236,7 +2233,13 @@ skip_working:
       oDict.RemoveAll
       .Close
     End With
-        
+  Else
+    If Not oInputRange Is Nothing Then
+      oInputRange.Style = "Input"
+    End If
+    If Not oTwoWeekWindowRange Is Nothing Then
+      oTwoWeekWindowRange.Style = "Neutral"
+    End If
   End If
   
 exit_here:
@@ -2454,7 +2457,7 @@ Sub cptFinalFormats(ByRef oWorksheet As Excel.Worksheet)
   oWorksheet.[B1].Select
   oWorksheet.Application.ActiveWindow.SplitRow = 8
   oWorksheet.Application.ActiveWindow.SplitColumn = 0
-  'note: if user's Excel 'normal' window size is puny then FreezePans might fail;
+  'note: if user's Excel 'normal' window size is puny then FreezePanes might fail;
   'note: have them adjust manually - alternative is to change the line above to xlMaximized
   'note: and that's a terrible UX with all the screen flashes
   oWorksheet.Application.ActiveWindow.FreezePanes = True
