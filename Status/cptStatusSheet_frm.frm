@@ -411,6 +411,8 @@ Private Sub chkSendEmails_Click()
         MsgBox "QuickPart '" & strQuickPart & "' not found.", vbExclamation + vbOKOnly, "Stored Setting Invalid"
       End If
     End If
+  Else
+    Me.chkKeepOpen.Enabled = True
   End If
 
 End Sub
