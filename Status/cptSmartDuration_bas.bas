@@ -1,11 +1,11 @@
 Attribute VB_Name = "cptSmartDuration_bas"
-'<cpt_version>v2.0.3</cpt_version>
+'<cpt_version>v2.1.0</cpt_version>
 
 Sub cptShowSmartDuration_frm()
   'objects
   Dim mySmartDuration_frm As cptSmartDuration_frm
   'strings
-  Dim strKeepOpen As String
+  Dim strSetting As String
   'longs
   'integers
   'doubles
@@ -19,11 +19,23 @@ Sub cptShowSmartDuration_frm()
   cptUpdateSmartDurationForm mySmartDuration_frm
   With mySmartDuration_frm
     .Caption = "Smart Duration (" & cptGetVersion("cptSmartDuration_frm") & ")"
-    strKeepOpen = cptGetSetting("SmartDuration", "chkKeepOpen")
-    If Len(strKeepOpen) = 0 Then
+    strSetting = cptGetSetting("SmartDuration", "chkMarkOnTrack")
+    If Len(strSetting) = 0 Then
+      .chkMarkOnTrack = False 'default to false
+    Else
+      .chkMarkOnTrack = CBool(strSetting)
+    End If
+    strSetting = cptGetSetting("SmartDuration", "chkRetainETC")
+    If Len(strSetting) = 0 Then
+      .chkRetainETC = True 'default to true
+    Else
+      .chkRetainETC = CBool(strSetting)
+    End If
+    strSetting = cptGetSetting("SmartDuration", "chkKeepOpen")
+    If Len(strSetting) = 0 Then
       .chkKeepOpen = False 'default to false
     Else
-      .chkKeepOpen = CBool(strKeepOpen)
+      .chkKeepOpen = CBool(strSetting)
     End If
     .Show False
     If .txtTargetFinish.Enabled Then .txtTargetFinish.SetFocus

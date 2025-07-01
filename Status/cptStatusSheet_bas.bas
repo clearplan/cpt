@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.1</cpt_version>
+'<cpt_version>v1.7.0</cpt_version>
 Option Explicit
 #If Win64 And VBA7 Then '<issue53>
   Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
@@ -3876,7 +3876,7 @@ err_here:
   Resume exit_here
 End Sub
 
-Sub cptMarkOnTrackRetainETC()
+Sub cptMarkOnTrackRetainETC(Optional blnOpenUndoTransaction As Boolean = True)
   'objects
   Dim oDict As Scripting.Dictionary
   Dim oAssignment As MSProject.Assignment
@@ -4053,7 +4053,9 @@ Sub cptMarkOnTrackRetainETC()
   'prep to capture assignment remaining work
   Set oDict = CreateObject("Scripting.Dictionary")
   
-  Application.OpenUndoTransaction "cpt Mark On Track - Retain ETC"
+  If blnOpenUndoTransaction Then
+    Application.OpenUndoTransaction "cpt Mark On Track - Retain ETC"
+  End If
   
   lngTasks = oTasks.Count
   For Each oTask In oTasks
@@ -4175,7 +4177,9 @@ next_task:
     DoEvents
   Next oTask
   
-  Application.CloseUndoTransaction
+  If blnOpenUndoTransaction Then
+    Application.CloseUndoTransaction
+  End If
   
   Application.StatusBar = "Restoring settings..."
   DoEvents
@@ -4205,7 +4209,7 @@ exit_here:
   On Error Resume Next
   Application.StatusBar = ""
   cptSpeed False
-  Application.CloseUndoTransaction
+  If blnOpenUndoTransaction Then Application.CloseUndoTransaction
   Set oAssignment = Nothing
   Set oDict = Nothing
   Set oTask = Nothing
