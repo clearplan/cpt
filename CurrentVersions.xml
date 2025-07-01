@@ -332,28 +332,28 @@
 	<Module>
 		<Name>cptSmartDuration_bas</Name>
 		<FileName>cptSmartDuration_bas.bas</FileName>
-		<Version>v2.0.3</Version>
+		<Version>v2.1.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptSmartDuration_frm</Name>
 		<FileName>cptSmartDuration_frm.frm</FileName>
-		<Version>v2.0.3</Version>
+		<Version>v2.1.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.6.1</Version>
+		<Version>v1.7.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.6.1</Version>
+		<Version>v1.7.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
