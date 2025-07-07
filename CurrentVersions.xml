@@ -22,6 +22,27 @@
 		<Directory>Integration</Directory>
 	</Module>
 	<Module>
+		<Name>cptAdvancedFilter_bas</Name>
+		<FileName>cptAdvancedFilter_bas.bas</FileName>
+		<Version>v0.2.0</Version>
+		<Type>1</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
+		<Name>cptAdvancedFilter_frm</Name>
+		<FileName>cptAdvancedFilter_frm.frm</FileName>
+		<Version>v0.2.0</Version>
+		<Type>3</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
+		<Name>cptAdvancedFilterEdit_frm</Name>
+		<FileName>cptAdvancedFilterEdit_frm.frm</FileName>
+		<Version>v0.2.0</Version>
+		<Type>3</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
 		<Name>cptAgeDates_bas</Name>
 		<FileName>cptAgeDates_bas.bas</FileName>
 		<Version>v1.1.0</Version>
@@ -194,6 +215,13 @@
 		<FileName>cptFilterByClipboard_frm.frm</FileName>
 		<Version>v1.2.2</Version>
 		<Type>3</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
+		<Name>cptFilterItem</Name>
+		<FileName>cptFilterItem.cls</FileName>
+		<Version>v0.2.0</Version>
+		<Type>2</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
