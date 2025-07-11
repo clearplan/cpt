@@ -29,6 +29,7 @@ Sub cptAdvancedFilter()
         .fltrField.ListIndex = 0
         .versionLbl = "Advanced Clipboard Filter"
         .Caption = .versionLbl.Caption & " " & cptGetVersion("cptAdvancedFilter_bas")
+        curProj.Application.Windows(1).TopPane.Activate
         .summaryCheckBox = curProj.Application.SummaryTasksShow
     
         .Show
@@ -217,14 +218,14 @@ Public Function ParseClipboardData(clipText As String) As Collection
     Dim items As New Collection
     Dim lines() As String
     Dim i As Integer
-    Dim item As cptFilterItem
+    Dim item As cptFilterItem_cls
     
     ' Split by line breaks
     lines = Split(Replace(Replace(clipText, vbCrLf, vbLf), vbCr, vbLf), vbLf)
     
     For i = 0 To UBound(lines)
         If Trim(lines(i)) <> "" Then
-            Set item = New cptFilterItem
+            Set item = New cptFilterItem_cls
             item.Value = Trim(lines(i))
             item.Method = "Equals"
             item.Count = 0
