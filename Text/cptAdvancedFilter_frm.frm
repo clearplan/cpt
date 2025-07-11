@@ -52,7 +52,7 @@ Private Sub btnPaste_Click()
     Dim clipText As String
     Dim newItems As Collection
     Dim appendResponse As VbMsgBoxResult
-    Dim item As cptFilterItem
+    Dim item As cptFilterItem_cls
     
     clipText = GetClipboardText()
     
@@ -117,8 +117,8 @@ Private Sub btnAdd_Click()
     response = editFrm.Tag
     
     If response = "Edit" Then
-        Dim newItem As cptFilterItem
-        Set newItem = New cptFilterItem
+        Dim newItem As cptFilterItem_cls
+        Set newItem = New cptFilterItem_cls
         newItem.Value = editFrm.itemValue_TextBox.Value
         newItem.Method = editFrm.itemFilter_ComboBox.Text
         newItem.Count = 0
@@ -252,7 +252,7 @@ Private Sub edititem(itemIndex As Integer)
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
     Dim response As String
-    Dim currentItem As cptFilterItem
+    Dim currentItem As cptFilterItem_cls
     Dim editFrm As cptAdvancedFilterEdit_frm
     
     If itemIndex > 0 And itemIndex < filterItems.Count + 1 Then
