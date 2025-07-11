@@ -62,12 +62,19 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
     Dim tempFilterString As String
     Dim cntr As Integer
     Dim testValue As String
+    Dim tempCount As Integer
+    
+    'Reset filter counts
+    For cntr = 1 To filterItemsList.Count
+        filterForm.clipboardList.List(cntr - 1, 3) = 0
+    Next cntr
     
     For Each t In curProj.Tasks
     
         If Not t Is Nothing Then
         
             testValue = t.GetField(FieldNameToFieldConstant(filterForm.fltrField.Text))
+            tempCount = 0
             
             For cntr = 1 To filterItemsList.Count
             
@@ -80,6 +87,8 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
                             End If
                             
+                            filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
+                            
                             GoTo NextTask
                             
                         End If
@@ -90,6 +99,8 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                             Else
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
                             End If
+                            
+                            filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
                             
                             GoTo NextTask
                             
@@ -104,6 +115,8 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
                             End If
                             
+                            filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
+                            
                             GoTo NextTask
                         
                         End If
@@ -114,6 +127,8 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                             Else
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
                             End If
+                            
+                            filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
                             
                             GoTo NextTask
                         
@@ -132,9 +147,14 @@ NextTask:
     If tempFilterString <> "" Then
     
         Application.SetAutoFilter FieldName:="Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=tempFilterString
+        
     Else
         
-        MsgBox "There are no matching results.", vbOKOnly + vbInformation, "No Results Found"
+        If filterItemsList.Count > 0 Then
+            MsgBox "There are no matching results.", vbOKOnly + vbInformation, "No Results Found"
+        Else
+            MsgBox "Filter Cleared", vbOKOnly + vbInformation, "Clear"
+        End If
     
     End If
     
@@ -207,6 +227,7 @@ Public Function ParseClipboardData(clipText As String) As Collection
             Set item = New cptFilterItem
             item.Value = Trim(lines(i))
             item.Method = "Equals"
+            item.Count = 0
             items.Add item
         End If
     Next i

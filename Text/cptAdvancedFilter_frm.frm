@@ -31,6 +31,7 @@ Private Sub UserForm_Initialize()
         .List(0, 0) = "Row"
         .List(0, 1) = "Value"
         .List(0, 2) = "Filter Type"
+        .List(0, 3) = "Count"
     End With
     
     Exit Sub
@@ -120,6 +121,7 @@ Private Sub btnAdd_Click()
         Set newItem = New cptFilterItem
         newItem.Value = editFrm.itemValue_TextBox.Value
         newItem.Method = editFrm.itemFilter_ComboBox.Text
+        newItem.Count = 0
         
         filterItems.Add newItem
         RefreshItemsList
@@ -220,6 +222,7 @@ Private Sub RefreshItemsList()
                 .List(cntr - 1, 0) = cntr 'Row Id
                 .List(cntr - 1, 1) = filterItems(cntr).Value 'Value
                 .List(cntr - 1, 2) = filterItems(cntr).Method 'Type
+                .List(cntr - 1, 3) = filterItems(cntr).Count 'count
             End With
         Next cntr
     
@@ -270,6 +273,7 @@ Private Sub edititem(itemIndex As Integer)
         If response = "Edit" Then
             currentItem.Value = editFrm.itemValue_TextBox.Value
             currentItem.Method = editFrm.itemFilter_ComboBox.Text
+            currentItem.Count = 0
             RefreshItemsList
         End If
         
