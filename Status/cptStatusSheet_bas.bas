@@ -1578,19 +1578,17 @@ try_again:
       GoTo get_assignments
     End If
     'we know now that it is incomplete
+    'unlock new finish
     If oUnlockedRange Is Nothing Then
-      'unlock new finish
-      If oUnlockedRange Is Nothing Then
-        Set oUnlockedRange = oWorksheet.Cells(lngRow, lngAFCol)
-      Else
-        Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngAFCol))
-      End If
-      'unlock new EV (discrete only)
-      If Not blnLOE Then Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngEVPCol))
-      'unlock new start if not started
-      If Not IsDate(oTask.ActualStart) Then
-        Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngASCol))
-      End If
+      Set oUnlockedRange = oWorksheet.Cells(lngRow, lngAFCol)
+    Else
+      Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngAFCol))
+    End If
+    'unlock new EV (discrete only)
+    If Not blnLOE Then Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngEVPCol))
+    'unlock new start if not started
+    If Not IsDate(oTask.ActualStart) Then
+      Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngASCol))
     End If
     'capture status formating:
     'tasks requiring status:
@@ -1962,19 +1960,19 @@ next_task:
     
     'create map of ranges
     Set oDict = CreateObject("Scripting.Dictionary")
-    Set oDict.Item("NS") = oNSRange
+    Set oDict.item("NS") = oNSRange
     oNSRange.FormatConditions.Delete
-    Set oDict.Item("NF") = oNFRange
+    Set oDict.item("NF") = oNFRange
     oNFRange.FormatConditions.Delete
-    Set oDict.Item("EVP") = oEVPRange
+    Set oDict.item("EVP") = oEVPRange
     oEVPRange.FormatConditions.Delete
-    Set oDict.Item("EVT") = oEVTRange
+    Set oDict.item("EVT") = oEVTRange
     oEVTRange.FormatConditions.Delete
-    Set oDict.Item("ETC") = oETCRange
+    Set oDict.item("ETC") = oETCRange
     oETCRange.FormatConditions.Delete
     If blnAssignments And Not oAssignmentRange Is Nothing Then
       Set oAssignmentETCRange = oWorksheet.Application.Intersect(oAssignmentRange, oWorksheet.Columns(lngETCCol))
-      Set oDict.Item("AssignmentETC") = oAssignmentETCRange
+      Set oDict.item("AssignmentETC") = oAssignmentETCRange
       oAssignmentETCRange.FormatConditions.Delete
     End If
     
@@ -2176,7 +2174,7 @@ skip_working:
           Application.StatusBar = "Applying Conditional Formatting...(" & Format(lngFormatCondition / lngFormatConditions, "0%") & ")"
         End If
         myStatusSheet_frm.lblProgress.Width = (lngFormatCondition / lngFormatConditions) * myStatusSheet_frm.lblStatus.Width
-        Set oFormatRange = oDict.Item(CStr(.Fields(0)))
+        Set oFormatRange = oDict.item(CStr(.Fields(0)))
         oFormatRange.Select
         oFormatRange.FormatConditions.Add Type:=xlExpression, Formula1:=CStr(.Fields(1))
         oFormatRange.FormatConditions(oFormatRange.FormatConditions.Count).SetFirstPriority
@@ -2233,12 +2231,15 @@ skip_working:
       oDict.RemoveAll
       .Close
     End With
-  Else
+  Else 'blnConditionalFormats=false
     If Not oInputRange Is Nothing Then
       oInputRange.Style = "Input"
     End If
     If Not oTwoWeekWindowRange Is Nothing Then
       oTwoWeekWindowRange.Style = "Neutral"
+    End If
+    If Not oUnlockedRange Is Nothing Then
+      oUnlockedRange.Locked = False
     End If
   End If
   
