@@ -241,14 +241,14 @@
 	<Module>
 		<Name>cptIMSCobraExport_bas</Name>
 		<FileName>cptIMSCobraExport_bas.bas</FileName>
-		<Version>v3.4.7</Version>
+		<Version>v3.4.70</Version>
 		<Type>1</Type>
 		<Directory>Integration</Directory>
 	</Module>
 	<Module>
 		<Name>cptIMSCobraExport_frm</Name>
 		<FileName>cptIMSCobraExport_frm.frm</FileName>
-		<Version>v3.4.7</Version>
+		<Version>v3.4.70</Version>
 		<Type>3</Type>
 		<Directory>Integration</Directory>
 	</Module>

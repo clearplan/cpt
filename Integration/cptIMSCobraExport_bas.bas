@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.4.7</cpt_version>
+'<cpt_version>v3.4.70</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -386,7 +386,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                 If Not t Is Nothing Then
 
-                    If t.Summary = False And t.Active = True And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         taskCount = taskCount + 1
                         taskFound = True
@@ -520,7 +520,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
             If Not t Is Nothing Then
 
-                If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                If t.Active = True And t.ExternalTask = False Then
 
                     taskCount = taskCount + 1
                     taskFound = True
@@ -1438,7 +1438,7 @@ Private Sub BCWP_Export(ByVal curProj As Project)
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
 
@@ -1799,7 +1799,7 @@ nrBCWP_WP_Match_A:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
 
@@ -2223,7 +2223,7 @@ nrBCWP_WP_Match_B:
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
 
@@ -2723,7 +2723,7 @@ BCWP_WP_Match_A:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
 
@@ -3316,7 +3316,7 @@ Private Sub ETC_Export(ByVal curProj As Project)
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
 
@@ -3491,7 +3491,7 @@ nrETC_WP_Match:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
 
@@ -3734,7 +3734,7 @@ nrETC_WP_Match_B:
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.Work > 0 Or t.Cost > 0 Then
 
@@ -3800,7 +3800,7 @@ nrETC_WP_Match_B:
                                     'v3.3.5 - check for ID length limit
                                     If Len(ID) > 58 Then
                                         ActIDCounter = ActIDCounter + 1
-                                        ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                        ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                         ShortID = ACTarray(X).ShortID
                                     Else
                                         ACTarray(X).ShortID = ACTarray(X).ID
@@ -3898,7 +3898,7 @@ nrETC_WP_Match_B:
                                 'v3.3.5 - check for ID length limit
                                 If Len(ID) > 58 Then
                                     ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                    ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                     ShortID = ACTarray(X).ShortID
                                 Else
                                     ACTarray(X).ShortID = ACTarray(X).ID
@@ -3985,7 +3985,7 @@ ETC_WP_Match:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If t.Work > 0 Or t.Cost > 0 Then
 
@@ -4050,7 +4050,7 @@ ETC_WP_Match:
                                 'v3.3.5 - check for ID length limit
                                 If Len(ID) > 58 Then
                                     ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                    ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                     ShortID = ACTarray(X).ShortID
                                 Else
                                     ACTarray(X).ShortID = ACTarray(X).ID
@@ -4148,7 +4148,7 @@ ETC_WP_Match:
                             'v3.3.5 - check for ID length limit
                             If Len(ID) > 58 Then
                                 ActIDCounter = ActIDCounter + 1
-                                ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                 ShortID = ACTarray(X).ShortID
                             Else
                                 ACTarray(X).ShortID = ACTarray(X).ID
@@ -4334,7 +4334,7 @@ Private Sub BCWS_Export(ByVal curProj As Project)
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
 
@@ -4502,7 +4502,7 @@ Next_nrSProj_Task:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
 
@@ -4737,7 +4737,7 @@ Next_nrTask:
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
 
@@ -4809,7 +4809,7 @@ Next_nrTask:
                                     'v3.3.5 - check for ID length limit
                                     If Len(ID) > 58 Then
                                         ActIDCounter = ActIDCounter + 1
-                                        ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                        ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                         ShortID = ACTarray(X).ShortID
                                     Else
                                         ACTarray(X).ShortID = ACTarray(X).ID
@@ -4868,7 +4868,7 @@ Next_nrTask:
                                 'v3.3.5 - check for ID length limit
                                 If Len(ID) > 58 Then
                                     ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                    ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                     ShortID = ACTarray(X).ShortID
                                 Else
                                     ACTarray(X).ShortID = ACTarray(X).ID
@@ -4958,7 +4958,7 @@ Next_SProj_Task:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
 
@@ -5029,7 +5029,7 @@ Next_SProj_Task:
                                 'v3.3.5 - check for ID length limit
                                 If Len(ID) > 58 Then
                                     ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                    ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                     ShortID = ACTarray(X).ShortID
                                 Else
                                     ACTarray(X).ShortID = ACTarray(X).ID
@@ -5086,7 +5086,7 @@ Next_SProj_Task:
                             'v3.3.5 - check for ID length limit
                             If Len(ID) > 58 Then
                                 ActIDCounter = ActIDCounter + 1
-                                ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                 ShortID = ACTarray(X).ShortID
                             Else
                                 ACTarray(X).ShortID = ACTarray(X).ID
@@ -5274,7 +5274,7 @@ Private Sub WhatIf_Export(ByVal curProj As Project) 'v3.2
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
 
                             If t.GetField(FieldNameToFieldConstant(fWP)) <> "" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" Then
 
@@ -5487,7 +5487,7 @@ Next_nrSProj_Task:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
                         If t.GetField(FieldNameToFieldConstant(fWP)) <> "" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" Then
 
                             CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
@@ -5766,7 +5766,7 @@ Next_nrTask:
 
                     If Not t Is Nothing Then
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        If t.Active = True And t.ExternalTask = False Then
                         
                             If ((t.BaselineWork > 0 Or t.BaselineCost > 0) And _
                             (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D")) _
@@ -5846,7 +5846,7 @@ Next_nrTask:
                                     'v3.3.5 - check for ID length limit
                                     If Len(ID) > 58 Then
                                         ActIDCounter = ActIDCounter + 1
-                                        ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                        ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                         ShortID = ACTarray(X).ShortID
                                     Else
                                         ACTarray(X).ShortID = ACTarray(X).ID
@@ -5919,7 +5919,7 @@ Next_nrTask:
                                 'v3.3.5 - check for ID length limit
                                 If Len(ID) > 58 Then
                                     ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                    ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                     ShortID = ACTarray(X).ShortID
                                 Else
                                     ACTarray(X).ShortID = ACTarray(X).ID
@@ -6061,7 +6061,7 @@ Next_SProj_Task:
 
                 If Not t Is Nothing Then
 
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         If ((t.BaselineWork > 0 Or t.BaselineCost > 0) And _
                         (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D")) _
@@ -6141,7 +6141,7 @@ Next_SProj_Task:
                                 'v3.3.5 - check for ID length limit
                                 If Len(ID) > 58 Then
                                     ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                    ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                     ShortID = ACTarray(X).ShortID
                                 Else
                                     ACTarray(X).ShortID = ACTarray(X).ID
@@ -6213,7 +6213,7 @@ Next_SProj_Task:
                             'v3.3.5 - check for ID length limit
                             If Len(ID) > 58 Then
                                 ActIDCounter = ActIDCounter + 1
-                                ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
+                                ACTarray(X).ShortID = ACTarray(X).WP '& " (" & ActIDCounter & ")"
                                 ShortID = ACTarray(X).ShortID
                             Else
                                 ACTarray(X).ShortID = ACTarray(X).ID
@@ -6659,7 +6659,7 @@ Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal 
 
                 If Not t Is Nothing Then
                 
-                    If t.Active = True And t.Summary = False Then
+                    If t.Active = True Then 'todo: should this have ExternalTask = False also?
                     '3.3.12: ignore summary and inactive tasks
                     
                         tempBCRstr = t.GetField(FieldNameToFieldConstant(fBCR))
@@ -6709,7 +6709,7 @@ Next_SubProj_WPtask:
 
             If Not t Is Nothing Then
             
-                If t.Active = True And t.Summary = False Then
+                If t.Active = True Then 'todo: should this have ExternalTask = False also?
                 '3.3.12: ignore summary and inactive tasks
                 
                     tempBCRstr = t.GetField(FieldNameToFieldConstant(fBCR))
