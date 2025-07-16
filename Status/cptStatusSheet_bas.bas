@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.1</cpt_version>
+'<cpt_version>v1.6.2</cpt_version>
 Option Explicit
 #If Win64 And VBA7 Then '<issue53>
   Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
@@ -1331,10 +1331,7 @@ Private Sub cptAddLegend(ByRef oWorksheet As Excel.Worksheet, dtStatus As Date)
   oWorksheet.Cells(4, 2) = "Task is within two week look-ahead. Please review forecast dates."
   'complete
   oWorksheet.Cells(5, 1).Style = "Explanatory Text"
-'  oWorksheet.Cells(5, 1).Font.TintAndShade = 0
-'  oWorksheet.Cells(5, 1).Interior.PatternColorIndex = -4105
-'  oWorksheet.Cells(5, 1).Interior.Color = 15921906
-'  oWorksheet.Cells(5, 1).Interior.TintAndShade = 0
+  oWorksheet.Cells(5, 1) = "AaBbCc"
   oWorksheet.Cells(5, 2) = "Task is complete."
   'summary
   oWorksheet.Cells(6, 1) = "AaBbCc"
@@ -1427,6 +1424,7 @@ Private Sub cptCopyData(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef oWo
   Dim blnProtect As Boolean
   Dim blnValidation As Boolean
   Dim blnConditionalFormats As Boolean
+  Dim blnMilestones As Boolean
   'variants
   'dates
   Dim dtStatus As Date
@@ -1519,7 +1517,7 @@ try_again:
   lngAFCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Finish", lookat:=xlPart).Column
   lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find("New EV%", lookat:=xlWhole).Column
   lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find("EVT", lookat:=xlWhole).Column
-  'todo: add Milestones EVT
+  'todo: add Milestone EVT
   lngETCCol = oWorksheet.Rows(lngHeaderRow).Find("New ETC", lookat:=xlWhole).Column
   lngBLWCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
   lngLastCol = oWorksheet.Cells(lngHeaderRow, 1).End(xlToRight).Column
@@ -1580,19 +1578,17 @@ try_again:
       GoTo get_assignments
     End If
     'we know now that it is incomplete
+    'unlock new finish
     If oUnlockedRange Is Nothing Then
-      'unlock new finish
-      If oUnlockedRange Is Nothing Then
-        Set oUnlockedRange = oWorksheet.Cells(lngRow, lngAFCol)
-      Else
-        Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngAFCol))
-      End If
-      'unlock new EV (discrete only)
-      If Not blnLOE Then Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngEVPCol))
-      'unlock new start if not started
-      If Not IsDate(oTask.ActualStart) Then
-        Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngASCol))
-      End If
+      Set oUnlockedRange = oWorksheet.Cells(lngRow, lngAFCol)
+    Else
+      Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngAFCol))
+    End If
+    'unlock new EV (discrete only)
+    If Not blnLOE Then Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngEVPCol))
+    'unlock new start if not started
+    If Not IsDate(oTask.ActualStart) Then
+      Set oUnlockedRange = oWorksheet.Application.Union(oUnlockedRange, oWorksheet.Cells(lngRow, lngASCol))
     End If
     'capture status formating:
     'tasks requiring status:
@@ -1964,19 +1960,19 @@ next_task:
     
     'create map of ranges
     Set oDict = CreateObject("Scripting.Dictionary")
-    Set oDict.Item("NS") = oNSRange
+    Set oDict.item("NS") = oNSRange
     oNSRange.FormatConditions.Delete
-    Set oDict.Item("NF") = oNFRange
+    Set oDict.item("NF") = oNFRange
     oNFRange.FormatConditions.Delete
-    Set oDict.Item("EVP") = oEVPRange
+    Set oDict.item("EVP") = oEVPRange
     oEVPRange.FormatConditions.Delete
-    Set oDict.Item("EVT") = oEVTRange
+    Set oDict.item("EVT") = oEVTRange
     oEVTRange.FormatConditions.Delete
-    Set oDict.Item("ETC") = oETCRange
+    Set oDict.item("ETC") = oETCRange
     oETCRange.FormatConditions.Delete
     If blnAssignments And Not oAssignmentRange Is Nothing Then
       Set oAssignmentETCRange = oWorksheet.Application.Intersect(oAssignmentRange, oWorksheet.Columns(lngETCCol))
-      Set oDict.Item("AssignmentETC") = oAssignmentETCRange
+      Set oDict.item("AssignmentETC") = oAssignmentETCRange
       oAssignmentETCRange.FormatConditions.Delete
     End If
     
@@ -2147,7 +2143,6 @@ next_task:
       oRecordset.AddNew Array(0, 1, 2), Array("AssignmentETC", "=AND(" & strETC & ">0," & strEVP & "=1)", "BAD")
     End If
     
-    Dim blnMilestones As Boolean
     If blnMilestones Then 'assumes COBRA and field values = COBRA codes
       'todo: AS>0,EVT='E',EVP<>50
       'todo: oRecordset.AddNew Array(0,1),Array("NS", "=AND(" & strAS & "," & strEVT & "='E'," & strEVP & "<>.5)")
@@ -2179,7 +2174,7 @@ skip_working:
           Application.StatusBar = "Applying Conditional Formatting...(" & Format(lngFormatCondition / lngFormatConditions, "0%") & ")"
         End If
         myStatusSheet_frm.lblProgress.Width = (lngFormatCondition / lngFormatConditions) * myStatusSheet_frm.lblStatus.Width
-        Set oFormatRange = oDict.Item(CStr(.Fields(0)))
+        Set oFormatRange = oDict.item(CStr(.Fields(0)))
         oFormatRange.Select
         oFormatRange.FormatConditions.Add Type:=xlExpression, Formula1:=CStr(.Fields(1))
         oFormatRange.FormatConditions(oFormatRange.FormatConditions.Count).SetFirstPriority
@@ -2236,7 +2231,16 @@ skip_working:
       oDict.RemoveAll
       .Close
     End With
-        
+  Else 'blnConditionalFormats=false
+    If Not oInputRange Is Nothing Then
+      oInputRange.Style = "Input"
+    End If
+    If Not oTwoWeekWindowRange Is Nothing Then
+      oTwoWeekWindowRange.Style = "Neutral"
+    End If
+    If Not oUnlockedRange Is Nothing Then
+      oUnlockedRange.Locked = False
+    End If
   End If
   
 exit_here:
@@ -2454,7 +2458,7 @@ Sub cptFinalFormats(ByRef oWorksheet As Excel.Worksheet)
   oWorksheet.[B1].Select
   oWorksheet.Application.ActiveWindow.SplitRow = 8
   oWorksheet.Application.ActiveWindow.SplitColumn = 0
-  'note: if user's Excel 'normal' window size is puny then FreezePans might fail;
+  'note: if user's Excel 'normal' window size is puny then FreezePanes might fail;
   'note: have them adjust manually - alternative is to change the line above to xlMaximized
   'note: and that's a terrible UX with all the screen flashes
   oWorksheet.Application.ActiveWindow.FreezePanes = True
@@ -3876,7 +3880,7 @@ err_here:
   Resume exit_here
 End Sub
 
-Sub cptMarkOnTrackRetainETC()
+Sub cptMarkOnTrackRetainETC(Optional blnOpenUndoTransaction As Boolean = True)
   'objects
   Dim oDict As Scripting.Dictionary
   Dim oAssignment As MSProject.Assignment
@@ -4053,7 +4057,9 @@ Sub cptMarkOnTrackRetainETC()
   'prep to capture assignment remaining work
   Set oDict = CreateObject("Scripting.Dictionary")
   
-  Application.OpenUndoTransaction "cpt Mark On Track - Retain ETC"
+  If blnOpenUndoTransaction Then
+    Application.OpenUndoTransaction "cpt Mark On Track - Retain ETC"
+  End If
   
   lngTasks = oTasks.Count
   For Each oTask In oTasks
@@ -4175,7 +4181,9 @@ next_task:
     DoEvents
   Next oTask
   
-  Application.CloseUndoTransaction
+  If blnOpenUndoTransaction Then
+    Application.CloseUndoTransaction
+  End If
   
   Application.StatusBar = "Restoring settings..."
   DoEvents
@@ -4205,7 +4213,7 @@ exit_here:
   On Error Resume Next
   Application.StatusBar = ""
   cptSpeed False
-  Application.CloseUndoTransaction
+  If blnOpenUndoTransaction Then Application.CloseUndoTransaction
   Set oAssignment = Nothing
   Set oDict = Nothing
   Set oTask = Nothing

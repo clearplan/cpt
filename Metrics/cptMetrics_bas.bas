@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.0</cpt_version>
+'<cpt_version>v1.5.1</cpt_version>
 Option Explicit
 
 Sub cptGetBAC()
@@ -918,6 +918,8 @@ Sub cptLateStartsFinishes()
   'doubles
   'booleans
   Dim blnErrorTrapping As Boolean
+  Dim blnResourceLoaded As Boolean
+  Dim blnLimitToResourcedTasks As Boolean
   'variants
   Dim vResponse As Variant
   Dim vRow As Variant
@@ -950,10 +952,30 @@ Sub cptLateStartsFinishes()
   dtStatus = ActiveProject.StatusDate
     
   strProject = cptGetProgramAcronym
-    
+  
+  'determine whether resource loaded
+  blnResourceLoaded = False
+  blnLimitToResourcedTasks = False
+  For Each oTask In ActiveProject.Tasks
+    If Not oTask Is Nothing Then
+      If oTask.Assignments.Count > 0 Then
+        blnResourceLoaded = True
+        Exit For
+      End If
+    End If
+  Next oTask
+  'prompt whether to limit to resourced tasks
+  If blnResourceLoaded Then
+    blnLimitToResourcedTasks = MsgBox("Limit export to resource-loaded tasks?", vbQuestion + vbYesNo, "Resource Loaded") = vbYes
+  End If
+  
   'get other fields
   strMyHeaders = cptGetMyHeaders("Late Starts and Finishes", True) 'todo: get rid of this
   If strMyHeaders = "" Then GoTo exit_here
+  If Len(strMyHeaders) <> Len(cptRemoveIllegalCharacters(strMyHeaders)) Then
+    MsgBox "Please (at least temporarily) rename the custom field without any illegal characters." & vbCrLf & vbCrLf & strMyHeaders, vbExclamation + vbOKOnly, "Illegal Character"
+    GoTo exit_here
+  End If
   
   'get excel
   On Error Resume Next
@@ -986,8 +1008,8 @@ Sub cptLateStartsFinishes()
       If Not oTask.Active Then GoTo next_task
       'skip summaries
       If oTask.Summary Then GoTo next_task
-      'only check for tasks with assignments
-      If oTask.Resources.Count = 0 Then GoTo next_task
+      'optionally limit to tasks with assignments
+      If blnLimitToResourcedTasks And oTask.Resources.Count = 0 Then GoTo next_task
       'only check for discrete tasks
       If oTask.GetField(lngEVT) = strLOE Then GoTo next_task
       'skip unassigned (currently material/odc/tvl)

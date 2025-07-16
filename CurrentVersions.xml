@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.9.4</Version>
+		<Version>v1.9.6</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -20,6 +20,27 @@
 		<Version>v0.0.3</Version>
 		<Type>3</Type>
 		<Directory>Integration</Directory>
+	</Module>
+	<Module>
+		<Name>cptAdvancedFilter_bas</Name>
+		<FileName>cptAdvancedFilter_bas.bas</FileName>
+		<Version>v0.2.0</Version>
+		<Type>1</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
+		<Name>cptAdvancedFilter_frm</Name>
+		<FileName>cptAdvancedFilter_frm.frm</FileName>
+		<Version>v0.2.0</Version>
+		<Type>3</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
+		<Name>cptAdvancedFilterEdit_frm</Name>
+		<FileName>cptAdvancedFilterEdit_frm.frm</FileName>
+		<Version>v0.2.0</Version>
+		<Type>3</Type>
+		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptAgeDates_bas</Name>
@@ -80,7 +101,7 @@
 	<Module>
 		<Name>cptCore_bas</Name>
 		<FileName>cptCore_bas.bas</FileName>
-		<Version>v1.14.2</Version>
+		<Version>v1.14.3</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -185,15 +206,22 @@
 	<Module>
 		<Name>cptFilterByClipboard_bas</Name>
 		<FileName>cptFilterByClipboard_bas.bas</FileName>
-		<Version>v1.2.2</Version>
+		<Version>v1.2.3</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptFilterByClipboard_frm</Name>
 		<FileName>cptFilterByClipboard_frm.frm</FileName>
-		<Version>v1.2.2</Version>
+		<Version>v1.2.3</Version>
 		<Type>3</Type>
+		<Directory>Text</Directory>
+	</Module>
+	<Module>
+		<Name>cptFilterItem_cls</Name>
+		<FileName>cptFilterItem_cls.cls</FileName>
+		<Version>v0.2.0</Version>
+		<Type>2</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
@@ -234,7 +262,7 @@
 	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
-		<Version>v1.5.0</Version>
+		<Version>v1.5.1</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
@@ -325,35 +353,35 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.9.4</Version>
+		<Version>v1.9.6</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
 	<Module>
 		<Name>cptSmartDuration_bas</Name>
 		<FileName>cptSmartDuration_bas.bas</FileName>
-		<Version>v2.0.3</Version>
+		<Version>v2.1.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptSmartDuration_frm</Name>
 		<FileName>cptSmartDuration_frm.frm</FileName>
-		<Version>v2.0.3</Version>
+		<Version>v2.1.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.6.1</Version>
+		<Version>v1.6.2</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.6.1</Version>
+		<Version>v1.6.2</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
@@ -388,14 +416,14 @@
 	<Module>
 		<Name>cptText_bas</Name>
 		<FileName>cptText_bas.bas</FileName>
-		<Version>v1.5.3</Version>
+		<Version>v1.5.4</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptText_frm</Name>
 		<FileName>cptText_frm.frm</FileName>
-		<Version>v1.5.3</Version>
+		<Version>v1.5.4</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>

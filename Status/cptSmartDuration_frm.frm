@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptSmartDuration_frm 
    Caption         =   "Smart Duration"
-   ClientHeight    =   1590
+   ClientHeight    =   2190
    ClientLeft      =   105
    ClientTop       =   450
    ClientWidth     =   3750
@@ -13,16 +13,30 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v2.0.3</cpt_version>
+'<cpt_version>v2.1.0</cpt_version>
 Public dateError As Boolean
 Public finDate As Date
 Public StartDate As Date
 Public lngUID As Long
 
+Private Sub chkKeepOpen_Click()
+  cptSaveSetting "SmartDuration", "chkKeepOpen", IIf(Me.chkKeepOpen, 1, 0)
+End Sub
+
+Private Sub chkMarkOnTrack_Click()
+  cptSaveSetting "SmartDuration", "chkMarkOnTrack", IIf(Me.chkMarkOnTrack, 1, 0)
+End Sub
+
+Private Sub chkRetainETC_Click()
+  cptSaveSetting "SmartDuration", "chkRetainETC", IIf(Me.chkRetainETC, 1, 0)
+End Sub
+
 Private Sub cmdApply_Click()
   Dim oTask As MSProject.Task
   Dim dtStart As Date
   Dim lngDelta As Long
+  Dim lngTaskType As Long
+  Dim blnEffortDriven As Boolean
   
   If finDate = 0 Then Exit Sub
   Set oTask = ActiveProject.Tasks.UniqueID(Me.lngUID)
@@ -31,6 +45,12 @@ Private Sub cmdApply_Click()
     If MsgBox("Proceed with editing a zero-duration milestone?", vbQuestion + vbYesNo, "Please confirm") = vbNo Then
       GoTo exit_here
     End If
+  End If
+  'capture original task type
+  lngTaskType = oTask.Type
+  blnEffortDriven = oTask.EffortDriven
+  If Me.chkRetainETC Then
+    oTask.Type = pjFixedWork
   End If
   'todo: should we assume 5 PM finish for elapsed durations?
   'todo: ...maybe yes, to make TS calcs a little cleaner?
@@ -57,8 +77,19 @@ Private Sub cmdApply_Click()
       End If
     End If
   End If
+  If Me.chkMarkOnTrack Then
+    If Me.chkRetainETC Then
+      cptMarkOnTrackRetainETC blnOpenUndoTransaction:=False  'disable undo
+    Else
+      UpdateProject False
+    End If
+  End If
+  'restore original task type
+  If oTask.Type <> lngTaskType Then oTask.Type = lngTaskType
+  If oTask.Type <> pjFixedWork Then oTask.EffortDriven = blnEffortDriven
   CloseUndoTransaction
-  cptSaveSetting "SmartDuration", "chkKeepOpen", IIf(Me.chkKeepOpen, "1", "0")
+  cptSaveSetting "SmartDuration", "chkKeepOpen", IIf(Me.chkKeepOpen, 1, 0)
+  cptSaveSetting "SmartDuration", "chkRetainETC", IIf(Me.chkRetainETC, 1, 0)
   If Not Me.chkKeepOpen Then Me.Hide
 exit_here:
   Set oTask = Nothing

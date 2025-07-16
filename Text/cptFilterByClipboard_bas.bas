@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.2.2</cpt_version>
+'<cpt_version>v1.2.3</cpt_version>
 Option Explicit
 
 Sub cptShowFilterByClipboard_frm()
@@ -18,7 +18,7 @@ Sub cptShowFilterByClipboard_frm()
   'dates
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
+  If ActiveProject.Tasks.Count = 0 Then GoTo exit_here
   blnMaster = ActiveProject.Subprojects.Count > 0
   
   Set myFilterByClipboard_frm = New cptFilterByClipboard_frm
@@ -298,8 +298,8 @@ Function cptGuessDelimiter(ByRef vData As Variant, strRegEx As String) As Long
       lngMatch = Asc(Right(REMatch, 1))
       If dScores.Exists(lngMatch) Then
         'add a point
-        dScores.Item(lngMatch) = dScores.Item(lngMatch) + 1
-        If dScores.Item(lngMatch) > lngMax Then lngMax = dScores.Item(lngMatch)
+        dScores.item(lngMatch) = dScores.item(lngMatch) + 1
+        If dScores.item(lngMatch) > lngMax Then lngMax = dScores.item(lngMatch)
       Else
         dScores.Add lngMatch, 1
       End If
@@ -315,8 +315,8 @@ Function cptGuessDelimiter(ByRef vData As Variant, strRegEx As String) As Long
       lngMatch = Asc(Right(REMatch, 1))
       If dScores.Exists(lngMatch) Then
         'add a point
-        dScores.Item(lngMatch) = dScores.Item(lngMatch) + 1
-        If dScores.Item(lngMatch) > lngMax Then lngMax = dScores.Item(lngMatch)
+        dScores.item(lngMatch) = dScores.item(lngMatch) + 1
+        If dScores.item(lngMatch) > lngMax Then lngMax = dScores.item(lngMatch)
       Else
         dScores.Add lngMatch, 1
       End If
@@ -329,7 +329,7 @@ skip_it:
   'which delimiter got the most points?
   'todo: this doesn't work if there is a tie
   For lngItem = 0 To dScores.Count - 1
-    If dScores.Items(lngItem) = lngMax Then
+    If dScores.items(lngItem) = lngMax Then
       lngMatch = dScores.Keys(lngItem)
       Exit For
     End If

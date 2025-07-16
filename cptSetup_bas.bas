@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.9.4</cpt_version>
+'<cpt_version>v1.9.6</cpt_version>
 Option Explicit
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
 Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() lives in cptCore_bas
@@ -455,16 +455,20 @@ Public Function cptBuildRibbonTab()
 
   'text tools
   If cptModuleExists("cptText_bas") Then
+        
     ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gTextTools"" label=""Text"" visible=""true"" >"
     If cptModuleExists("cptFilterByClipboard_bas") And cptModuleExists("cptFilterByClipboard_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bClipboard"" label=""Filter by Clipboard"" imageMso=""PasteOption"" onAction=""cptShowFilterByClipboard_frm"" visible=""true"" supertip=""Paste a list of Unique IDs or IDs from text, email, Excel, etc. to filter the current schedule. Accepts strings delimited by commas, tabs, or semicolons--or even tables, as long as the Unique ID (or ID) is the left-most column."" />"
+    End If
+    If cptModuleExists("cptAdvancedFilter_bas") And cptModuleExists("cptAdvancedFilter_frm") And cptModuleExists("cptAdvancedFilterEdit_frm") And cptModuleExists("cptFilterItem_cls") Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdvancedFilter"" label=""Advanced Filter"" imageMso=""PasteOption"" onAction=""cptAdvancedFilter"" visible=""true"" supertip=""Paste a list of Unique IDs or IDs from text, email, Excel, etc. to filter the current schedule. Accepts strings delimited by commas, tabs, or semicolons--or even tables, as long as the Unique ID (or ID) is the left-most column."" />"
     End If
     If cptModuleExists("cptDynamicFilter_bas") And cptModuleExists("cptDynamicFilter_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bDynamicFilter"" label=""Dynamic Filter"" imageMso=""FilterBySelection"" onAction=""cptShowDynamicFilter_frm"" visible=""true"" supertip=""Find-as-you-type. Example: Keep Selected task, filter the rest of the schedule for a predecessor, add a link, CTRL+BACKSPACE to return to task you kept. Then do the next one. Filter or Highlight filter, include summaries in the search, or include related summaries. Oh, and you can Undo. Pure awesomeness."" />"
     End If
     If cptModuleExists("cptText_frm") Then
-      ribbonXML = ribbonXML + vbCrLf & "<mso:splitButton id=""sbText"" >"
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdvancedTextTools"" label=""Advanced"" imageMso=""AdvancedFilterDialog"" onAction=""cptShowText_frm"" supertip=""Bulk prefix, append, real find/replace, enumeration, everyting you could want. Oh, and Undo. Go ahead, give it a try."" />" 'visible=""true""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:splitButton id=""sbText"" size=""large"" >"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdvancedTextTools"" label=""Bulk Edit"" imageMso=""AdvancedFilterDialog"" onAction=""cptShowText_frm"" supertip=""Bulk prefix, append, real find/replace, enumeration, everyting you could want. Oh, and Undo. Go ahead, give it a try."" />" 'visible=""true""
       ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mText"">"
       ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator id=""cleanup_" & cptIncrement(lngCleanUp) & """ title=""Utilities"" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bPrepend"" label=""Bulk Prepend"" imageMso=""RightArrow2"" onAction=""cptBulkPrepend"" visible=""true"" supertip=""Just what it sounds like."" />"
@@ -879,7 +883,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   Dim oProfile As MSProject.Profile
   Dim oShell As Object
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   Dim strErrNumber As String
   Dim strErrDescription As String
   Dim strErrSource As String
@@ -1210,12 +1214,12 @@ next_task_single:
   strMsg = strMsg & "-> Click [Create Ticket]."
   strMsg = strMsg & "-> Thank you! We will contact you ASAP..."
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\cpt-err-" & Format(Now, "yyyy-mm-dd-_hh-mm-ss") & ".txt"
-  Open strFile For Output As #lngFile
-  Print #lngFile, "-> The location of this file is " & strFile & vbCrLf
+  strFileName = Environ("tmp") & "\cpt-err-" & Format(Now, "yyyy-mm-dd_hh-mm-ss") & ".txt"
+  Open strFileName For Output As #lngFile
+  Print #lngFile, "-> The location of this file is " & strFileName & vbCrLf
   Print #lngFile, strMsg
   Close #lngFile
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  Shell "notepad.exe """ & strFileName & """", vbNormalFocus
   Application.StatusBar = "Opening https://clearplan.happyfox.com/new..."
   Application.FollowHyperlink "https://clearplan.happyfox.com/new/"
   
