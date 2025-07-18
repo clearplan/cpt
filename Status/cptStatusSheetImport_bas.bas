@@ -779,17 +779,15 @@ skip_evp:
             End If
             
           ElseIf Not blnTask Then 'it's an Assignment
-            On Error Resume Next
-            Set oAssignment = oTask.Assignments.UniqueID(oWorksheet.Cells(lngRow, lngUIDCol).Value)
-            If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
             If oAssignment Is Nothing Then
               Print #lngFile, "MISSING: TASK UID: [" & oTask.UniqueID & "] ASSIGNMENT UID: [" & oWorksheet.Cells(lngRow, lngUIDCol).Value & "] - " & oWorksheet.Cells(lngRow, lngTaskNameCol).Value
             Else
+              Set oTask = oAssignment.Task
               If Not oWorksheet.Cells(lngRow, lngETCCol).Locked Then
                 If oWorksheet.Cells(lngRow, lngETCCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid ETC
                   Print #lngFile, "UID " & oTask.UniqueID & " - Invalid ETC for " & oAssignment.ResourceName & " " & String(10, "<")
                   oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad" 'assignment level
-                  oWorksheet.Cells(oWorksheet.Columns(lngUIDCol).Find(oTask.UniqueID).Row, lngUIDCol).Style = "Bad" 'task level
+                  oWorksheet.Cells(oWorksheet.Evaluate("MATCH(" & oTask.UniqueID & ",A:A,0)"), lngUIDCol).Style = "Bad"  'task level
                   blnValid = False
                   GoTo next_row
                 End If
