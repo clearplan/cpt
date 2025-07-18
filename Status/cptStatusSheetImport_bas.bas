@@ -901,6 +901,7 @@ skip_evp:
           End If
 next_row:
           myStatusSheetImport_frm.lblStatus.Caption = "Importing...(" & Format(lngRow / lngLastRow, "0%") & ")"
+          myStatusSheetImport_frm.lblProgress.Width = (lngRow / lngLastRow) * myStatusSheetImport_frm.lblStatus.Width
           DoEvents
         Next lngRow
 next_worksheet:
@@ -980,6 +981,7 @@ next_worksheet1:
       End If
       
       .lblStatus.Caption = "Importing...(" & lngItem + 1 & " of " & .lboStatusSheets.ListCount & ")"
+      .lblProgress.Width = ((lngItem + 1) / .lboStatusSheets.ListCount) * .lblStatus.Width
       .lboStatusSheets.Selected(lngItem) = False
       oWorkbook.Close False
       DoEvents
