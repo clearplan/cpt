@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.5.4</cpt_version>
+'<cpt_version>v1.5.5</cpt_version>
 Option Explicit
 
 Sub cptBulkAppend()
@@ -317,7 +317,7 @@ Sub cptFindDuplicateTaskNames()
   If Edition = pjEditionProfessional Then
     FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Active", test:="equals", Value:="Yes"
   ElseIf Edition = pjEditionStandard Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Unique ID", test:="greater than", Value:=0
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Name", test:="does not contain", Value:="absolute_gibberish"
   End If
   If blnIgnoreSummaryTasks Then
     FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", test:="equals", Value:="No", operation:="And", Parenthesis:=False

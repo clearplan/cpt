@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
 
 Private Sub cboAF_Change()
@@ -183,8 +183,8 @@ Private Sub cmdRename_Click()
     If oComboBox.Value > 0 Then
       lngLCF = Me.Controls(oDict.Keys(lngItem)).Value
       strFieldName = FieldConstantToFieldName(lngLCF)
-      CustomFieldRename lngLCF, oDict.Items(lngItem)
-      oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.Items(lngItem) & ")"
+      CustomFieldRename lngLCF, oDict.items(lngItem)
+      oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.items(lngItem) & ")"
     End If
   Next lngItem
   

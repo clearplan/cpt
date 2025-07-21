@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
 
 Sub cptShowStatusSheetImport_frm()
@@ -599,28 +599,34 @@ next_task:
           'summary lines and group summaries have UID = 0
           If oWorksheet.Cells(lngRow, lngUIDCol).Value = 0 Then GoTo next_row
           
-          'determine if row is a oTask or an oAssignment
-          Set oTask = Nothing
+          'is this an assignment row?
+          Set oAssignment = Nothing
           On Error Resume Next
-          Set oTask = ActiveProject.Tasks.UniqueID(oWorksheet.Cells(lngRow, lngUIDCol).Value)
+          Set oAssignment = ActiveProject.Tasks(1).Assignments.UniqueID(oWorksheet.Cells(lngRow, lngUIDCol).Value)
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          If oTask Is Nothing Or oTask.UniqueID <> oWorksheet.Cells(lngRow, lngUIDCol).Value Then 'check if it's a resource
+          If Not oAssignment Is Nothing Then
             Set oResource = Nothing
             On Error Resume Next
             Set oResource = ActiveProject.Resources(oWorksheet.Cells(lngRow, lngTaskNameCol).Value)
             If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-            If Not oResource Is Nothing Then
-              blnTask = False
-            Else
-              Print #lngFile, "UID " & oWorksheet.Cells(lngRow, lngUIDCol) & " in Status Sheet not found in IMS! Note: could be a missing Task or a missing Resource/Assignment."
-              oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
-              If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-              GoTo next_row
-            End If
+            blnTask = False
+            GoTo do_stuff
+          End If
+          
+          'is this a task row?
+          Set oTask = Nothing
+          On Error Resume Next
+          Set oTask = ActiveProject.Tasks.UniqueID(oWorksheet.Cells(lngRow, lngUIDCol).Value)
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+          If oTask Is Nothing Then 'it's nothing: notify user
+            Print #lngFile, "UID " & oWorksheet.Cells(lngRow, lngUIDCol) & " in Status Sheet not found in IMS! Note: could be a missing Task or a missing Resource/Assignment."
+            oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
+            GoTo next_row
           Else
             blnTask = True
           End If
           
+do_stuff:
           'set Task
           If blnTask Then
                     
@@ -773,17 +779,15 @@ skip_evp:
             End If
             
           ElseIf Not blnTask Then 'it's an Assignment
-            On Error Resume Next
-            Set oAssignment = oTask.Assignments.UniqueID(oWorksheet.Cells(lngRow, lngUIDCol).Value)
-            If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
             If oAssignment Is Nothing Then
               Print #lngFile, "MISSING: TASK UID: [" & oTask.UniqueID & "] ASSIGNMENT UID: [" & oWorksheet.Cells(lngRow, lngUIDCol).Value & "] - " & oWorksheet.Cells(lngRow, lngTaskNameCol).Value
             Else
+              Set oTask = oAssignment.Task
               If Not oWorksheet.Cells(lngRow, lngETCCol).Locked Then
                 If oWorksheet.Cells(lngRow, lngETCCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid ETC
                   Print #lngFile, "UID " & oTask.UniqueID & " - Invalid ETC for " & oAssignment.ResourceName & " " & String(10, "<")
                   oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad" 'assignment level
-                  oWorksheet.Cells(oWorksheet.Columns(lngUIDCol).Find(oTask.UniqueID).Row, lngUIDCol).Style = "Bad" 'task level
+                  oWorksheet.Cells(oWorksheet.Evaluate("MATCH(" & oTask.UniqueID & ",A:A,0)"), lngUIDCol).Style = "Bad"  'task level
                   blnValid = False
                   GoTo next_row
                 End If
@@ -897,6 +901,7 @@ skip_evp:
           End If
 next_row:
           myStatusSheetImport_frm.lblStatus.Caption = "Importing...(" & Format(lngRow / lngLastRow, "0%") & ")"
+          myStatusSheetImport_frm.lblProgress.Width = (lngRow / lngLastRow) * myStatusSheetImport_frm.lblStatus.Width
           DoEvents
         Next lngRow
 next_worksheet:
@@ -976,6 +981,7 @@ next_worksheet1:
       End If
       
       .lblStatus.Caption = "Importing...(" & lngItem + 1 & " of " & .lboStatusSheets.ListCount & ")"
+      .lblProgress.Width = ((lngItem + 1) / .lboStatusSheets.ListCount) * .lblStatus.Width
       .lboStatusSheets.Selected(lngItem) = False
       oWorkbook.Close False
       DoEvents

@@ -388,14 +388,14 @@
 	<Module>
 		<Name>cptStatusSheetImport_bas</Name>
 		<FileName>cptStatusSheetImport_bas.bas</FileName>
-		<Version>v1.3.0</Version>
+		<Version>v1.3.1</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_frm</Name>
 		<FileName>cptStatusSheetImport_frm.frm</FileName>
-		<Version>v1.3.0</Version>
+		<Version>v1.3.1</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
@@ -416,14 +416,14 @@
 	<Module>
 		<Name>cptText_bas</Name>
 		<FileName>cptText_bas.bas</FileName>
-		<Version>v1.5.4</Version>
+		<Version>v1.5.5</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptText_frm</Name>
 		<FileName>cptText_frm.frm</FileName>
-		<Version>v1.5.4</Version>
+		<Version>v1.5.5</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
