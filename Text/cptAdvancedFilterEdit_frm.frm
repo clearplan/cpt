@@ -14,7 +14,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v0.2.0</cpt_version>
+'<cpt_version>v0.3.0</cpt_version>
 Private Sub closeBtn_Click()
     Me.Tag = "Close"
     Me.Hide
