@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptAdvancedFilter_bas"
-'<cpt_version>v0.2.0</cpt_version>
+'<cpt_version>v0.3.0</cpt_version>
 Option Explicit
 
 Private Const MODULE_NAME As String = "cptAdvancedFilter_bas"
@@ -9,29 +9,36 @@ Private CustTextFields() As String
 Private EntFields() As String
 Private CustNumFields() As String
 Private CustOLCodeFields() As String
+Public isSorted As Boolean
 
 Sub cptAdvancedFilter()
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
     Set curProj = ActiveProject
     
+    isSorted = False
+    
     filterReadCustomFields curProj
 
     Set filterForm = New cptAdvancedFilter_frm
     
     With filterForm
-    
+        .disableChangeEvents = True
         Dim vArray As Variant
         vArray = Split(Join(CustTextFields, ",") & "," & Join(CustNumFields, ",") & "," & Join(CustOLCodeFields, ",") & "," & Join(EntFields, ","), ",")
         If vArray(UBound(vArray)) = "" Then ReDim Preserve vArray(UBound(vArray) - 1)
         cptQuickSort vArray, 0, UBound(vArray)
         .fltrField.List = Split("UniqueID,ID,Name," & Join(vArray, ","), ",")
         .fltrField.ListIndex = 0
+        vArray = Split(Join(CustTextFields, ",") & "," & Join(CustNumFields, ","), ",")
+        If vArray(UBound(vArray)) = "" Then ReDim Preserve vArray(UBound(vArray) - 1)
+        .sortField.List = Split("<None>," & Join(vArray, ","), ",")
+        .sortField.ListIndex = 0
         .versionLbl = "Advanced Clipboard Filter"
         .Caption = .versionLbl.Caption & " " & cptGetVersion("cptAdvancedFilter_bas")
         curProj.Application.Windows(1).TopPane.Activate
         .summaryCheckBox = curProj.Application.SummaryTasksShow
-    
+        .disableChangeEvents = False
         .Show
     
     End With
@@ -54,21 +61,32 @@ End Sub
 
 Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As Boolean)
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
+    
+    Application.ScreenUpdating = False
+    Application.Calculation = pjManual
 
     If curProj.AutoFilter = False Then curProj.AutoFilter = True
     curProj.Application.FilterApply Name:="All Tasks"
     curProj.Application.FilterClear
+    curProj.Application.Sort "ID"
+    isSorted = False
 
     Dim t As Task
     Dim tempFilterString As String
     Dim cntr As Integer
     Dim testValue As String
     Dim tempCount As Integer
+    Dim sortFieldConstant As PjCustomField
     
     'Reset filter counts
     For cntr = 1 To filterItemsList.Count
         filterForm.clipboardList.List(cntr - 1, 3) = 0
     Next cntr
+    
+    If filterForm.sortField.Value <> "<None>" And filterItemsList.Count > 0 Then
+        isSorted = True
+        sortFieldConstant = resetCustomField(filterForm.sortField.Value)
+    End If
     
     For Each t In curProj.Tasks
     
@@ -88,6 +106,10 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
                             End If
                             
+                            If isSorted Then
+                                t.SetField sortFieldConstant, cntr
+                            End If
+                            
                             filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
                             
                             GoTo NextTask
@@ -99,6 +121,10 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                                 tempFilterString = t.UniqueID
                             Else
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
+                            End If
+                            
+                            If isSorted Then
+                                t.SetField sortFieldConstant, cntr
                             End If
                             
                             filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
@@ -116,6 +142,10 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
                             End If
                             
+                            If isSorted Then
+                                t.SetField sortFieldConstant, cntr
+                            End If
+                            
                             filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
                             
                             GoTo NextTask
@@ -127,6 +157,10 @@ Public Sub setFilter(ByRef filterItemsList As Collection, ByVal caseSensitive As
                                 tempFilterString = t.UniqueID
                             Else
                                 tempFilterString = tempFilterString & Chr$(9) & t.UniqueID
+                            End If
+                            
+                            If isSorted Then
+                                t.SetField sortFieldConstant, cntr
                             End If
                             
                             filterForm.clipboardList.List(cntr - 1, 3) = CInt(filterForm.clipboardList.List(cntr - 1, 3)) + 1
@@ -147,7 +181,9 @@ NextTask:
     
     If tempFilterString <> "" Then
     
-        Application.SetAutoFilter FieldName:="Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=tempFilterString
+        Application.SetAutoFilter fieldName:="Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=tempFilterString
+        
+        If isSorted Then Application.Sort filterForm.sortField.Value
         
     Else
         
@@ -160,11 +196,15 @@ NextTask:
     End If
     
     SelectBeginning 'select first cell in table (top left)
+    Application.ScreenUpdating = True
+    Application.Calculation = pjAutomatic
     
     Exit Sub
     
 ErrorHandler:
     Call cptHandleErr(MODULE_NAME, "setFilter", err, Erl, "Error setting AutoFilter")
+    Application.ScreenUpdating = True
+    Application.Calculation = pjAutomatic
     'MsgBox "Error setting AutoFilter: " & err.Description, vbCritical, "AutoFilter Error"
 
 End Sub
@@ -316,3 +356,24 @@ Public Sub updateSummaries(ByVal checkboxValue As Boolean)
     curProj.Application.SummaryTasksShow (checkboxValue)
 
 End Sub
+
+Public Function resetCustomField(ByVal fieldName As String) As PjCustomField
+    Dim fieldConstant As PjCustomField
+    
+    fieldConstant = FieldNameToFieldConstant(fieldName)
+    
+    CustomFieldPropertiesEx FieldID:=fieldConstant, Attribute:=pjFieldAttributeNone, summarycalc:=pjCalcNone
+    
+    Dim t As Task
+    
+    For Each t In curProj.Tasks
+    
+        If Not t Is Nothing Then
+            t.SetField fieldConstant, ""
+        End If
+    
+    Next t
+    
+    resetCustomField = fieldConstant
+    
+End Function
