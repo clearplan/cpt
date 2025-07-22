@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptAdvancedFilter_frm 
    Caption         =   "UserForm1"
-   ClientHeight    =   5928
+   ClientHeight    =   6492
    ClientLeft      =   96
    ClientTop       =   408
    ClientWidth     =   6900
@@ -15,11 +15,31 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v0.2.0</cpt_version>
+'<cpt_version>v0.3.0</cpt_version>
 Option Explicit
 
 Private Const MODULE_NAME As String = "cptAdvancedFilter_frm"
 Private filterItems As Collection
+Public disableChangeEvents As Boolean
+
+Private Sub sortField_Change()
+
+    If disableChangeEvents Then Exit Sub
+    
+    Dim usrResponse As Integer
+    
+    usrResponse = MsgBox("This action will clear all settings and values from the selected field." _
+    & vbCr & vbCr & "Are you sure you wish to proceed?", vbYesNoCancel + vbExclamation, "Sort Field")
+    
+    If usrResponse = vbYes Then
+        Exit Sub
+    Else
+        disableChangeEvents = True
+        sortField.ListIndex = 0
+        disableChangeEvents = False
+    End If
+    
+End Sub
 
 Private Sub UserForm_Initialize()
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
@@ -295,6 +315,9 @@ End Sub
 
 Private Sub summaryCheckBox_Click()
     updateSummaries Me.summaryCheckBox.Value
+    If isSorted Then
+        Application.Sort Me.sortField.Value
+    End If
 End Sub
 
 Private Sub UserForm_KeyDown(ByVal KeyCode As MSForms.ReturnInteger, ByVal Shift As Integer)

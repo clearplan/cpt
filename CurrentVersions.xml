@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.9.6</Version>
+		<Version>v1.9.7</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -24,21 +24,21 @@
 	<Module>
 		<Name>cptAdvancedFilter_bas</Name>
 		<FileName>cptAdvancedFilter_bas.bas</FileName>
-		<Version>v0.2.0</Version>
+		<Version>v0.3.0</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptAdvancedFilter_frm</Name>
 		<FileName>cptAdvancedFilter_frm.frm</FileName>
-		<Version>v0.2.0</Version>
+		<Version>v0.3.0</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptAdvancedFilterEdit_frm</Name>
 		<FileName>cptAdvancedFilterEdit_frm.frm</FileName>
-		<Version>v0.2.0</Version>
+		<Version>v0.3.0</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
@@ -220,7 +220,7 @@
 	<Module>
 		<Name>cptFilterItem_cls</Name>
 		<FileName>cptFilterItem_cls.cls</FileName>
-		<Version>v0.2.0</Version>
+		<Version>v0.3.0</Version>
 		<Type>2</Type>
 		<Directory>Text</Directory>
 	</Module>
@@ -353,7 +353,7 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.9.6</Version>
+		<Version>v1.9.7</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
