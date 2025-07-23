@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDynamicFilter_bas"
-'<cpt_version>v1.6.3</cpt_version>
+'<cpt_version>v1.6.4</cpt_version>
 Option Explicit
 Private pCachedRegexes As Scripting.Dictionary
 
