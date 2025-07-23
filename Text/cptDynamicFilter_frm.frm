@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.6.3</cpt_version>
+'<cpt_version>v1.6.4</cpt_version>
 Option Explicit
 
 Private Sub cboField_Change()
@@ -366,12 +366,15 @@ Sub txtFilter_Change()
   If Len(strFilterText) > 0 And Len(strOperator) > 0 Then
     If strField = "Task Name" Then strField = "Name"
     FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=strField, test:=strOperator, Value:=strFilterText, operation:=IIf(blnKeepSelected Or blnHideSummaryTasks, "Or", "None"), ShowInMenu:=False, ShowSummaryTasks:=blnShowRelatedSummaries
+  Else
+    If strField = "Task Name" Then strField = "Name"
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=strField, test:="equals", Value:=strFilterText, operation:=IIf(blnKeepSelected Or blnHideSummaryTasks, "Or", "None"), ShowInMenu:=False, ShowSummaryTasks:=blnShowRelatedSummaries
   End If
   If blnKeepSelected Then
     FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Unique ID", test:="equals", Value:=lngOriginalUID, operation:="Or"
   End If
   If blnHideSummaryTasks Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", test:="equals", Value:="No", operation:="And", Parenthesis:=blnKeepSelected
+    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", test:="equals", Value:="No", operation:="And", parenthesis:=blnKeepSelected
     OptionsViewEx DisplaySummaryTasks:=True
   End If
 
@@ -386,8 +389,12 @@ Sub txtFilter_Change()
   
   If Application.Edition = pjEditionProfessional Then
     If blnActiveOnly Then
-      FilterEdit Name:=strFilter, TaskFilter:=True, Parenthesis:=True, NewFieldName:="Active", test:="equals", Value:="Yes", operation:="And"
+      FilterEdit Name:=strFilter, TaskFilter:=True, parenthesis:=True, NewFieldName:="Active", test:="equals", Value:="Yes", operation:="And"
     End If
+  End If
+  
+  If blnHighlight And Len(strFilterText) = 0 Then
+    FilterEdit Name:=strFilter, TaskFilter:=True, parenthesis:=True, FieldName:="", NewFieldName:="Name", test:="equals", Value:="xxx_force-no-match_xxx", operation:="And", ShowSummaryTasks:=True
   End If
   
   FilterClear
