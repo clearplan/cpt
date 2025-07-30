@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.2</cpt_version>
+'<cpt_version>v1.6.3</cpt_version>
 Option Explicit
 #If Win64 And VBA7 Then '<issue53>
   Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
@@ -1229,7 +1229,7 @@ Sub cptRefreshStatusTable(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optiona
   'reset the group
   Application.StatusBar = "Resetting the cptStatusSheet Group..."
   If ActiveProject.CurrentGroup <> "No Group" Then
-    strStartingGroup = ActiveProject.CurrentGroup
+    'strStartingGroup = ActiveProject.CurrentGroup
     GroupApply "No Group"
   End If
   
