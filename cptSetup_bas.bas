@@ -1234,7 +1234,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptHandleErr2", Err, Erl)
+  Call cptHandleErr("cptSetup_bas", "cptHandleErr", Err, Erl)
   Resume exit_here
 End Sub
 

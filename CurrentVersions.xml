@@ -206,14 +206,14 @@
 	<Module>
 		<Name>cptFilterByClipboard_bas</Name>
 		<FileName>cptFilterByClipboard_bas.bas</FileName>
-		<Version>v1.2.3</Version>
+		<Version>v1.2.4</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptFilterByClipboard_frm</Name>
 		<FileName>cptFilterByClipboard_frm.frm</FileName>
-		<Version>v1.2.3</Version>
+		<Version>v1.2.4</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
@@ -262,7 +262,7 @@
 	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
-		<Version>v1.5.1</Version>
+		<Version>v1.5.2</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
@@ -388,28 +388,28 @@
 	<Module>
 		<Name>cptStatusSheetImport_bas</Name>
 		<FileName>cptStatusSheetImport_bas.bas</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.3.2</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_frm</Name>
 		<FileName>cptStatusSheetImport_frm.frm</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.3.2</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptTaskHistory_bas</Name>
 		<FileName>cptTaskHistory_bas.bas</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.1.1</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptTaskHistory_frm</Name>
 		<FileName>cptTaskHistory_frm.frm</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.1.1</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>

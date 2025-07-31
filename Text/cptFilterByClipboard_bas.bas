@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.2.3</cpt_version>
+'<cpt_version>v1.2.4</cpt_version>
 Option Explicit
 
 Sub cptShowFilterByClipboard_frm()
@@ -484,7 +484,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptFilterByClipboard", "cptGetFreeField", Err)
+  Call cptHandleErr("cptFilterByClipboard_bas", "cptGetFreeField", Err)
   Resume exit_here
 End Function
 
