@@ -618,7 +618,7 @@ exit_here:
   Exit Sub
 
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cptShowStatusSheet_frm", Err, Erl)
+  Call cptHandleErr("cptStatusSheet_bas", "cptShowStatusSheet_frm", Err, Erl)
   Resume exit_here
 
 End Sub

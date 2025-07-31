@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.1</cpt_version>
+'<cpt_version>v1.5.2</cpt_version>
 Option Explicit
 
 Sub cptGetBAC()
@@ -869,7 +869,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("focptMetrics_bas", "cptCaptureWeek", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptCaptureWeek", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1741,8 +1741,8 @@ Sub cptGetTrend_CEI()
   oRecordset.Open strFile
   If oRecordset.RecordCount > 0 Then
     oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & FormatDateTime(dtLastWeek, vbGeneralDate) & "#"
-    If oRecordset.EOF Then
-      MsgBox "No data found for WE " & DateAdd("d", -7, dtThisWeek), vbExclamation + vbOKOnly, "No Data"
+    If oRecordset.EOF Then 'this cannot happen given what's happened above
+      MsgBox "No data found for WE " & FormatDateTime(dtLastWeek, vbShortDate), vbExclamation + vbOKOnly, "No Data"
       GoTo exit_here
     Else
       lngItems = oRecordset.RecordCount

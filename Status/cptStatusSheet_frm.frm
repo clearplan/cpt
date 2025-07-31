@@ -246,7 +246,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cboEach_Change", "cboEach_Change", Err, Erl)
+  Call cptHandleErr("cptStatusSheet_frm", "cboEach_Change", Err, Erl)
   Resume exit_here
 End Sub
 

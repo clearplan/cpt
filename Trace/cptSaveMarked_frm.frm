@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.0.8</cpt_version>
+'<cpt_version>v1.0.9</cpt_version>
 Option Explicit
 
 Private Sub cmdDone_Click()
@@ -163,7 +163,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErr("cptSaveMarked_frm", "lblURL_Click", Err, Erl)
   Resume exit_here
 
 End Sub
