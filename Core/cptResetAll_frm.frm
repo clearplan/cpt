@@ -16,6 +16,10 @@ Attribute VB_Exposed = False
 '<cpt_version>v1.3.1</cpt_version>
 Option Explicit
 
+Private Sub chkKeepPosition_Click()
+  cptSaveSetting "ResetAll", "KeepPosition", IIf(Me.chkKeepPosition, "1", "0")
+End Sub
+
 Private Sub cmdCancel_Click()
   Me.Hide
 End Sub
