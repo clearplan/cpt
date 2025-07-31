@@ -1201,7 +1201,13 @@ next_task:
   oWorksheet.[F1] = "AF_CUM"
   oListObject.ListColumns("AF_CUM").DataBodyRange.FormulaR1C1 = "=IF(ROW(R[-1]C)=1,[@AF],IF([@WEEK]<=R1C9,R[-1]C+[@AF],""""))"
   oWorksheet.[G1] = "FF_CUM"
-  oListObject.ListColumns("FF_CUM").DataBodyRange.FormulaR1C1 = "=IF([@WEEK]=R1C9,[@[AF_CUM]],IF([@WEEK]>R1C9,R[-1]C+[@FF],""""))"
+  If Weekday(dtStatus) < 6 Then 'not a Friday, use previous Friday
+    lngLastRow = oWorksheet.Columns(1).Find(DateAdd("d", 6 - Weekday(dtStatus) - 7, dtStatus)).Row 'requires matching date format
+    oListObject.ListColumns("FF_CUM").DataBodyRange.FormulaR1C1 = "=IF([@WEEK]=R" & lngLastRow & "C1,[@[AF_CUM]],IF([@WEEK]>R1C9,IF(ISNUMBER(R[-1]C),R[-1]C,MAX([AF_CUM]))+[@FF],""""))"
+  Else
+    lngLastRow = oWorksheet.Columns(1).Find(dtStatus).Row 'requires matching date format
+    oListObject.ListColumns("FF_CUM").DataBodyRange.FormulaR1C1 = "=IF([@WEEK]=R1C9,[@[AF_CUM]],IF([@WEEK]>R1C9,R[-1]C+[@FF],""""))"
+  End If
   oExcel.ActiveWindow.Zoom = 85
   oExcel.ActiveWindow.SplitRow = 1
   oExcel.ActiveWindow.SplitColumn = 0
@@ -1209,7 +1215,7 @@ next_task:
   oListObject.Range.Columns.AutoFit
   oListObject.DataBodyRange.Copy
   oListObject.DataBodyRange.PasteSpecial xlPasteValuesAndNumberFormats
-  lngLastRow = oWorksheet.Columns(1).Find(dtStatus).Row 'requires matching date format
+  oExcel.CutCopyMode = 0
   oListObject.ListColumns(1).DataBodyRange.NumberFormat = "m/d/yyyy"
   If lngLastRow = 2 Then
     oWorksheet.Range(oWorksheet.Cells(2, 7), oWorksheet.Cells(lngLastRow, 7)).Value = ""
