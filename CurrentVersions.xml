@@ -101,7 +101,7 @@
 	<Module>
 		<Name>cptCore_bas</Name>
 		<FileName>cptCore_bas.bas</FileName>
-		<Version>v1.14.3</Version>
+		<Version>v1.15.0</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -297,7 +297,7 @@
 	<Module>
 		<Name>cptResetAll_frm</Name>
 		<FileName>cptResetAll_frm.frm</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.4.0</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
