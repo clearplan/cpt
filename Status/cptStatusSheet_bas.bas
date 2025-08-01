@@ -2849,8 +2849,71 @@ err_here:
   
 End Sub
 
+
 Sub cptAdvanceStatusDate()
+  'objects
+  Dim oMaster As MSProject.Project
+  Dim oSubproject As MSProject.SubProject
+  'strings
+  Dim strMsg As String
+  'longs
+  Dim lngCount As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnMatch As Boolean
+  'variants
+  'dates
+  
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
   Application.ChangeStatusDate
+  
+  lngCount = ActiveProject.Subprojects.Count
+  If lngCount > 0 Then
+    Set oMaster = ActiveProject
+    If MsgBox("Would you like to review/edit Subproject Status Dates also?", vbQuestion + vbYesNo, "Status Date FlowDown") = vbYes Then
+      Application.StatusBar = "Checking Subproject Status Dates...(" & Format(0 / lngCount, "0%") & ")"
+      blnMatch = True 'default
+      strMsg = "[ok] " & FormatDateTime(oMaster.StatusDate, vbShortDate) & " - " & oMaster.ProjectSummaryTask.Name & vbCrLf
+      For Each oSubproject In oMaster.Subprojects
+        If oSubproject.SourceProject.StatusDate <> oMaster.StatusDate Then
+          strMsg = strMsg & vbCrLf & "<!> " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+          blnMatch = False
+        Else
+          strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+        End If
+        Application.StatusBar = "Checking Subproject Status Dates...(" & Format(oSubproject.Index / lngCount, "0%") & ")"
+      Next oSubproject
+      If blnMatch Then
+        MsgBox strMsg & vbCrLf & vbCrLf & "Subproject Status Dates match!", vbInformation + vbOKOnly, "Status Date FlowDown"
+      Else
+        If MsgBox(strMsg & vbCrLf & vbCrLf & "Subproject Status Dates do not match. Flow Down now?", vbExclamation + vbYesNo, "Status Date FlowDown") = vbYes Then
+          strMsg = "[ok] " & FormatDateTime(oMaster.StatusDate, vbShortDate) & " - " & oMaster.ProjectSummaryTask.Name & vbCrLf
+          blnMatch = True
+          For Each oSubproject In ActiveProject.Subprojects
+            oSubproject.SourceProject.StatusDate = oMaster.StatusDate
+            Application.StatusBar = "Flowing Down Status Dates...(" & Format(oSubproject.Index / lngCount, "0%") & ")"
+            strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+          Next oSubproject
+          MsgBox strMsg & vbCrLf & vbCrLf & "Complete.", vbInformation + vbOKOnly, "Status Date FlowDown"
+        End If
+      End If
+    End If
+  End If
+  
+  
+exit_here:
+  On Error Resume Next
+  Application.StatusBar = ""
+  Set oMaster = Nothing
+  Set oSubproject = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptStatusSheet_bas", "cptAdvanceStatusDate", Err, Erl)
+  Resume exit_here
+  
 End Sub
 
 Sub cptCaptureJournal()
