@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.1.0</cpt_version>
+'<cpt_version>v3.1.1</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -417,7 +417,7 @@ Sub DrivingPaths()
     End If
     
     '*********************************
-    '***Find Fourth Driving Paths***
+    '***Find Fifth Driving Paths***
     '*********************************
     
     'Clear variables for re-use in evaluating next driver
@@ -604,7 +604,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     Dim t As Task 'used to store user selected anlaysis task
     
     'Create CP Driving Path Table
-    curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, FieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
+    curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, fieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
     
     'Add fields to CP Driving Path Table
     curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Unique ID", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1, LockFirstColumn:=True
@@ -616,12 +616,12 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Total Slack", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=6
 
     'Create CP Driving Path Filter
-    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
+    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
     
     'On Error Resume Next
     
     'Create CP Driving Path Group
-    curProj.TaskGroups.Add Name:="*ClearPlan Driving Path Group", FieldName:=GroupField
+    curProj.TaskGroups.Add Name:="*ClearPlan Driving Path Group", fieldName:=GroupField
     
     'Create CP Driving Path view if necessary
     curProj.Application.ViewEditSingle Name:="*ClearPlan Driving Path View", Create:=True, ShowInMenu:=True, Table:="*ClearPlan Driving Path Table", Filter:="*ClearPlan Driving Path Filter", Group:="*ClearPlan Driving Path Group"
@@ -861,10 +861,10 @@ Private Sub FindNextDriver()
             Next i 'Next Driving Task
         End If
         
-        'Set Secondary Float value equal to the evaluated driving task float
+        'Set Tertiary Float value equal to the evaluated driving task float
         tDrivingPaths.TertiaryFloat = driverFloat
         
-        'set secondary driver count
+        'set tertiary driver count
         TertiaryDriverCount = driverCount
         
     ElseIf tDrivingPaths.FindFourth = False Then
@@ -877,10 +877,10 @@ Private Sub FindNextDriver()
         For i = 1 To UBound(DrivingTasks)
         
             'store first float value, otherwise evaluate current float value against previously stored value
-            If DrivingTasks(i).tFloat > tDrivingPaths.FourthFloat And driverFloat = 0 Then
+            If DrivingTasks(i).tFloat > tDrivingPaths.TertiaryFloat And driverFloat = 0 Then 'v3.1.1
                 driverFloat = DrivingTasks(i).tFloat
             Else
-                If DrivingTasks(i).tFloat > tDrivingPaths.FourthFloat And DrivingTasks(i).tFloat < driverFloat Then
+                If DrivingTasks(i).tFloat > tDrivingPaths.TertiaryFloat And DrivingTasks(i).tFloat < driverFloat Then 'v3.1.1
                     driverFloat = DrivingTasks(i).tFloat
                 End If
             End If
@@ -899,10 +899,10 @@ Private Sub FindNextDriver()
             Next i 'Next Driving Task
         End If
         
-        'Set Secondary Float value equal to the evaluated driving task float
+        'Set Fourth Float value equal to the evaluated driving task float
         tDrivingPaths.FourthFloat = driverFloat
         
-        'set secondary driver count
+        'set Fourth driver count
         FourthDriverCount = driverCount
         
     ElseIf tDrivingPaths.FindFifth = False Then
@@ -915,10 +915,10 @@ Private Sub FindNextDriver()
         For i = 1 To UBound(DrivingTasks)
         
             'store first float value, otherwise evaluate current float value against previously stored value
-            If DrivingTasks(i).tFloat > tDrivingPaths.FifthFloat And driverFloat = 0 Then
+            If DrivingTasks(i).tFloat > tDrivingPaths.FourthFloat And driverFloat = 0 Then 'v3.1.1
                 driverFloat = DrivingTasks(i).tFloat
             Else
-                If DrivingTasks(i).tFloat > tDrivingPaths.FifthFloat And DrivingTasks(i).tFloat < driverFloat Then
+                If DrivingTasks(i).tFloat > tDrivingPaths.FourthFloat And DrivingTasks(i).tFloat < driverFloat Then 'v3.1.1
                     driverFloat = DrivingTasks(i).tFloat
                 End If
             End If
@@ -937,10 +937,10 @@ Private Sub FindNextDriver()
             Next i 'Next Driving Task
         End If
         
-        'Set Secondary Float value equal to the evaluated driving task float
+        'Set fifth Float value equal to the evaluated driving task float
         tDrivingPaths.FifthFloat = driverFloat
         
-        'set secondary driver count
+        'set fifth driver count
         FifthDriverCount = driverCount
     
     End If
@@ -1045,6 +1045,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
                     'previously stored float vlaue, then store the lower float value
                     If tDrivingPaths.FindTertiary = False And tempFloat + tDrivingPaths.SecondaryFloat < DrivingTasks(i).tFloat Then
                         DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.SecondaryFloat
+                    'v3.1.1 - additional logic below to correctly evaluate drivers for paths 4 & 5
                     ElseIf tDrivingPaths.FindFourth = False And tempFloat + tDrivingPaths.TertiaryFloat < DrivingTasks(i).tFloat Then
                         DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.TertiaryFloat
                     ElseIf tDrivingPaths.FindFifth = False And tempFloat + tDrivingPaths.FourthFloat < DrivingTasks(i).tFloat Then
@@ -1061,8 +1062,13 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
                 'If evaluating the Primary Path, then store the float
                 If tDrivingPaths.FindSecondary = False Then
                     DrivingTasks(drivingTasksCount).tFloat = tempFloat
-                Else 'If evaluating secondary path, add float to the driving path network float value
+                ElseIf tDrivingPaths.FindTertiary = False Then
                     DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.SecondaryFloat
+                'v3.1.1 - additional logic below to correctly evaluate drivers for paths 4 & 5
+                ElseIf tDrivingPaths.FindFourth = False Then
+                    DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.TertiaryFloat
+                ElseIf tDrivingPaths.FindFifth = False Then
+                    DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.FourthFloat
                 End If
             End If
         Else 'No other driving tasks found, this is the first driving task
@@ -1075,8 +1081,13 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
             'If evaluating the Primary Path, then store the float
             If tDrivingPaths.FindSecondary = False Then
                 DrivingTasks(drivingTasksCount).tFloat = tempFloat
-            Else 'If evaluating secondary path, add float to the driving path network float value
+            ElseIf tDrivingPaths.FindTertiary = False Then
                 DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.SecondaryFloat
+            'v3.1.1 - additional logic below to correctly evaluate drivers for paths 4 & 5
+            ElseIf tDrivingPaths.FindFourth = False Then
+                DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.TertiaryFloat
+            ElseIf tDrivingPaths.FindFifth = False Then
+                DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.FourthFloat
             End If
         End If
     End If
@@ -1084,8 +1095,8 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
     'Evaluate new driver if True Float is 0
     If tempFloat = 0 Then
         
-        'If other drivers exist, and evaluating Primary or Secondary path, evaluate further
-        If drivingTasksCount > 0 And tDrivingPaths.FindTertiary = False Then
+        'If other drivers exist, and not evaluating the last path, evaluate further
+        If drivingTasksCount > 0 And tDrivingPaths.FindFifth = False Then 'v3.1.1
         
             'Look for predecessor task in Driving Tasks Array
             i = FindInArray(CStr(realPredUID)) 'v3.0.0
@@ -1438,7 +1449,7 @@ Public Function ExistsInCollection(ByVal col As Collection, ByVal key As Variant
     'If error encountered, value does not exist in the collection
     On Error GoTo err
     
-    f = IsObject(col.Item(key)) 'Store found item; if not found, will produce error
+    f = IsObject(col.item(key)) 'Store found item; if not found, will produce error
     ExistsInCollection = True 'Set True
     Exit Function
 err: 'If error encountered, item does not exist - return "False" boolean vlaue
