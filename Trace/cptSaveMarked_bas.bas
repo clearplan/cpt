@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSaveMarked_bas"
-'<cpt_version>v1.0.8</cpt_version>
+'<cpt_version>v1.0.9</cpt_version>
 Option Explicit
 
 Sub cptShowSaveMarked_frm()

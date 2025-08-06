@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptTaskHistory_bas"
-'<cpt_version>v1.1.0</cpt_version>
+'<cpt_version>v1.1.1</cpt_version>
 Option Explicit
 Public oTaskHistory As ADODB.Recordset
 
@@ -279,7 +279,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptTaskHIstory_bas", "cptGetTaskHistoryNote", Err, Erl)
+  Call cptHandleErr("cptTaskHistory_bas", "cptGetTaskHistoryNote", Err, Erl)
   Resume exit_here
 End Sub
 

@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.9.8</Version>
+		<Version>v1.9.9</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -101,7 +101,7 @@
 	<Module>
 		<Name>cptCore_bas</Name>
 		<FileName>cptCore_bas.bas</FileName>
-		<Version>v1.14.3</Version>
+		<Version>v1.15.0</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -129,7 +129,7 @@
 	<Module>
 		<Name>cptCriticalPath_bas</Name>
 		<FileName>cptCriticalPath_bas.bas</FileName>
-		<Version>v3.1.0</Version>
+		<Version>v3.1.1</Version>
 		<Type>1</Type>
 		<Directory>Trace</Directory>
 	</Module>
@@ -206,14 +206,14 @@
 	<Module>
 		<Name>cptFilterByClipboard_bas</Name>
 		<FileName>cptFilterByClipboard_bas.bas</FileName>
-		<Version>v1.2.3</Version>
+		<Version>v1.2.4</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptFilterByClipboard_frm</Name>
 		<FileName>cptFilterByClipboard_frm.frm</FileName>
-		<Version>v1.2.3</Version>
+		<Version>v1.2.4</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
@@ -262,7 +262,7 @@
 	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
-		<Version>v1.5.1</Version>
+		<Version>v1.5.2</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
@@ -297,7 +297,7 @@
 	<Module>
 		<Name>cptResetAll_frm</Name>
 		<FileName>cptResetAll_frm.frm</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.4.0</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -353,7 +353,7 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.9.8</Version>
+		<Version>v1.9.9</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
@@ -374,42 +374,42 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.6.2</Version>
+		<Version>v1.6.3</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.6.2</Version>
+		<Version>v1.6.3</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_bas</Name>
 		<FileName>cptStatusSheetImport_bas.bas</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.3.2</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_frm</Name>
 		<FileName>cptStatusSheetImport_frm.frm</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.3.2</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptTaskHistory_bas</Name>
 		<FileName>cptTaskHistory_bas.bas</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.1.1</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptTaskHistory_frm</Name>
 		<FileName>cptTaskHistory_frm.frm</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.1.1</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>

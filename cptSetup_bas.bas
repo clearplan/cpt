@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.9.8</cpt_version>
+'<cpt_version>v1.9.9</cpt_version>
 Option Explicit
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
 Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() lives in cptCore_bas
@@ -1234,7 +1234,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptHandleErr2", Err, Erl)
+  Call cptHandleErr("cptSetup_bas", "cptHandleErr", Err, Erl)
   Resume exit_here
 End Sub
 
