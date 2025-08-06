@@ -332,14 +332,14 @@
 	<Module>
 		<Name>cptSaveMarked_bas</Name>
 		<FileName>cptSaveMarked_bas.bas</FileName>
-		<Version>v1.0.8</Version>
+		<Version>v1.0.9</Version>
 		<Type>1</Type>
 		<Directory>Trace</Directory>
 	</Module>
 	<Module>
 		<Name>cptSaveMarked_frm</Name>
 		<FileName>cptSaveMarked_frm.frm</FileName>
-		<Version>v1.0.8</Version>
+		<Version>v1.0.9</Version>
 		<Type>3</Type>
 		<Directory>Trace</Directory>
 	</Module>
