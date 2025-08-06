@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.0.3</cpt_version>
+'<cpt_version>v0.1.0</cpt_version>
 Option Explicit
 Public blnValidIntegrationMap As Boolean
 
@@ -119,8 +119,8 @@ Private Sub cboEVT_Change()
   If ActiveProject.Subprojects.Count > 0 Then
     For Each oSubproject In ActiveProject.Subprojects
       For Each oTask In oSubproject.SourceProject.Tasks
-        If oTask Is Nothing Then GoTo next_task_single
-        If Not oTask.Active Then GoTo next_task_single
+        If oTask Is Nothing Then GoTo next_task_master
+        If Not oTask.Active Then GoTo next_task_master
         strValue = oTask.GetField(Me.cboEVT.Value)
         If Len(strValue) > 0 Then
           If Not oDict.Exists(strValue) Then oDict.Add strValue, strValue
