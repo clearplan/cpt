@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.9.9</Version>
+		<Version>v1.9.10</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -255,7 +255,7 @@
 	<Module>
 		<Name>cptIntegration_frm</Name>
 		<FileName>cptIntegration_frm.frm</FileName>
-		<Version>v0.0.3</Version>
+		<Version>v0.1.0</Version>
 		<Type>3</Type>
 		<Directory>Integration</Directory>
 	</Module>
@@ -353,7 +353,7 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.9.9</Version>
+		<Version>v1.9.10</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
@@ -374,14 +374,14 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.6.3</Version>
+		<Version>v1.6.4</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.6.3</Version>
+		<Version>v1.6.4</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>

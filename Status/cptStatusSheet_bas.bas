@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.3</cpt_version>
+'<cpt_version>v1.6.4</cpt_version>
 Option Explicit
 #If Win64 And VBA7 Then '<issue53>
   Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
@@ -2858,6 +2858,8 @@ Sub cptAdvanceStatusDate()
   Dim strMsg As String
   'longs
   Dim lngCount As Long
+  Dim lngMismatch As Long
+  Dim lngFixed As Long
   'integers
   'doubles
   'booleans
@@ -2877,34 +2879,62 @@ Sub cptAdvanceStatusDate()
       blnMatch = True 'default
       strMsg = "[ok] " & FormatDateTime(oMaster.StatusDate, vbShortDate) & " - " & oMaster.ProjectSummaryTask.Name & vbCrLf
       For Each oSubproject In oMaster.Subprojects
-        If oSubproject.SourceProject.StatusDate <> oMaster.StatusDate Then
-          strMsg = strMsg & vbCrLf & "<!> " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
-          blnMatch = False
+        If IsDate(oSubproject.SourceProject.StatusDate) Then
+          If oSubproject.SourceProject.StatusDate <> oMaster.StatusDate Then
+            strMsg = strMsg & vbCrLf & "<!> " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+            blnMatch = False
+            lngMismatch = lngMismatch + 1
+          Else
+            strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+          End If
         Else
-          strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+          strMsg = strMsg & vbCrLf & "<!> [No Status Date] - " & oSubproject.InsertedProjectSummary.Name
+          blnMatch = False
+          lngMismatch = lngMismatch + 1
         End If
         Application.StatusBar = "Checking Subproject Status Dates...(" & Format(oSubproject.Index / lngCount, "0%") & ")"
       Next oSubproject
       If blnMatch Then
         MsgBox strMsg & vbCrLf & vbCrLf & "Subproject Status Dates match!", vbInformation + vbOKOnly, "Status Date FlowDown"
       Else
-        If MsgBox(strMsg & vbCrLf & vbCrLf & "Subproject Status Dates do not match. Flow Down now?", vbExclamation + vbYesNo, "Status Date FlowDown") = vbYes Then
+        strMsg = strMsg & vbCrLf & vbCrLf & "Subproject Status Dates do not match. Flow Down now?"
+        If Len(strMsg) > 255 Then
+          strMsg = Format(lngMismatch, "#,##0") & " SubProject Status Dates do not match. Flow Down now?"
+        End If
+        If MsgBox(strMsg, vbExclamation + vbYesNo, "Status Date FlowDown") = vbYes Then
+          Application.OpenUndoTransaction "cpt - Status Date Flow Down"
           strMsg = "[ok] " & FormatDateTime(oMaster.StatusDate, vbShortDate) & " - " & oMaster.ProjectSummaryTask.Name & vbCrLf
-          blnMatch = True
           For Each oSubproject In ActiveProject.Subprojects
-            oSubproject.SourceProject.StatusDate = oMaster.StatusDate
+            blnMatch = True
+            If Not IsDate(oSubproject.SourceProject.StatusDate) Then
+              lngFixed = lngFixed + 1
+              blnMatch = False
+            Else
+              If oSubproject.SourceProject.StatusDate <> oMaster.StatusDate Then
+                lngFixed = lngFixed + 1
+                blnMatch = False
+              End If
+            End If
+            If Not blnMatch Then
+              oSubproject.SourceProject.StatusDate = oMaster.StatusDate
+            End If
             Application.StatusBar = "Flowing Down Status Dates...(" & Format(oSubproject.Index / lngCount, "0%") & ")"
             strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
           Next oSubproject
-          MsgBox strMsg & vbCrLf & vbCrLf & "Complete.", vbInformation + vbOKOnly, "Status Date FlowDown"
+          strMsg = strMsg & "Complete."
+          If Len(strMsg) > 255 Then
+            MsgBox Format(lngFixed, "#,##0") & " SubProject Status Dates aligned.", vbInformation + vbOKOnly, "Status Date FlowDown"
+          Else
+            MsgBox strMsg, vbInformation + vbOKOnly, "Status Date FlowDown"
+          End If
         End If
       End If
     End If
   End If
   
-  
 exit_here:
   On Error Resume Next
+  Application.CloseUndoTransaction
   Application.StatusBar = ""
   Set oMaster = Nothing
   Set oSubproject = Nothing
