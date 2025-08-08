@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.3.2</cpt_version>
+'<cpt_version>v1.3.3</cpt_version>
 Option Explicit
 
 Sub cptShowStatusSheetImport_frm()
@@ -33,12 +33,15 @@ Sub cptShowStatusSheetImport_frm()
   Dim intField As Integer
   'doubles
   'booleans
+  Dim blnRename As Boolean
+  Dim blnErrorTrapping As Boolean
   Dim blnTaskUsageBelow As Boolean
   'variants
   Dim vField As Variant
   'dates
-
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   'todo: start Excel in the background if not already open; close on form close
   
@@ -129,7 +132,7 @@ Sub cptShowStatusSheetImport_frm()
     End If
 
     'import user settings
-    .cmdRename.Visible = False
+    blnRename = False
     strAS = cptGetSetting("StatusSheetImport", "cboAS")
     If Len(strAS) > 0 Then
       If strAS = CStr(FieldNameToFieldConstant("Actual Start")) Then
@@ -138,7 +141,9 @@ Sub cptShowStatusSheetImport_frm()
         lngAS = CLng(strAS)
         .cboAS.Value = lngAS
       End If
-      If CustomFieldGetName(lngAS) = "" Then .cmdRename.Visible = True
+      If CustomFieldGetName(lngAS) = "" Then blnRename = True
+    Else
+      blnRename = True
     End If
     
     strAF = cptGetSetting("StatusSheetImport", "cboAF")
@@ -149,35 +154,45 @@ Sub cptShowStatusSheetImport_frm()
         lngAF = CLng(strAF)
         .cboAF.Value = lngAF
       End If
-      If CustomFieldGetName(lngAF) = "" Then .cmdRename.Visible = True
+      If CustomFieldGetName(lngAF) = "" Then blnRename = True
+    Else
+      blnRename = True
     End If
     
     strFS = cptGetSetting("StatusSheetImport", "cboFS")
     If Len(strFS) > 0 Then
       lngFS = CLng(strFS)
       .cboFS.Value = lngFS
-      If CustomFieldGetName(lngFS) = "" Then .cmdRename.Visible = True
+      If CustomFieldGetName(lngFS) = "" Then blnRename = True
+    Else
+      blnRename = True
     End If
     
     strFF = cptGetSetting("StatusSheetImport", "cboFF")
     If Len(strFF) > 0 Then
       lngFF = CLng(strFF)
       .cboFF.Value = lngFF
-      If CustomFieldGetName(lngFS) = "" Then .cmdRename.Visible = True
+      If CustomFieldGetName(lngFS) = "" Then blnRename = True
+    Else
+      blnRename = True
     End If
     
     strEVP = cptGetSetting("StatusSheetImport", "cboEV")
     If Len(strEVP) > 0 Then
       lngEVP = CLng(strEVP)
       .cboEV.Value = lngEVP
-      If CustomFieldGetName(lngEVP) = "" Then .cmdRename.Visible = True
+      If CustomFieldGetName(lngEVP) = "" Then blnRename = True
+    Else
+      blnRename = True
     End If
     
     strETC = cptGetSetting("StatusSheetImport", "cboETC")
     If Len(strETC) > 0 Then
       lngETC = CLng(strETC)
       .cboETC.Value = lngETC
-      If CustomFieldGetName(lngEVP) = "" Then .cmdRename.Visible = True
+      If CustomFieldGetName(lngEVP) = "" Then blnRename = True
+    Else
+      blnRename = True
     End If
     
     strAppend = cptGetSetting("StatusSheetImport", "chkAppend")
@@ -210,6 +225,7 @@ Sub cptShowStatusSheetImport_frm()
       .optBelow = True
       blnTaskUsageBelow = True
     End If
+    .cmdRename.Visible = blnRename
     .cmdRemove.Enabled = False
     'show the form
     .Show (False)
