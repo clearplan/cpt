@@ -1,30 +1,19 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.1.1</cpt_version>
+'<cpt_version>v3.3.0</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
 'Custom type used to store driving path vars
 Type DrivingPaths
-    PrimaryFloat As Double 'Stores True Float vlaue for Primary Driving Path
-    FindPrimary As Boolean 'Tracks evluation progress by noting Primary Found
-    SecondaryFloat As Double 'Stores True Float vlaue for Secondary Driving Path
-    FindSecondary As Boolean 'Tracks evluation progress by noting Secondary Found
-    TertiaryFloat As Double 'Stores True Float vlaue for Secondary Driving Path
-    FindTertiary As Boolean 'Tracks evluation progress by noting Tertiar Found
-    FourthFloat As Double 'Stores True Float Value for fourth Driving Path
-    FindFourth As Boolean 'Tracks evaluation progress by noting fourth found
-    FifthFloat As Double 'Stores True Float Value for fourth Driving Path
-    FindFifth As Boolean 'Tracks evaluation progress by noting fourth found
+    PrevFloat As Double 'previously evaluated path float
+    CurrentFloat As Double 'currently evaluated path float
 End Type
+Private PathCount As Integer 'number of paths to analyze
+Private CurrentPath As Integer 'currently evaluated path
+Private MaxPathsFound As Integer 'track the maximum number of paths found
+Private NextDrivers() As String 'Array of next drivers to be analyzed
+Private NextDriverCount As String 'count of next drivers to be analyzed
 Private tDrivingPaths As DrivingPaths 'var to store DrivingPaths type
-Private SecondaryDrivers() As String 'Array of Secondary Drivers to be analyzed
-Private SecondaryDriverCount As Integer 'Count of secondary Drivers
-Private TertiaryDrivers() As String 'Array of tertiary drivers to be analyzed
-Private TertiaryDriverCount As Integer 'Count of tertiary drivers
-Private FourthDrivers() As String 'Array of fourth drivers to be analyzed
-Private FourthDriverCount As Integer 'Count of fourth drivers
-Private FifthDrivers() As String 'Array of fifth drivers to be analyzed
-Private FifthDriverCount As Integer 'Count of fifth drivers
 Private AnalyzedTasks As Collection 'Collection of task relationships analyzied (From UID - To UID); unique to each path analysis
 'Custom type used to store Driving Task data
 Type DrivingTask
@@ -127,6 +116,8 @@ Sub DrivingPaths()
             .PathField_Combobox.AddItem CustTextFields(i)
         Next i
         
+        .pathCnt_txtBox.Value = 3
+        
         .Show
         
         If .Tag = "cancel" Then
@@ -139,6 +130,7 @@ Sub DrivingPaths()
         'v2.9.0 - get user field map
         CritField = .PathField_Combobox.Text
         GroupField = .GroupField_Combobox.Text
+        PathCount = .pathCnt_txtBox.Value
     
     End With
     
@@ -149,7 +141,7 @@ Sub DrivingPaths()
     On Error GoTo CleanUp
     
     '**********************************************
-    'On Error GoTo 0 '*****used for debug only*****
+    On Error GoTo 0 '*****used for debug only*****
     '**********************************************
     
     'v3.0.0 Assign Custom Field names and create lookup table for each subproject
@@ -182,35 +174,25 @@ Sub DrivingPaths()
     analysisTaskUID = t.UniqueID
 
     'Set default Float values
-    tDrivingPaths.PrimaryFloat = 0
-    tDrivingPaths.SecondaryFloat = 0
-    tDrivingPaths.TertiaryFloat = 0
-    tDrivingPaths.FourthFloat = 0
-    tDrivingPaths.FifthFloat = 0
-    
-    'Now finding Primary Path
-    tDrivingPaths.FindPrimary = True
-    tDrivingPaths.FindSecondary = False
-    tDrivingPaths.FindTertiary = False
-    tDrivingPaths.FindFourth = False
-    tDrivingPaths.FindFifth = False
+    tDrivingPaths.PrevFloat = 0
+    tDrivingPaths.CurrentFloat = 0
     
     'Set default driver counts
-    SecondaryDriverCount = 0
-    TertiaryDriverCount = 0
-    drivingTasksCount = 0
-    FourthDriverCount = 0
-    FifthDriverCount = 0
+    NextDriverCount = 0
     
     '********************************
     '***Find Primary Driving Paths***
     '********************************
     
+    CurrentPath = 1
+    
+    MaxPathsFound = CurrentPath
+    
     'Store dependencies of user selected task
     Set tdps = t.TaskDependencies
     
-    'Note that selected task is visible on paths 1,2,3
-    t.SetField FieldNameToFieldConstant(CritField), "1,2,3"
+    'Note that selected task is visible on path 1
+    t.SetField FieldNameToFieldConstant(CritField), "1"
     t.SetField FieldNameToFieldConstant(GroupField), "1"
     
     'Evlauate list of dependencies on selected analysis task
@@ -237,248 +219,71 @@ Sub DrivingPaths()
     FindNextDriver
     
     '**********************************
-    '***Find Secondary Driving Paths***
+    '***Find Other Driving Paths***
     '**********************************
     
-    'Find Secondary if one exists (driver count is greater than 0)
-    If SecondaryDriverCount > 0 Then
-    
-        'Note that we are now evaluating the secondary driving path
-        tDrivingPaths.FindSecondary = True
+    For CurrentPath = 2 To PathCount
         
-        'iterate through list of secondary drivers
-        For i = 1 To SecondaryDriverCount
+        If NextDriverCount > 0 Then
         
-            'avoid evaluating outside of the array bounds
-            If i > SecondaryDriverCount Then Exit For
+            MaxPathsFound = CurrentPath
+        
+            'iterate through list of secondary drivers
+            For i = 1 To NextDriverCount
             
-            'store the current driving task
-            Set t = curProj.Tasks.UniqueID(SecondaryDrivers(i))
-            
-            'add the driving task to the analyzed tasks collection
-            AnalyzedTasks.Add t.UniqueID & "-" & t.UniqueID
-            
-            'If the task has not already been analyzed during previous path analysis,
-            'set the Crit and Group Field values
-            If t.GetField(FieldNameToFieldConstant(CritField)) = vbNullString Then
-                With t
-                    .SetField FieldNameToFieldConstant(CritField), "2"
-                    .SetField FieldNameToFieldConstant(GroupField), "2"
-                End With
-            Else
-            
-                'If the task has already been analyzed during the previous path analysis,
-                'append path value to the Crit and Group Fields
-                If InStr(t.GetField(FieldNameToFieldConstant(CritField)), "2") = 0 Then
-                    t.SetField FieldNameToFieldConstant(CritField), t.GetField(FieldNameToFieldConstant(CritField)) & ",2"
+                'avoid evaluating outside of the array bounds
+                If i > NextDriverCount Then Exit For
+                
+                'store the current driving task
+                Set t = curProj.Tasks.UniqueID(NextDrivers(i))
+                
+                'add the driving task to the analyzed tasks collection
+                AnalyzedTasks.Add t.UniqueID & "-" & t.UniqueID
+                
+                'If the task has not already been analyzed during previous path analysis,
+                'set the Crit and Group Field values
+                If t.GetField(FieldNameToFieldConstant(CritField)) = vbNullString Then
+                    With t
+                        .SetField FieldNameToFieldConstant(CritField), CurrentPath
+                        .SetField FieldNameToFieldConstant(GroupField), CurrentPath
+                    End With
+                Else
+                
+                    'If the task has already been analyzed during the previous path analysis,
+                    'append path value to the Crit and Group Fields
+                    If InStr(t.GetField(FieldNameToFieldConstant(CritField)), CurrentPath) = 0 Then
+                        t.SetField FieldNameToFieldConstant(CritField), t.GetField(FieldNameToFieldConstant(CritField)) & "," & CurrentPath
+                    End If
+                    
                 End If
                 
-            End If
-            
-            'Store secondary driving task dependencies
-            Set tdps = t.TaskDependencies
-            
-            'Evlauate list of dependencies on secondary driving task
-            For Each tdp In tdps
-            
-                'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-                evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
+                'Store secondary driving task dependencies
+                Set tdps = t.TaskDependencies
                 
-            Next tdp 'Next secondary driver dependency
-            
-        Next i 'next Secondary Path Driver
-        
-    End If
-    
-    'Clear variables for re-use in evaluating secondary driver
-    Set tdps = Nothing
-    Set tdp = Nothing
-    Set t = Nothing
-    Set AnalyzedTasks = New Collection
-    
-    'Iterate through drivingtasks array to find next path driver
-    FindNextDriver
-    
-    '*********************************
-    '***Find Tertiary Driving Paths***
-    '*********************************
-    
-    'Find tertiary if one exists (driver count is greater than 0)
-    If TertiaryDriverCount > 0 Then
-    
-        'Note that we are now evaluating the tertiary driving path
-        tDrivingPaths.FindTertiary = True
-        
-        'iterate through list of tertiary drivers
-        For i = 1 To TertiaryDriverCount
-        
-            'avoid evaluating outside of the array bounds
-            If i > TertiaryDriverCount Then Exit For
-            
-            'store the current driving task
-            Set t = curProj.Tasks.UniqueID(TertiaryDrivers(i))
-            
-            'add the driving task to the analyzed tasks collection
-            AnalyzedTasks.Add t.UniqueID & "-" & t.UniqueID
-            
-            'If the task has not already been analyzed during previous path analysis,
-            'set the Crit and Group Field values
-            If t.GetField(FieldNameToFieldConstant(CritField)) = vbNullString Then
-                With t
-                    .SetField FieldNameToFieldConstant(CritField), "3"
-                    .SetField FieldNameToFieldConstant(GroupField), "3"
-                End With
-            Else
-            
-                'If the task has already been analyzed during the previous path analysis,
-                'append path value to the Crit and Group Fields
-                If InStr(t.GetField(FieldNameToFieldConstant(CritField)), "3") = 0 Then
-                    t.SetField FieldNameToFieldConstant(CritField), t.GetField(FieldNameToFieldConstant(CritField)) & ",3"
-                End If
+                'Evlauate list of dependencies on secondary driving task
+                For Each tdp In tdps
                 
-            End If
-            
-            'Store tertiary driving task dependencies
-            Set tdps = t.TaskDependencies
-            
-            'Evlauate list of dependencies on tertiary driving task
-            For Each tdp In tdps
-            
-                'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-                evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
+                    'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
+                    evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
+                    
+                Next tdp 'Next secondary driver dependency
                 
-            Next tdp 'Next tertiary driver dependency
-            
-        Next i 'next Tertiary Path Driver
+            Next i 'next Secondary Path Driver
         
-    End If
-    
-    'Clear variables for re-use in evaluating secondary driver
-    Set tdps = Nothing
-    Set tdp = Nothing
-    Set t = Nothing
-    Set AnalyzedTasks = New Collection
-    
-    'Iterate through drivingtasks array to find next path driver
-    FindNextDriver
-    
-    '*********************************
-    '***Find Fourth Driving Paths***
-    '*********************************
-    
-    'Find fourth path if one exists (driver count is greater than 0)
-    If FourthDriverCount > 0 Then
-    
-        'Note that we are now evaluating the fourth driving path
-        tDrivingPaths.FindFourth = True
+        End If
         
-        'iterate through list of drivers
-        For i = 1 To FourthDriverCount
+        'Clear variables for re-use in evaluating secondary driver
+        Set tdps = Nothing
+        Set tdp = Nothing
+        Set t = Nothing
+        Set AnalyzedTasks = New Collection
         
-            'avoid evaluating outside of the array bounds
-            If i > FourthDriverCount Then Exit For
-            
-            'store the current driving task
-            Set t = curProj.Tasks.UniqueID(FourthDrivers(i))
-            
-            'add the driving task to the analyzed tasks collection
-            AnalyzedTasks.Add t.UniqueID & "-" & t.UniqueID
-            
-            'If the task has not already been analyzed during previous path analysis,
-            'set the Crit and Group Field values
-            If t.GetField(FieldNameToFieldConstant(CritField)) = vbNullString Then
-                With t
-                    .SetField FieldNameToFieldConstant(CritField), "4"
-                    .SetField FieldNameToFieldConstant(GroupField), "4"
-                End With
-            Else
-            
-                'If the task has already been analyzed during the previous path analysis,
-                'append path value to the Crit and Group Fields
-                If InStr(t.GetField(FieldNameToFieldConstant(CritField)), "4") = 0 Then
-                    t.SetField FieldNameToFieldConstant(CritField), t.GetField(FieldNameToFieldConstant(CritField)) & ",4"
-                End If
-                
-            End If
-            
-            'Store fourth driving task dependencies
-            Set tdps = t.TaskDependencies
-            
-            'Evlauate list of dependencies on fourth driving task
-            For Each tdp In tdps
-            
-                'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-                evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
-                
-            Next tdp 'Next fourth driver dependency
-            
-        Next i 'next fourth Path Driver
+        tDrivingPaths.PrevFloat = tDrivingPaths.CurrentFloat
         
-    End If
-    
-    '*********************************
-    '***Find Fifth Driving Paths***
-    '*********************************
-    
-    'Clear variables for re-use in evaluating next driver
-    Set tdps = Nothing
-    Set tdp = Nothing
-    Set t = Nothing
-    Set AnalyzedTasks = New Collection
-    
-    'Iterate through drivingtasks array to find next path driver
-    FindNextDriver
-    
-    'Find fifth driver if one exists (driver count is greater than 0)
-    If FifthDriverCount > 0 Then
-    
-        'Note that we are now evaluating the fifth driving path
-        tDrivingPaths.FindFifth = True
+        'Iterate through drivingtasks array to find next path driver
+        FindNextDriver
         
-        'iterate through list of fifth drivers
-        For i = 1 To FifthDriverCount
-        
-            'avoid evaluating outside of the array bounds
-            If i > FifthDriverCount Then Exit For
-            
-            'store the current driving task
-            Set t = curProj.Tasks.UniqueID(FifthDrivers(i))
-            
-            'add the driving task to the analyzed tasks collection
-            AnalyzedTasks.Add t.UniqueID & "-" & t.UniqueID
-            
-            'If the task has not already been analyzed during previous path analysis,
-            'set the Crit and Group Field values
-            If t.GetField(FieldNameToFieldConstant(CritField)) = vbNullString Then
-                With t
-                    .SetField FieldNameToFieldConstant(CritField), "5"
-                    .SetField FieldNameToFieldConstant(GroupField), "5"
-                End With
-            Else
-            
-                'If the task has already been analyzed during the previous path analysis,
-                'append path value to the Crit and Group Fields
-                If InStr(t.GetField(FieldNameToFieldConstant(CritField)), "5") = 0 Then
-                    t.SetField FieldNameToFieldConstant(CritField), t.GetField(FieldNameToFieldConstant(CritField)) & ",5"
-                End If
-                
-            End If
-            
-            'Store fifth driving task dependencies
-            Set tdps = t.TaskDependencies
-            
-            'Evlauate list of dependencies on fifth driving task
-            For Each tdp In tdps
-            
-                'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-                evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
-                
-            Next tdp 'Next fifth driver dependency
-            
-        Next i 'next fifth Path Driver
-        
-    End If
-    
+    Next CurrentPath
     
 ShowAndTell:
     
@@ -491,18 +296,18 @@ CleanUp:
     If err Then
         MsgBox "Error Encountered"
     Else
-        If Not (export_to_PPT) Then MsgBox "Complete", vbOKOnly, "ClearPlan Critical Path Analyzer"
+        If Not (export_to_PPT) Then MsgBox "Complete" & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbOKOnly, "ClearPlan Critical Path Analyzer"
     End If
 
     'Clear variables
     Set tdps = Nothing
     Set tdp = Nothing
     Set t = Nothing
-    Erase SecondaryDrivers, TertiaryDrivers, DrivingTasks
+    Erase NextDrivers, DrivingTasks
     Set AnalyzedTasks = Nothing
-    SecondaryDriverCount = 0
-    TertiaryDriverCount = 0
+    NextDriverCount = 0
     drivingTasksCount = 0
+    PathCount = 0
     Set AnalyzedTasks = Nothing
     
     'Enable calculations and screenupdating
@@ -589,13 +394,13 @@ Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritFie
     'currentProject.Application.CustomFieldRename FieldID:=FieldNameToFieldConstant(GroupField), NewName:="CP Driving Path Group ID"
     
     'Assign Lookup Table Values
-    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), "1", "Primary"
-    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), "2", "Secondary"
-    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), "3", "Tertiary"
-    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), "4", "Quaternary"
-    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), "5", "Quinary"
-    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), "0", "Noncritical"
-
+    Dim pathNum As Integer
+    
+    currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), 0, "N/A"
+    
+    For pathNum = 1 To PathCount
+        currentProject.Application.CustomFieldValueListAdd FieldNameToFieldConstant(GroupField), pathNum, "Path " & pathNum
+    Next pathNum
 
 End Sub
 Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, ByVal tUID As String)
@@ -641,55 +446,93 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     'Iterate through each task in view and color the Gantt bars based on CP Group Code
     For Each t In ActiveProject.Tasks
         If Not t Is Nothing Then 'Fix issue 44 for v2.8
-            Select Case t.GetField(FieldNameToFieldConstant(GroupField))
-            
-                'v3.0.0 added consideration for master projects, which require targeted subproject edits via "ProjectName" variable
-                Case "1"
-                    If masterProj Then
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=192, MiddleColor:=192, EndColor:=192, projectName:=curProj.Subprojects(t.Project).Path
-                    Else
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=192, MiddleColor:=192, EndColor:=192
-                    End If
         
-                Case "2"
-                    If masterProj Then
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=3243501, MiddleColor:=3243501, EndColor:=3243501, projectName:=curProj.Subprojects(t.Project).Path
-                    Else
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=3243501, MiddleColor:=3243501, EndColor:=3243501
-                    End If
-                    
-                Case "3"
-                    If masterProj Then
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=65535, MiddleColor:=65535, EndColor:=65535, projectName:=curProj.Subprojects(t.Project).Path
-                    Else
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=65535, MiddleColor:=65535, EndColor:=65535
-                    End If
-                    
-                Case "4"
-                    If masterProj Then
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=11788485, MiddleColor:=11788485, EndColor:=11788485, projectName:=curProj.Subprojects(t.Project).Path
-                    Else
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=11788485, MiddleColor:=11788485, EndColor:=11788485
-                    End If
-                    
-                Case "5"
-                    If masterProj Then
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=15189684, MiddleColor:=15189684, EndColor:=15189684, projectName:=curProj.Subprojects(t.Project).Path
-                    Else
-                        t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=15189684, MiddleColor:=15189684, EndColor:=15189684
-                    End If
-                
-                Case Else
+            Dim pathValue As Integer
             
-            End Select
+            pathValue = t.GetField(FieldNameToFieldConstant(GroupField))
+        
+            If pathValue = 0 Then
+                GoTo NextTask
+            End If
+        
+            If masterProj Then
+                t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue), projectName:=curProj.Subprojects(t.Project).Path
+            Else
+                t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue)
+            End If
+
         End If
-    
+
+NextTask:
+
     Next t
     
     'select the users original analysis task
     curProj.Application.FindEx "UniqueID", "equals", tUID
 
 End Sub
+
+Private Function StoplightColor(ByVal maxValue As Long, ByVal currentValue As Long) As Long
+    ' Returns a color for the given value from Red (1) => Orange => Yellow => Yellow-Green => Green (max)
+    ' Returns Gray if currentValue = 0 or outside 1...maxValue
+    Dim stops() As Variant
+    Dim pos As Double
+    Dim idxLow As Integer, idxHigh As Integer
+    Dim colorLow As Variant, colorHigh As Variant
+    Dim r As Long, g As Long, b As Long
+    Dim fraction As Double
+    
+    ' Define the stoplight colors: Red, Orange, Yellow, Yellow-Green, Green
+    stops = Array(RGB(179, 0, 2), _
+                  RGB(240, 145, 3), _
+                  RGB(240, 224, 3), _
+                  RGB(140, 213, 11))
+    
+    If currentValue = 0 Or currentValue < 1 Or currentValue > maxValue Then
+        StoplightColor = RGB(128, 128, 128)  ' Gray
+        Exit Function
+    End If
+    
+    Dim nStops As Long
+    nStops = UBound(stops)                  ' Number of stops minus 1 (i.e., 4)
+    
+    pos = (currentValue - 1) / (maxValue - 1) * nStops   ' Map value to position between 0 and nStops
+    
+    idxLow = Int(pos)
+    idxHigh = WorksheetFunction.Min(idxLow + 1, nStops)
+    fraction = pos - idxLow
+    
+    colorLow = stops(idxLow)
+    colorHigh = stops(idxHigh)
+    
+    ' Linear interpolate each RGB channel
+    r = (colorLow And &HFF) + fraction * ((colorHigh And &HFF) - (colorLow And &HFF))
+    g = ((colorLow \ &H100) And &HFF) + fraction * (((colorHigh \ &H100) And &HFF) - ((colorLow \ &H100) And &HFF))
+    b = ((colorLow \ &H10000) And &HFF) + fraction * (((colorHigh \ &H10000) And &HFF) - ((colorLow \ &H10000) And &HFF))
+    
+    StoplightColor = RGB(r, g, b)
+End Function
+
+
+Private Function GetBarColor(ByVal maxPaths As Integer, ByVal curPath As Integer) As Long
+'find the gantt bar color based on the path coding wrt the max number of paths found
+'this should provide a smooth gradient between red and green
+
+    Dim redVal As Long, greenVal As Long
+    Dim pos As Double
+    
+    If maxPaths > 1 Then
+        pos = (curPath - 1) / (maxPaths - 1)
+    Else
+        pos = 0
+    End If
+    
+    redVal = 255 * (1 - pos)
+    greenVal = 255 * pos
+
+    GetBarColor = RGB(redVal, greenVal, 0)
+
+End Function
 Private Sub CleanCritFlag(ByVal curProj As Project)
 'Remove previous analysis values from the Crit and Group fields
 
@@ -787,163 +630,42 @@ Private Sub FindNextDriver()
     If drivingTasksCount = 0 Then
         Exit Sub
     End If
+    
+    'Store default float and count values
+    driverFloat = 0
+    driverCount = 0
 
-    'Find Secondary Driving Task if the Find Secondary has not yet been set to True
-    If tDrivingPaths.FindSecondary = False Then
-        
-        'Store default float and count values
-        driverFloat = 0
-        driverCount = 0
+    'Iterate through Driving Tasks array and find the least float value
+    For i = 1 To UBound(DrivingTasks)
     
-        'Iterate through Driving Tasks array and find the least float value
-        For i = 1 To UBound(DrivingTasks)
-        
-            'store first float value, otherwise evaluate current float value against previously stored value
-            If driverFloat = 0 And DrivingTasks(i).tFloat <> 0 Then
+        'store first float value, otherwise evaluate current float value against previously stored value
+        If DrivingTasks(i).tFloat > tDrivingPaths.PrevFloat And driverFloat = 0 Then
+            driverFloat = DrivingTasks(i).tFloat
+        Else
+            If DrivingTasks(i).tFloat > tDrivingPaths.PrevFloat And DrivingTasks(i).tFloat < driverFloat Then
                 driverFloat = DrivingTasks(i).tFloat
-            Else
-                With DrivingTasks(i)
-                    If .tFloat < driverFloat And .tFloat <> 0 Then
-                        driverFloat = .tFloat
-                    End If
-                End With
             End If
+        End If
+    Next i 'Next driving task
+    
+    'Find all drivers with similar float and store as parallel driving tasks
+    If driverFloat <> 0 Then
+        For i = 1 To UBound(DrivingTasks)
+            With DrivingTasks(i)
+                If .tFloat = driverFloat Then
+                    driverCount = driverCount + 1
+                    ReDim Preserve NextDrivers(1 To driverCount)
+                    NextDrivers(driverCount) = .UID
+                End If
+            End With
         Next i 'Next Driving Task
-        
-        'Find all drivers with similar float and store as parallel driving tasks
-        If driverFloat <> 0 Then
-            For i = 1 To UBound(DrivingTasks)
-                With DrivingTasks(i)
-                    If .tFloat = driverFloat Then
-                        driverCount = driverCount + 1
-                        ReDim Preserve SecondaryDrivers(1 To driverCount)
-                        SecondaryDrivers(driverCount) = .UID
-                    End If
-                End With
-            Next i 'Next Driving Task
-        End If
-        
-        'Set Secondary Float value equal to the evaluated driving task float
-        tDrivingPaths.SecondaryFloat = driverFloat
-        
-        'set secondary driver count
-        SecondaryDriverCount = driverCount
-        
-    ElseIf tDrivingPaths.FindTertiary = False Then
-    
-        'Store default float and count values
-        driverFloat = 0
-        driverCount = 0
-    
-        'Iterate through Driving Tasks array and find the least float value
-        For i = 1 To UBound(DrivingTasks)
-        
-            'store first float value, otherwise evaluate current float value against previously stored value
-            If DrivingTasks(i).tFloat > tDrivingPaths.SecondaryFloat And driverFloat = 0 Then
-                driverFloat = DrivingTasks(i).tFloat
-            Else
-                If DrivingTasks(i).tFloat > tDrivingPaths.SecondaryFloat And DrivingTasks(i).tFloat < driverFloat Then
-                    driverFloat = DrivingTasks(i).tFloat
-                End If
-            End If
-        Next i 'Next driving task
-        
-        'Find all drivers with similar float and store as parallel driving tasks
-        If driverFloat <> 0 Then
-            For i = 1 To UBound(DrivingTasks)
-                With DrivingTasks(i)
-                    If .tFloat = driverFloat Then
-                        driverCount = driverCount + 1
-                        ReDim Preserve TertiaryDrivers(1 To driverCount)
-                        TertiaryDrivers(driverCount) = .UID
-                    End If
-                End With
-            Next i 'Next Driving Task
-        End If
-        
-        'Set Tertiary Float value equal to the evaluated driving task float
-        tDrivingPaths.TertiaryFloat = driverFloat
-        
-        'set tertiary driver count
-        TertiaryDriverCount = driverCount
-        
-    ElseIf tDrivingPaths.FindFourth = False Then
-    
-        'Store default float and count values
-        driverFloat = 0
-        driverCount = 0
-    
-        'Iterate through Driving Tasks array and find the least float value
-        For i = 1 To UBound(DrivingTasks)
-        
-            'store first float value, otherwise evaluate current float value against previously stored value
-            If DrivingTasks(i).tFloat > tDrivingPaths.TertiaryFloat And driverFloat = 0 Then 'v3.1.1
-                driverFloat = DrivingTasks(i).tFloat
-            Else
-                If DrivingTasks(i).tFloat > tDrivingPaths.TertiaryFloat And DrivingTasks(i).tFloat < driverFloat Then 'v3.1.1
-                    driverFloat = DrivingTasks(i).tFloat
-                End If
-            End If
-        Next i 'Next driving task
-        
-        'Find all drivers with similar float and store as parallel driving tasks
-        If driverFloat <> 0 Then
-            For i = 1 To UBound(DrivingTasks)
-                With DrivingTasks(i)
-                    If .tFloat = driverFloat Then
-                        driverCount = driverCount + 1
-                        ReDim Preserve FourthDrivers(1 To driverCount)
-                        FourthDrivers(driverCount) = .UID
-                    End If
-                End With
-            Next i 'Next Driving Task
-        End If
-        
-        'Set Fourth Float value equal to the evaluated driving task float
-        tDrivingPaths.FourthFloat = driverFloat
-        
-        'set Fourth driver count
-        FourthDriverCount = driverCount
-        
-    ElseIf tDrivingPaths.FindFifth = False Then
-    
-        'Store default float and count values
-        driverFloat = 0
-        driverCount = 0
-    
-        'Iterate through Driving Tasks array and find the least float value
-        For i = 1 To UBound(DrivingTasks)
-        
-            'store first float value, otherwise evaluate current float value against previously stored value
-            If DrivingTasks(i).tFloat > tDrivingPaths.FourthFloat And driverFloat = 0 Then 'v3.1.1
-                driverFloat = DrivingTasks(i).tFloat
-            Else
-                If DrivingTasks(i).tFloat > tDrivingPaths.FourthFloat And DrivingTasks(i).tFloat < driverFloat Then 'v3.1.1
-                    driverFloat = DrivingTasks(i).tFloat
-                End If
-            End If
-        Next i 'Next driving task
-        
-        'Find all drivers with similar float and store as parallel driving tasks
-        If driverFloat <> 0 Then
-            For i = 1 To UBound(DrivingTasks)
-                With DrivingTasks(i)
-                    If .tFloat = driverFloat Then
-                        driverCount = driverCount + 1
-                        ReDim Preserve FifthDrivers(1 To driverCount)
-                        FifthDrivers(driverCount) = .UID
-                    End If
-                End With
-            Next i 'Next Driving Task
-        End If
-        
-        'Set fifth Float value equal to the evaluated driving task float
-        tDrivingPaths.FifthFloat = driverFloat
-        
-        'set fifth driver count
-        FifthDriverCount = driverCount
-    
     End If
+    
+    'Set Tertiary Float value equal to the evaluated driving task float
+    tDrivingPaths.CurrentFloat = driverFloat
+    
+    'set tertiary driver count
+    NextDriverCount = driverCount
 
 End Sub
 
@@ -1020,7 +742,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
 
     'If not evaluating the last path, and the TrueFloat value is not 0
     'Evaluate total network float and store in Driving Tasks array
-    If tDrivingPaths.FindFifth = False And tempFloat <> 0 Then
+    If CurrentPath < PathCount And tempFloat <> 0 Then
     
         'If other Driving Tasks have been found, Evaluate further
         If drivingTasksCount > 0 Then
@@ -1032,7 +754,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
             If Not IsNull(i) Then
             
                 'if currently evaluating primary path, evaluate further
-                If tDrivingPaths.FindSecondary = False Then
+                If CurrentPath = 1 Then
                 
                     'if the dependency True Flaot is less than the previously stored float value
                     '(i.e. there are redundant links in the network), then store the lower float value
@@ -1043,14 +765,10 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
                 
                     'if the dependency float value + the previous path float is less then the
                     'previously stored float vlaue, then store the lower float value
-                    If tDrivingPaths.FindTertiary = False And tempFloat + tDrivingPaths.SecondaryFloat < DrivingTasks(i).tFloat Then
-                        DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.SecondaryFloat
-                    'v3.1.1 - additional logic below to correctly evaluate drivers for paths 4 & 5
-                    ElseIf tDrivingPaths.FindFourth = False And tempFloat + tDrivingPaths.TertiaryFloat < DrivingTasks(i).tFloat Then
-                        DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.TertiaryFloat
-                    ElseIf tDrivingPaths.FindFifth = False And tempFloat + tDrivingPaths.FourthFloat < DrivingTasks(i).tFloat Then
-                        DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.FourthFloat
+                    If tempFloat + tDrivingPaths.CurrentFloat < DrivingTasks(i).tFloat Then
+                        DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.CurrentFloat
                     End If
+                    
                 End If
             Else 'If the task does not exist in the Driving Tasks array
             
@@ -1059,17 +777,8 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
                 ReDim Preserve DrivingTasks(1 To drivingTasksCount)
                 DrivingTasks(drivingTasksCount).UID = realPredUID 'v3.0.0
                 
-                'If evaluating the Primary Path, then store the float
-                If tDrivingPaths.FindSecondary = False Then
-                    DrivingTasks(drivingTasksCount).tFloat = tempFloat
-                ElseIf tDrivingPaths.FindTertiary = False Then
-                    DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.SecondaryFloat
-                'v3.1.1 - additional logic below to correctly evaluate drivers for paths 4 & 5
-                ElseIf tDrivingPaths.FindFourth = False Then
-                    DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.TertiaryFloat
-                ElseIf tDrivingPaths.FindFifth = False Then
-                    DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.FourthFloat
-                End If
+                DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.CurrentFloat
+                
             End If
         Else 'No other driving tasks found, this is the first driving task
             
@@ -1078,17 +787,8 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
             ReDim DrivingTasks(1 To drivingTasksCount) 'removed Preserve - should not be neccessary when finding first driving task
             DrivingTasks(drivingTasksCount).UID = realPredUID 'v3.0.0
             
-            'If evaluating the Primary Path, then store the float
-            If tDrivingPaths.FindSecondary = False Then
-                DrivingTasks(drivingTasksCount).tFloat = tempFloat
-            ElseIf tDrivingPaths.FindTertiary = False Then
-                DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.SecondaryFloat
-            'v3.1.1 - additional logic below to correctly evaluate drivers for paths 4 & 5
-            ElseIf tDrivingPaths.FindFourth = False Then
-                DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.TertiaryFloat
-            ElseIf tDrivingPaths.FindFifth = False Then
-                DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.FourthFloat
-            End If
+            DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.CurrentFloat
+
         End If
     End If
     
@@ -1096,7 +796,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
     If tempFloat = 0 Then
         
         'If other drivers exist, and not evaluating the last path, evaluate further
-        If drivingTasksCount > 0 And tDrivingPaths.FindFifth = False Then 'v3.1.1
+        If drivingTasksCount > 0 And CurrentPath < PathCount Then 'v3.1.1
         
             'Look for predecessor task in Driving Tasks Array
             i = FindInArray(CStr(realPredUID)) 'v3.0.0
@@ -1116,7 +816,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
             End If
             
         Else 'If no other driving tasks exists and not evaluating the last path
-            If tDrivingPaths.FindFifth = False Then
+            If CurrentPath < PathCount Then
 
                 'Store the new driving task
                 drivingTasksCount = drivingTasksCount + 1
@@ -1128,69 +828,16 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
             End If
         End If
     
-        'If evaluating Primary Path, code the Crit and Group field values
-        If tDrivingPaths.FindPrimary = True And tDrivingPaths.FindSecondary = False Then
+        'If no existing path coding, then no need to concatenate
+        If predCritCoding = vbNullString Then
             With predT
-                .SetField FieldNameToFieldConstant(CritField), "1"
-                .SetField FieldNameToFieldConstant(GroupField), "1"
+                .SetField FieldNameToFieldConstant(CritField), CurrentPath
+                .SetField FieldNameToFieldConstant(GroupField), CurrentPath
             End With
-        ElseIf tDrivingPaths.FindSecondary = True And tDrivingPaths.FindTertiary = False Then
-            'If evaluating the secondary path, code the Crit and Group field values
-            
-            'If no existing code, then no need to concatenate
-            If predCritCoding = vbNullString Then
-                With predT
-                    .SetField FieldNameToFieldConstant(CritField), "2"
-                    .SetField FieldNameToFieldConstant(GroupField), "2"
-                End With
-            Else 'if existing code, then concatenate string
-                If InStr(predCritCoding, "2") = 0 Then
-                    predT.SetField FieldNameToFieldConstant(CritField), predCritCoding & ",2"
-                End If
+        Else 'if existing code, then concatenate string
+            If InStr(predCritCoding, PathCount) = 0 Then
+                predT.SetField FieldNameToFieldConstant(CritField), predCritCoding & "," & CurrentPath
             End If
-            
-        ElseIf tDrivingPaths.FindTertiary = True And tDrivingPaths.FindFourth = False Then
-            
-            'If no existing code, then no need to concatenate
-            If predCritCoding = vbNullString Then
-                With predT
-                    .SetField FieldNameToFieldConstant(CritField), "3"
-                    .SetField FieldNameToFieldConstant(GroupField), "3"
-                End With
-            Else 'if existing code, then concatenate string
-                If InStr(predCritCoding, "3") = 0 Then
-                    predT.SetField FieldNameToFieldConstant(CritField), predCritCoding & ",3"
-                End If
-            End If
-            
-        ElseIf tDrivingPaths.FindFourth = True And tDrivingPaths.FindFifth = False Then
-            
-            'If no existing code, then no need to concatenate
-            If predCritCoding = vbNullString Then
-                With predT
-                    .SetField FieldNameToFieldConstant(CritField), "4"
-                    .SetField FieldNameToFieldConstant(GroupField), "4"
-                End With
-            Else 'if existing code, then concatenate string
-                If InStr(predCritCoding, "4") = 0 Then
-                    predT.SetField FieldNameToFieldConstant(CritField), predCritCoding & ",4"
-                End If
-            End If
-            
-        Else
-        
-            'If no existing code, then no need to concatenate
-            If predCritCoding = vbNullString Then
-                With predT
-                    .SetField FieldNameToFieldConstant(CritField), "5"
-                    .SetField FieldNameToFieldConstant(GroupField), "5"
-                End With
-            Else 'if existing code, then concatenate string
-                If InStr(predCritCoding, "5") = 0 Then
-                    predT.SetField FieldNameToFieldConstant(CritField), predCritCoding & ",5"
-                End If
-            End If
-            
         End If
     
         'store dependecies of the currently evaluted dependency

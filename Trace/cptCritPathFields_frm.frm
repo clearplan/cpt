@@ -1,10 +1,10 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptCritPathFields_frm 
    Caption         =   "cpt Driving Paths"
-   ClientHeight    =   2415
-   ClientLeft      =   105
-   ClientTop       =   450
-   ClientWidth     =   4065
+   ClientHeight    =   2412
+   ClientLeft      =   108
+   ClientTop       =   456
+   ClientWidth     =   4068
    OleObjectBlob   =   "cptCritPathFields_frm.frx":0000
    StartUpPosition =   2  'CenterScreen
 End
@@ -13,13 +13,17 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-
-'<cpt_version>v2.9.1</cpt_version>
+'<cpt_version>v3.3.0</cpt_version>
 
 Private Sub RunBtn_Click()
         
     If PathField_Combobox.Text = "" Or GroupField_Combobox.Text = "" Then
         MsgBox "Please complete the required field mapping."
+        Exit Sub
+    End If
+    
+    If Not IsNumeric(pathCnt_txtBox.Value) Then
+        MsgBox "Please enter a valid Path Count number."
         Exit Sub
     End If
     
