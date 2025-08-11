@@ -262,7 +262,7 @@
 	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
-		<Version>v1.5.2</Version>
+		<Version>v1.5.3</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>

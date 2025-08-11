@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.2</cpt_version>
+'<cpt_version>v1.5.3</cpt_version>
 Option Explicit
 
 Sub cptGetBAC()
@@ -2803,7 +2803,12 @@ next_task:
       oWorksheet.Cells(lngES + 1, 3).Style = "Neutral"
       oExcel.ActiveWindow.ScrollRow = lngES
       oWorksheet.Cells(lngES, 6) = "Status Date"
-      oWorksheet.Cells(lngES, 7) = dtStatus
+      If Weekday(dtStatus) <> 6 Then 'use previous Friday
+        oWorksheet.Cells(lngES, 7) = DateAdd("d", 6 - Weekday(dtStatus) - 7, dtStatus)
+        oWorksheet.Cells(lngES, 8) = "(Friday immediately prior to Status Date)"
+      Else
+        oWorksheet.Cells(lngES, 7) = dtStatus
+      End If
       oWorksheet.Names.Add "SD", oWorksheet.Cells(lngES, 7)
       oWorksheet.Cells(lngES, 7).NumberFormat = "m/d/yyyy"
       oWorksheet.Cells(lngES + 1, 6) = "BCWP"
