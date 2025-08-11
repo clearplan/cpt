@@ -513,26 +513,6 @@ Private Function StoplightColor(ByVal maxValue As Long, ByVal currentValue As Lo
     StoplightColor = RGB(r, g, b)
 End Function
 
-
-Private Function GetBarColor(ByVal maxPaths As Integer, ByVal curPath As Integer) As Long
-'find the gantt bar color based on the path coding wrt the max number of paths found
-'this should provide a smooth gradient between red and green
-
-    Dim redVal As Long, greenVal As Long
-    Dim pos As Double
-    
-    If maxPaths > 1 Then
-        pos = (curPath - 1) / (maxPaths - 1)
-    Else
-        pos = 0
-    End If
-    
-    redVal = 255 * (1 - pos)
-    greenVal = 255 * pos
-
-    GetBarColor = RGB(redVal, greenVal, 0)
-
-End Function
 Private Sub CleanCritFlag(ByVal curProj As Project)
 'Remove previous analysis values from the Crit and Group fields
 
@@ -1195,3 +1175,4 @@ Function get_external_MasterUID(ByVal subP_Task As Task, ByVal subP_Index As Int
     Exit Function
 
 End Function
+
