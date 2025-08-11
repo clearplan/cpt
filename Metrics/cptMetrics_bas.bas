@@ -2666,6 +2666,11 @@ Sub cptGetEarnedSchedule()
     End If
   End If
   
+  If cptGetMetric("bcws") = 0 Then
+    MsgBox "No BCWS. Exiting.", vbExclamation + vbOKOnly, "Earned Schedule"
+    GoTo exit_here
+  End If
+  
   dtStatus = FormatDateTime(ActiveProject.StatusDate, vbShortDate) 'todo: format?
   
   If Not cptValidMap("EVP,EVT,LOE", False, False, True) Then
