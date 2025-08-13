@@ -2386,17 +2386,13 @@ Sub cptGetTrend(strMetric As String, Optional dtStatus As Date)
   oChart.FullSeriesCollection("> 1.05").ChartType = xlAreaStacked
   With oChart.FullSeriesCollection("> 1.05").Format.Fill
     .Visible = msoTrue
-    .ForeColor.ObjectThemeColor = msoThemeColorAccent5
-    .ForeColor.TintAndShade = 0
-    .ForeColor.Brightness = 0
+    .ForeColor.RGB = RGB(78, 149, 217)
     .Transparency = 0
     .Solid
   End With
   With oChart.FullSeriesCollection("> 1.05").Format.Line
     .Visible = msoTrue
-    .ForeColor.ObjectThemeColor = msoThemeColorAccent5
-    .ForeColor.TintAndShade = 0
-    .ForeColor.Brightness = 0
+    .ForeColor.RGB = RGB(78, 149, 217)
     .Transparency = 0
   End With
   
@@ -2412,6 +2408,10 @@ Sub cptGetTrend(strMetric As String, Optional dtStatus As Date)
   oChart.SetElement (msoElementDataLabelBottom)
   oChart.FullSeriesCollection(strMetric).DataLabels.Select
   oExcel.Selection.Format.TextFrame2.TextRange.Font.Size = 11
+  
+  oChart.Axes(xlCategory).BaseUnit = xlDays
+  oChart.Axes(xlCategory).CategoryType = xlCategoryScale
+  oChart.Axes(xlCategory).TickLabelSpacingIsAuto = True
   
   oChart.ChartTitle.Text = strProgram & " IMS - " & strMetric & " Trend" & vbLf & FormatDateTime(dtStatus, vbShortDate)
   oChart.SetElement (msoElementLegendRight)
