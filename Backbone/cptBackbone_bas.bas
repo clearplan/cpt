@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptBackbone_bas"
-'<cpt_version>v1.2.4</cpt_version>
+'<cpt_version>v1.2.5</cpt_version>
 Option Explicit
 
 Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
@@ -827,7 +827,7 @@ Sub cptExport81334D(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As L
             Set oOutlook = CreateObject("Outlook.Application")
           End If
           Set oMailItem = oOutlook.CreateItem(0) '0 = olMailItem
-          oMailItem.To = "cpt@ClearPlanConsulting.com"
+          oMailItem.To = "help@ClearPlanConsulting.com"
           oMailItem.Importance = 2 'olImportanceHigh
           oMailItem.Subject = "Template Request: " & strTemplate
           oMailItem.HTMLBody = "Please forward the subject-referenced template. Thank you." & oMailItem.HTMLBody
