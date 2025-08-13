@@ -59,14 +59,14 @@
 	<Module>
 		<Name>cptBackbone_bas</Name>
 		<FileName>cptBackbone_bas.bas</FileName>
-		<Version>v1.2.4</Version>
+		<Version>v1.2.5</Version>
 		<Type>1</Type>
 		<Directory>Backbone</Directory>
 	</Module>
 	<Module>
 		<Name>cptBackbone_frm</Name>
 		<FileName>cptBackbone_frm.frm</FileName>
-		<Version>v1.2.4</Version>
+		<Version>v1.2.5</Version>
 		<Type>3</Type>
 		<Directory>Backbone</Directory>
 	</Module>
@@ -101,7 +101,7 @@
 	<Module>
 		<Name>cptCore_bas</Name>
 		<FileName>cptCore_bas.bas</FileName>
-		<Version>v1.15.0</Version>
+		<Version>v1.15.1</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -346,14 +346,14 @@
 	<Module>
 		<Name>cptSettings_frm</Name>
 		<FileName>cptSettings_frm.frm</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.3.2</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.9.10</Version>
+		<Version>v1.9.11</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
@@ -374,14 +374,14 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.6.4</Version>
+		<Version>v1.6.5</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.6.4</Version>
+		<Version>v1.6.5</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
@@ -402,14 +402,14 @@
 	<Module>
 		<Name>cptTaskHistory_bas</Name>
 		<FileName>cptTaskHistory_bas.bas</FileName>
-		<Version>v1.1.1</Version>
+		<Version>v1.1.2</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptTaskHistory_frm</Name>
 		<FileName>cptTaskHistory_frm.frm</FileName>
-		<Version>v1.1.1</Version>
+		<Version>v1.1.2</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
@@ -430,7 +430,7 @@
 	<Module>
 		<Name>cptUpgrades_frm</Name>
 		<FileName>cptUpgrades_frm.frm</FileName>
-		<Version>v1.5.4</Version>
+		<Version>v1.5.5</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
