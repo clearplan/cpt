@@ -1225,6 +1225,7 @@ Sub cptRefreshStatusTable(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optiona
   Else
     ViewApply "Gantt Chart"
   End If
+  OptionsViewEx DisplaySummaryTasks:=True
   
   'reset the group
   Application.StatusBar = "Resetting the cptStatusSheet Group..."
