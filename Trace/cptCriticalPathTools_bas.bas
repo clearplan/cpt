@@ -92,7 +92,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
     'SetAutoFilter FieldName:="CP Driving Paths", FilterType:=pjAutoFilterCustom, Test1:="contains", Criteria1:=CStr(vPath)
     SetAutoFilter FieldName:="CP Driving Path Group ID", FilterType:=pjAutoFilterIn, Criteria1:=CStr(vPath)
 
-    Sort key1:="Finish", key2:="Duration", ascending2:=False, renumber:=False
+    Sort Key1:="Finish", Key2:="Duration", ascending2:=False, renumber:=False
     TimescaleEdit MajorUnits:=0, MinorUnits:=2, MajorLabel:=0, MinorLabel:=10, MinorTicks:=True, Separator:=True, TierCount:=2
     SelectBeginning
     Debug.Print vPath & ": " & FormatDateTime(dtFrom, vbShortDate) & " - " & FormatDateTime(dtTo, vbShortDate)

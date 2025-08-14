@@ -7,9 +7,8 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-'<cpt_version>v0.3.0</cpt_version>
+'<cpt_version>v0.3.1</cpt_version>
 Option Explicit
-
 Private m_Value As String
 Private m_Method As String
 Private m_Count As Integer

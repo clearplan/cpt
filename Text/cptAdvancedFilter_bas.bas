@@ -1,7 +1,6 @@
 Attribute VB_Name = "cptAdvancedFilter_bas"
-'<cpt_version>v0.3.0</cpt_version>
+'<cpt_version>v0.3.1</cpt_version>
 Option Explicit
-
 Private Const MODULE_NAME As String = "cptAdvancedFilter_bas"
 Private filterForm As cptAdvancedFilter_frm
 Private curProj As Project
@@ -23,7 +22,7 @@ Sub cptAdvancedFilter()
     Set filterForm = New cptAdvancedFilter_frm
     
     With filterForm
-        .disableChangeEvents = True
+        .blnDisableChangeEvents = True
         Dim vArray As Variant
         vArray = Split(Join(CustTextFields, ",") & "," & Join(CustNumFields, ",") & "," & Join(CustOLCodeFields, ",") & "," & Join(EntFields, ","), ",")
         If vArray(UBound(vArray)) = "" Then ReDim Preserve vArray(UBound(vArray) - 1)
@@ -38,7 +37,7 @@ Sub cptAdvancedFilter()
         .Caption = .versionLbl.Caption & " " & cptGetVersion("cptAdvancedFilter_bas")
         curProj.Application.Windows(1).TopPane.Activate
         .summaryCheckBox = curProj.Application.SummaryTasksShow
-        .disableChangeEvents = False
+        .blnDisableChangeEvents = False
         .Show
     
     End With
@@ -46,7 +45,7 @@ Sub cptAdvancedFilter()
     Exit Sub
     
 ErrorHandler:
-    Call cptHandleErr(MODULE_NAME, "cptAdvancedFilter", err, Erl, "Error initializing Clipboard Filter")
+    Call cptHandleErr(MODULE_NAME, "cptAdvancedFilter", Err, Erl, "Error initializing Clipboard Filter")
     'MsgBox "Error initializing Clipboard Filter: " & err.Description, vbCritical, "Clipboard Filter Error"
 
 End Sub
@@ -181,7 +180,7 @@ NextTask:
     
     If tempFilterString <> "" Then
     
-        Application.SetAutoFilter fieldName:="Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=tempFilterString
+        Application.SetAutoFilter FieldName:="Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=tempFilterString
         
         If isSorted Then Application.Sort filterForm.sortField.Value
         
@@ -202,7 +201,7 @@ NextTask:
     Exit Sub
     
 ErrorHandler:
-    Call cptHandleErr(MODULE_NAME, "setFilter", err, Erl, "Error setting AutoFilter")
+    Call cptHandleErr(MODULE_NAME, "setFilter", Err, Erl, "Error setting AutoFilter")
     Application.ScreenUpdating = True
     Application.Calculation = pjAutomatic
     'MsgBox "Error setting AutoFilter: " & err.Description, vbCritical, "AutoFilter Error"
@@ -246,7 +245,7 @@ ErrorHandler:
         GetClipboardText = ""
     End If
     
-    If err.Number <> 0 Then
+    If Err.Number <> 0 Then
         GetClipboardText = ""
     End If
     On Error GoTo 0
@@ -255,29 +254,29 @@ End Function
 Public Function ParseClipboardData(clipText As String) As Collection
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
-    Dim items As New Collection
-    Dim lines() As String
+    Dim oItems As New Collection
+    Dim strLines() As String
     Dim i As Integer
-    Dim item As cptFilterItem_cls
+    Dim oItem As cptFilterItem_cls
     
     ' Split by line breaks
-    lines = Split(Replace(Replace(clipText, vbCrLf, vbLf), vbCr, vbLf), vbLf)
+    strLines = Split(Replace(Replace(clipText, vbCrLf, vbLf), vbCr, vbLf), vbLf)
     
-    For i = 0 To UBound(lines)
-        If Trim(lines(i)) <> "" Then
-            Set item = New cptFilterItem_cls
-            item.Value = Trim(lines(i))
-            item.Method = "Equals"
-            item.Count = 0
-            items.Add item
+    For i = 0 To UBound(strLines)
+        If Trim(strLines(i)) <> "" Then
+            Set oItem = New cptFilterItem_cls
+            oItem.Value = Trim(strLines(i))
+            oItem.Method = "Equals"
+            oItem.Count = 0
+            oItems.Add oItem
         End If
     Next i
     
-    Set ParseClipboardData = items
+    Set ParseClipboardData = oItems
     Exit Function
     
 ErrorHandler:
-    Call cptHandleErr(MODULE_NAME, "ParseClipboardData", err, Erl, "Error parsing clipboard data")
+    Call cptHandleErr(MODULE_NAME, "ParseClipboardData", Err, Erl, "Error parsing clipboard data")
     'MsgBox "Error parsing clipboard data: " & err.Description, vbExclamation, "Parse Error"
     Set ParseClipboardData = New Collection
 End Function
@@ -357,23 +356,23 @@ Public Sub updateSummaries(ByVal checkboxValue As Boolean)
 
 End Sub
 
-Public Function resetCustomField(ByVal fieldName As String) As PjCustomField
-    Dim fieldConstant As PjCustomField
+Public Function resetCustomField(ByVal strFieldName As String) As PjCustomField
+    Dim lngFieldConstant As PjCustomField
     
-    fieldConstant = FieldNameToFieldConstant(fieldName)
+    lngFieldConstant = FieldNameToFieldConstant(strFieldName)
     
-    CustomFieldPropertiesEx FieldID:=fieldConstant, Attribute:=pjFieldAttributeNone, summarycalc:=pjCalcNone
+    CustomFieldPropertiesEx FieldID:=lngFieldConstant, Attribute:=pjFieldAttributeNone, SummaryCalc:=pjCalcNone
     
     Dim t As Task
     
     For Each t In curProj.Tasks
     
         If Not t Is Nothing Then
-            t.SetField fieldConstant, ""
+            t.SetField lngFieldConstant, ""
         End If
     
     Next t
     
-    resetCustomField = fieldConstant
+    resetCustomField = lngFieldConstant
     
 End Function

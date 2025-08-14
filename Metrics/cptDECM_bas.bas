@@ -4481,7 +4481,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strList
-        Sort key1:="Finish", ascending1:=True, key2:="Duration", ascending2:=False, renumber:=False, Outline:=False
+        Sort Key1:="Finish", ascending1:=True, Key2:="Duration", ascending2:=False, renumber:=False, Outline:=False
         SelectBeginning
         EditGoTo Date:=ActiveSelection.Tasks(1).Finish
       Else
