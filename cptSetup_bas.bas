@@ -692,6 +692,9 @@ Public Function cptBuildRibbonTab()
     End If
     If cptModuleExists("cptCalendarExceptions_frm") And cptModuleExists("cptCalendarExceptions_bas") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalDetails"" label=""Details"" imageMso=""MonthlyView"" onAction=""cptShowCalendarExceptions_frm"" visible=""true"" supertip=""Export Calendar Exceptions, WorkWeeks, and settings."" />"
+      If ActiveProject.Subprojects.Count > 0 Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalCompare"" label=""Compare"" imageMso=""MonthlyView"" onAction=""cptCalendarCompareMain"" visible=""true"" supertip=""Compare Calendar Exceptions between Master Project and Subprojects."" />"
+      End if
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
