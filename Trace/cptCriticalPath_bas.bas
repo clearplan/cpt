@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.3.1</cpt_version>
+'<cpt_version>v3.4.0/cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -33,6 +33,7 @@ Private subPID As Integer 'v3.0.0 used to temporarily store subproject ID
 Private tempproj As Project 'v3.0.0 used to temporarily reference subprojects
 Private firstTask As Boolean 'v3.0.0 used to track seed task for each path
 Private Const MODULE_NAME As String = "cptCriticalPath_bas"
+Private userView As String
 
 Sub DrivingPaths()
 'Primary analysis module that controls analysis
@@ -124,6 +125,19 @@ Sub DrivingPaths()
         
         .Caption = "cptCritical Path " & cptGetVersion("cptCriticalPath_bas")
         
+        With .UserView_Combobox
+            .AddItem "<Default>"
+            Dim v As View
+            For Each v In curProj.Views
+                .AddItem v.Name
+            Next v
+            .ListIndex = 0
+        End With
+        
+        .StartUpPosition = 0
+        .Left = Application.Left + (0.5 * Application.Width) - (0.5 * .Width)
+        .Top = Application.Top + (0.5 * Application.Height) - (0.5 * .Height)
+        
         .Show
         
         If .Tag = "cancel" Then
@@ -137,6 +151,7 @@ Sub DrivingPaths()
         CritField = .PathField_Combobox.Text
         GroupField = .GroupField_Combobox.Text
         PathCount = .pathCnt_txtBox.Value
+        userView = .UserView_Combobox.Text
     
     End With
     
@@ -287,8 +302,12 @@ Sub DrivingPaths()
     
 ShowAndTell:
     
-    'Create and Apply the "ClearPlan Driving Path" Table, View, Group, and Filter
-    SetupCPView GroupField, curProj, analysisTaskUID
+    If userView = "<Default>" Then
+        'Create and Apply the "ClearPlan Driving Path" Table, View, Group, and Filter
+        SetupCPView GroupField, curProj, analysisTaskUID
+    Else
+        curProj.Application.ViewApply Name:=userView
+    End If
     
     If Not (export_to_PPT) Then MsgBox "Complete" & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbOKOnly, "ClearPlan Critical Path Analyzer"
     
