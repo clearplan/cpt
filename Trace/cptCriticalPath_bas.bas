@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.3.0</cpt_version>
+'<cpt_version>v3.3.1</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -32,17 +32,21 @@ Private subP As SubProject 'v3.0.0 used to iterate through subprojects collectio
 Private subPID As Integer 'v3.0.0 used to temporarily store subproject ID
 Private tempproj As Project 'v3.0.0 used to temporarily reference subprojects
 Private firstTask As Boolean 'v3.0.0 used to track seed task for each path
+Private Const MODULE_NAME As String = "cptCriticalPath_bas"
 
 Sub DrivingPaths()
 'Primary analysis module that controls analysis
 'workflow through Primary, Secondary and Tertiary
 'driving paths.
 
+    If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     Dim t As Task 'Stores initial user selected task
     Dim tdp As TaskDependency
     Dim tdps As TaskDependencies
     Dim i As Integer 'Used to iterate through Primary/Secondary/Tertiary driver arrays
     Dim analysisTaskUID As String 'Stores user selected task for recall and selection after setting final view
+    
+    If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
     'Store users active project
     Set curProj = ActiveProject 'v2.9.0 get active project before displaying field selection form
@@ -118,6 +122,8 @@ Sub DrivingPaths()
         
         .pathCnt_txtBox.Value = 3
         
+        .Caption = "cptCritical Path " & cptGetVersion("cptCriticalPath_bas")
+        
         .Show
         
         If .Tag = "cancel" Then
@@ -137,12 +143,6 @@ Sub DrivingPaths()
     'Suspend calculations and screen updating
     curProj.Application.Calculation = pjManual
     curProj.Application.ScreenUpdating = False
-    
-    On Error GoTo CleanUp
-    
-    '**********************************************
-    On Error GoTo 0 '*****used for debug only*****
-    '**********************************************
     
     'v3.0.0 Assign Custom Field names and create lookup table for each subproject
     If masterProj = True Then
@@ -290,14 +290,15 @@ ShowAndTell:
     'Create and Apply the "ClearPlan Driving Path" Table, View, Group, and Filter
     SetupCPView GroupField, curProj, analysisTaskUID
     
-CleanUp:
+    If Not (export_to_PPT) Then MsgBox "Complete" & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbOKOnly, "ClearPlan Critical Path Analyzer"
+    
+    GoTo CleanUp
+    
+ErrorHandler:
 
-    'If error encountered, alert the user, otherwise notify of completion
-    If err Then
-        MsgBox "Error Encountered"
-    Else
-        If Not (export_to_PPT) Then MsgBox "Complete" & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbOKOnly, "ClearPlan Critical Path Analyzer"
-    End If
+    Call cptHandleErr(MODULE_NAME, "cptCriticalPath", err, Erl, "Error identifying driving paths")
+
+CleanUp:
 
     'Clear variables
     Set tdps = Nothing
@@ -435,7 +436,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     curProj.Application.ViewApply Name:="*ClearPlan Driving Path View"
     
     'Sort the View by Finish, then by Duration to produce Waterfall Gantt
-    curProj.Application.Sort key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, Outline:=False
+    curProj.Application.Sort key1:="Finish", Ascending1:=True, key2:="Duration", ascending2:=False, Outline:=False
     
     'Select all tasks and zoom the Gantt to display all tasks in view
     curProj.Application.SelectAll
