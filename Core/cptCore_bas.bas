@@ -378,14 +378,14 @@ Sub cptGetReferences()
   'although simply running cptSetReferences should fix it
   Dim oRef As Object 'Reference
   Dim lngFile As Long
-  Dim strFile As String
+  Dim strFileName As String
   Dim strRef As String
   Dim lngRefs As Long
   Dim lngRef As Long
   
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\cpt-references.csv"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\cpt-references.csv"
+  Open strFileName For Output As #lngFile
   
   Print #lngFile, "NAME,DESCRIPTION,FULL_PATH,GUID,MAJOR,MINOR,BUILT_IN,IS_BROKEN,TYPE,"
   lngRefs = ThisProject.VBProject.References.Count
@@ -405,8 +405,8 @@ Sub cptGetReferences()
   Next oRef
   Reset
   
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
-  
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+
 End Sub
 
 Function cptGetDirectory(strModule As String) As String
@@ -456,19 +456,19 @@ End Function
 Sub cptGetEnviron()
   'list the environment variables and their associated values
   Dim lngIndex As Long
-  Dim strFile As String
+  Dim strFileName As String
   Dim lngFile As Long
   
-  strFile = Environ("tmp") & "\current_environment.txt"
+  strFileName = Environ("tmp") & "\current_environment.txt"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
 
   For lngIndex = 1 To 200
     Print #lngFile, lngIndex & ": " & Environ(lngIndex)
   Next
   Close #lngFile
   Reset
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 End Sub
 Function cptCheckReference(strReference As String) As Boolean
@@ -581,7 +581,7 @@ Sub cptResetAll()
   Dim strFilter As String
   Dim strOutlineLevel As String
   Dim strSettings As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strOutlineParents As String
   'longs
   Dim lngUID As Long
@@ -622,7 +622,7 @@ Sub cptResetAll()
   End If
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
-  strFile = cptDir & "\settings\cpt-reset-all.adtg"
+  strFileName = cptDir & "\settings\cpt-reset-all.adtg"
   If Dir(strFile) <> vbNullString Then
     Set rstSettings = CreateObject("ADODB.Recordset")
     rstSettings.Open strFile
@@ -801,7 +801,7 @@ Sub cptShowResetAll_frm()
   Dim strDefaultView As String
   Dim strOutlineLevel As String
   Dim strSettings As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngSettings As Long
   Dim lngOutlineLevel As Long
@@ -856,7 +856,7 @@ Sub cptShowResetAll_frm()
   cptQuickSort vViewList, 0, UBound(vViewList)
   myResetAll_frm.cboViews.List = Split("<None>," & Join(vViewList, ","), ",")
   
-  strFile = cptDir & "\settings\cpt-reset-all.adtg"
+  strFileName = cptDir & "\settings\cpt-reset-all.adtg"
   If Dir(strFile) <> vbNullString Then
     'get saved settings
     Set rstSettings = CreateObject("ADODB.Recordset")
@@ -2011,7 +2011,9 @@ err_here:
 End Function
 
 Sub cptOpenSettingsFile()
-  Shell "notepad.exe """ & cptDir & "\settings\cpt-settings.ini""", vbNormalFocus
+  Dim strFileName As String
+  strFilename = cptDir & "\settings\cpt-settings.ini"
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
 
 Function cptGetMyHeaders(strTitle As String, Optional blnRequired As Boolean = False) As String
@@ -2185,7 +2187,7 @@ err_here:
   Resume exit_here
 End Function
 
-Sub cptAppendColumn(strFile As String, strColumn As String, lngType As Long, Optional lngLength As Long, Optional vDefault As Variant)
+Sub cptAppendColumn(strFileName As String, strColumn As String, lngType As Long, Optional lngLength As Long, Optional vDefault As Variant)
   'objects
   Dim oRecordsetNew As Object 'ADODB.Recordset
   Dim oRecordset As Object 'ADODB.Recordset
@@ -2206,7 +2208,7 @@ Sub cptAppendColumn(strFile As String, strColumn As String, lngType As Long, Opt
   
   Set oRecordset = CreateObject("ADODB.Recordset")
   Set oRecordsetNew = CreateObject("ADODB.Recordset")
-  If InStr(strFile, strDir) = 0 Then strFile = strDir & strFile
+  If InStr(strFile, strDir) = 0 Then strFileName = strDir & strFile
   oRecordset.Open strFile, , adOpenKeyset, adLockReadOnly
   On Error Resume Next
   Debug.Print oRecordset.Fields(strColumn)
@@ -2244,7 +2246,7 @@ Sub cptAppendColumn(strFile As String, strColumn As String, lngType As Long, Opt
     oRecordset.MoveNext
   Loop
   oRecordset.Close
-  Name strFile As Replace(strFile, ".adtg", "-backup_" & Format(Now, "yyyy-mm-dd-HH-nn-ss") & ".adtg")
+  Name strFileName As Replace(strFile, ".adtg", "-backup_" & Format(Now, "yyyy-mm-dd-HH-nn-ss") & ".adtg")
   oRecordsetNew.Save strFile, adPersistADTG
   oRecordsetNew.Close
   

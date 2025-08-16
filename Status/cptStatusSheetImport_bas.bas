@@ -287,7 +287,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim strDeconflictionFile As String
   Dim strSchema As String
   Dim strEVP As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strNotesColTitle As String
   Dim strImportLog As String
   Dim strAppendTo As String
@@ -544,12 +544,12 @@ next_task:
     .lblStatus.Caption = "Importing..."
     For lngItem = 0 To .lboStatusSheets.ListCount - 1
       blnValid = True
-      strFile = .lboStatusSheets.List(lngItem, 0) & .lboStatusSheets.List(lngItem, 1)
+      strFileName = .lboStatusSheets.List(lngItem, 0) & .lboStatusSheets.List(lngItem, 1)
       Set oWorkbook = oExcel.Workbooks.Open(strFile, ReadOnly:=True)
       .lboStatusSheets.Selected(lngItem) = True
       DoEvents
       Print #lngFile, String(25, "=")
-      Print #lngFile, "IMPORTING Workbook: " & strFile & " (" & oWorkbook.Sheets.Count & " Worksheets)"
+      Print #lngFile, "IMPORTING Workbook: " & strFileName & " (" & oWorkbook.Sheets.Count & " Worksheets)"
       Print #lngFile, String(25, "-")
       For Each oWorksheet In oWorkbook.Sheets
         If oWorksheet.Name = "Conditional Formatting" Then
@@ -987,7 +987,7 @@ next_file:
 next_worksheet1:
         Next oWorksheet
         'save a copy
-        strFile = Replace(strFile, ".xlsx", "_invalid.xlsx")
+        strFileName = Replace(strFile, ".xlsx", "_invalid.xlsx")
         If Dir(strFile) <> vbNullString Then Kill strFile
         oWorkbook.SaveCopyAs strFile
         'attach it
@@ -1078,7 +1078,7 @@ exit_here:
   Reset 'closes all active files opened by the Open statement and writes the contents of all file buffers to disk.
   Close #lngDeconflictionFile
   If Dir(strImportLog) <> vbNullString And blnImportLog Then 'open log in notepad
-    Shell "notepad.exe """ & strImportLog & """", vbNormalFocus
+    ShellExecute 0, "open", strImportLog, vbNullString, vbNullString, 1
   End If
   If Dir(Environ("tmp") & "\Schema.ini") <> vbNullString Then Kill Environ("tmp") & "\Schema.ini"
   If Dir(Environ("tmp") & "\imported.csv") <> vbNullString Then Kill Environ("tmp") & "\imported.csv"

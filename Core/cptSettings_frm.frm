@@ -21,13 +21,15 @@ Private Sub cmdDone_Click()
 End Sub
 
 Private Sub cmdEdit_Click()
-Dim strMsg As String
+  Dim strMsg As String
+  Dim strFileName As String
   strMsg = "...unless you *really* know what you're doing." & vbCrLf & vbCrLf
   strMsg = strMsg & "Contact help@ClearPlanConsulting.com if you need help." & vbCrLf & vbCrLf
   strMsg = strMsg & "Do you still wish to venture forth?"
   If MsgBox(strMsg, vbCritical + vbYesNo, "Do Not Attempt This...") = vbYes Then
     MsgBox "...you've been warned.", vbInformation + vbOKOnly, "OK"
-    Shell "notepad.exe """ & cptDir & "\settings\cpt-settings.ini""", vbNormalFocus
+    strFileName = cptDir & "\settings\cpt-settings.ini"
+    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
 End Sub
 

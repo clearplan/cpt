@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v7.0.1</cpt_version>
+'<cpt_version>v7.1.0</cpt_version>
 Option Explicit
 
 Private Sub chkUpdateView_Click()
@@ -33,7 +33,7 @@ End Sub
 Private Sub cmdDone_Click()
   Dim oExcel As Excel.Application
   Dim vFile As Variant
-  Dim strFile As String
+  Dim strFileName As String
   Dim vGroup As Variant
   Dim strGroups As String
   Dim blnErrorTrapping As Boolean
@@ -45,7 +45,7 @@ Private Sub cmdDone_Click()
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   'then clean up after yourself
   For Each vFile In Split("Schema.ini,tasks.csv,targets.csv,assignments.csv,links.csv,wp-ims.csv,wp-ev.csv,wp-not-in-ims.csv,wp-not-in-ev.csv,10A302b-x.csv,decm-cpt01.adtg,10A303a-x.csv,fiscal.csv,cpt-cei.csv,06A506c-x.csv,06A504a.csv,06A504b.csv,segregated.csv,itemized.csv,06A101a.xlsx,06A212a.xlsm,10A102a.xlsx,10A103a.xlsx", ",")
-    strFile = Environ("tmp") & "\" & vFile
+    strFileName = Environ("tmp") & "\" & vFile
     If Not oExcel Is Nothing Then
       On Error Resume Next
       oExcel.Windows(vFile).Close False
@@ -99,6 +99,7 @@ Public Sub lboMetrics_AfterUpdate()
   Dim oFile As Scripting.TextStream  'Object
   Dim oFSO As Scripting.FileSystemObject  'Object
   'strings
+  Dim strFileName As String
   Dim strRollingWaveDate As String
   Dim strMsg As String
   Dim strDir As String
@@ -161,7 +162,7 @@ Public Sub lboMetrics_AfterUpdate()
           MsgBox "Please send the following query to your EV Analyst...", vbOKOnly + vbInformation, "Data Needed"
           Set oFSO = CreateObject("Scripting.FileSystemObject")
           strDir = Environ("tmp")
-          Set oFile = oFSO.CreateTextFile(strDir & "\wp-ev.sql.txt", True)
+          Set oFile = oFSO.CreateTextFile(strDir & "\wp-ev-sql.txt", True)
           strMsg = "Hi [name]," & vbCrLf & vbCrLf
           strMsg = strMsg & "I'm running DECM metric 06A101a which compares the list of discrete, incomplete WPs in the IMS vs what's in the EV Tool. " & vbCrLf
           strMsg = strMsg & "Could you please provide the list of discrete, incomplete WPs currently in the EV Tool?" & vbCrLf & vbCrLf
@@ -181,7 +182,8 @@ Public Sub lboMetrics_AfterUpdate()
           strMsg = strMsg & "I appreciate your assistance. Please let me know if you have any questions."
           oFile.Write strMsg
           oFile.Close
-          Shell "C:\Windows\notepad.exe """ & strDir & "\wp-ev.sql.txt""", vbNormalFocus
+          strFileName = strDir & "\wp-ev-sql.txt"
+          ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
           GoTo exit_here
         ElseIf lngResponse = vbYes Then
           Me.txtTitle.Value = Me.txtTitle.Text & vbCrLf & "please paste data here (w/o headers):" & vbCrLf
@@ -330,22 +332,22 @@ End Sub
 
 Private Sub lboMetrics_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
   Dim strMetric As String
-  Dim strFile As String
+  Dim strFileName As String
   If Not IsNull(Me.lboMetrics.Value) Then
     strMetric = Me.lboMetrics.Value
     Select Case strMetric
       Case "06A101a"
-        strFile = Environ("tmp") & "\" & strMetric & ".xlsx"
+        strFileName = Environ("tmp") & "\" & strMetric & ".xlsx"
         If Dir(strFile) <> vbNullString Then
           If MsgBox("Open " & strMetric & ".xslx?", vbQuestion + vbYesNo, strMetric & " Details") = vbYes Then
-            Shell "excel.exe """ & strFile & """", vbMaximizedFocus
+            Shell "excel.exe """ & strFileName & """", vbMaximizedFocus
           End If
         End If
       Case Else
-        strFile = Environ("tmp") & "\" & strMetric & ".xlsm"
+        strFileName = Environ("tmp") & "\" & strMetric & ".xlsm"
         If Dir(strFile) <> vbNullString Then
           If MsgBox("Open " & strMetric & ".xslm?", vbQuestion + vbYesNo, strMetric & " Details") = vbYes Then
-            Shell "excel.exe """ & strFile & """", vbMaximizedFocus
+            Shell "excel.exe """ & strFileName & """", vbMaximizedFocus
           End If
         End If
         
@@ -391,7 +393,7 @@ Private Sub txtTitle_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, By
   Dim oFile As Scripting.TextStream
   Dim oFSO As Scripting.FileSystemObject
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   Dim strDescription As String
   Dim strPass As String
   Dim strFail As String
@@ -574,7 +576,7 @@ Private Sub txtTitle_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, By
           End With
         End With
       End With
-      strFile = Environ("tmp") & "\" & strMetric & ".xlsx"
+      strFileName = Environ("tmp") & "\" & strMetric & ".xlsx"
       If Dir(strFile) <> vbNullString Then Kill strFile
       oWorkbook.SaveAs strFile, 51
       'oWorkbook.Close 'todo: keep open

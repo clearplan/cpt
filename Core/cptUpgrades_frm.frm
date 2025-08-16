@@ -476,10 +476,10 @@ Private Sub cptHandleErrUpgrade(strModule As String, strProcedure As String, obj
     strMsg = strMsg & ":" & lngErl
   End If
   MsgBox strMsg, vbExclamation + vbOKOnly, "Error"
-  Dim strFile As String
+  Dim strFileName As String
   Dim lngFile As Long
-  strFile = Environ("tmp") & "\cptUpgradeError.txt"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\cptUpgradeError.txt"
+  Open strFileName For Output As #lngFile
   Print #lngFile, "Please send the following text to help@ClearPlanConsulting.com:"
   Print #lngFile, "Error: " & Err.Number & ": " & Err.Description
   Print #lngFile, "Source: " & strModule & "." & strProcedure
@@ -487,7 +487,7 @@ Private Sub cptHandleErrUpgrade(strModule As String, strProcedure As String, obj
     Print #lngFile, "Line: " & lngErl
   End If
   Close #lngFile
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 
 End Sub
 
