@@ -750,7 +750,7 @@ Function cptGetLatest(strModule As String) As String
   'strings
   Dim strLatest As String
   Dim strURL As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strDir As String
   'longs
   'integers
@@ -767,7 +767,7 @@ Function cptGetLatest(strModule As String) As String
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
   
-  strFile = strDir & "\cpt-latest.adtg"
+  strFileName = strDir & "\cpt-latest.adtg"
   blnStale = True
   'does file exist?
   If Dir(strFile) <> vbNullString Then
@@ -1222,7 +1222,7 @@ next_task_single:
   Print #lngFile, "-> The location of this file is " & strFileName & vbCrLf
   Print #lngFile, strMsg
   Close #lngFile
-  Shell "notepad.exe """ & strFileName & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   Application.StatusBar = "Opening https://clearplan.happyfox.com/new..."
   Application.FollowHyperlink "https://clearplan.happyfox.com/new/"
   
@@ -1493,7 +1493,7 @@ Sub cptValidateXML(strXML As String)
   'objects
   Dim oXML As MSXML2.DOMDocument30
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngFile As Long
   'integers
@@ -1504,9 +1504,9 @@ Sub cptValidateXML(strXML As String)
   
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
   
-  strFile = Environ("tmp") & "\cpt-validate.xml"
+  strFileName = Environ("tmp") & "\cpt-validate.xml"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, strXML
   Close #lngFile
   

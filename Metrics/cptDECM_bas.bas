@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v7.0.1</cpt_version>
+'<cpt_version>v7.1.0</cpt_version>
 Option Explicit
 Private strWBS As String
 Private strOBS As String
@@ -55,7 +55,7 @@ Sub cptDECM_GET_DATA()
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strLOE As String
   Dim strList As String
   'longs
@@ -141,9 +141,9 @@ Sub cptDECM_GET_DATA()
   
   lngFile = FreeFile
   strDir = Environ("tmp")
-  strFile = strDir & "\Schema.ini"
+  strFileName = strDir & "\Schema.ini"
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, "[tasks.csv]"
   Print #lngFile, "Format=CSVDelimited"
   Print #lngFile, "ColNameHeader=True"
@@ -243,25 +243,25 @@ Sub cptDECM_GET_DATA()
   Close #lngFile
   
   lngTaskFile = FreeFile
-  strFile = strDir & "\tasks.csv"
+  strFileName = strDir & "\tasks.csv"
   
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngTaskFile
+  Open strFileName For Output As #lngTaskFile
   
   lngLinkFile = FreeFile
-  strFile = strDir & "\links.csv"
+  strFileName = strDir & "\links.csv"
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngLinkFile
+  Open strFileName For Output As #lngLinkFile
   
   lngAssignmentFile = FreeFile
-  strFile = strDir & "\assignments.csv"
+  strFileName = strDir & "\assignments.csv"
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngAssignmentFile
+  Open strFileName For Output As #lngAssignmentFile
   
   lngTargetFile = FreeFile
-  strFile = strDir & "\targets.csv"
+  strFileName = strDir & "\targets.csv"
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngTargetFile
+  Open strFileName For Output As #lngTargetFile
   
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   
@@ -518,8 +518,8 @@ next_task:
   If blnFiscalExists Then
     'export fiscal.csv
     lngFile = FreeFile
-    strFile = strDir & "\fiscal.csv"
-    Open strFile For Output As #lngFile
+    strFileName = strDir & "\fiscal.csv"
+    Open strFileName For Output As #lngFile
     Print #1, "FISCAL_END,LABEL,"
     For Each oException In ActiveProject.BaseCalendars("cptFiscalCalendar").Exceptions
       Print #1, oException.Finish & " 5:00 PM," & oException.Name & ","
@@ -561,7 +561,7 @@ next_task:
   myDECM_frm.lblStatus.Caption = "Task history file..."
   Application.StatusBar = "Task history file..."
   DoEvents
-  strFile = cptDir & "\settings\cpt-cei.adtg"
+  strFileName = cptDir & "\settings\cpt-cei.adtg"
   If Dir(strFile) <> vbNullString Then
     myDECM_frm.lblStatus.Caption = "Task history file found. Querying..."
     Application.StatusBar = "Task history file found. Querying..."
@@ -571,7 +571,7 @@ next_task:
     FileCopy strFile, strDir & "\cpt-cei.adtg"
     
     'convert to csv for sql query...
-    strFile = strDir & "\cpt-cei.adtg"
+    strFileName = strDir & "\cpt-cei.adtg"
     Set oRecordset = CreateObject("ADODB.Recordset")
     oRecordset.Open strFile
     'limit to program
@@ -1979,7 +1979,7 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   Dim strSQL As String
   Dim strList As String
   Dim strDir As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim lngX As Long
   Dim lngFile As Long
   Dim dblScore As Double
@@ -2033,9 +2033,9 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     DoEvents
   End If
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\segregated.csv"
+  strFileName = Environ("tmp") & "\segregated.csv"
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, "CA,WP,WP_BLW,"
   oRecordset.MoveFirst
   Print #lngFile, oRecordset.GetString(adClipString, , ",", vbCrLf, vbNullString)
@@ -2078,9 +2078,9 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   
   oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\itemized.csv"
+  strFileName = Environ("tmp") & "\itemized.csv"
   If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, "CA,CA_BAC,WP_BAC,discrepancy,"
   If oRecordset.RecordCount > 0 Then
     oRecordset.MoveFirst
@@ -3351,9 +3351,11 @@ err_here:
 
 End Sub
 
-Sub opencsv(strFileName)
-  Shell "notepad.exe """ & Environ("tmp") & "\" & strFileName & """", vbNormalFocus
+Sub opencsv(strFileName As string)
+  strFileName = Environ("tmp") & "\" & strFileName
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
+
 Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolean = False)
   'objects
   Dim oShading As Object
@@ -4612,7 +4614,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   Dim strProjectNumber As String
   Dim strProjectName As String
   Dim strDir As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   Dim lngLagType As Long
@@ -5009,7 +5011,7 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngWP As Long
   Dim lngFiscalPeriodsCol As Long
@@ -5048,8 +5050,8 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
 '  'export the calendar
 '  Set oCalendar = ActiveProject.BaseCalendars("cptFiscalCalendar")
 '  lngFile = FreeFile
-'  strFile = Environ("tmp") & "\fiscal.csv"
-'  Open strFile For Output As #lngFile
+'  strFileName = Environ("tmp") & "\fiscal.csv"
+'  Open strFileName For Output As #lngFile
 '  Print #lngFile, "fisc_end,label,"
 '  For Each oException In oCalendar.Exceptions
 '    Print #lngFile, oException.Finish & "," & oException.Name

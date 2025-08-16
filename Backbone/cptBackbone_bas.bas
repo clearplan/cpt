@@ -1211,7 +1211,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   Dim strHeader As String
   Dim strMsg As String
   Dim strCode As String, strDescription As String, strParent As String
-  Dim strDir As String, strFile As String, strOutlineCode As String
+  Dim strDir As String, strFileName As String, strOutlineCode As String
   'booleans
   Dim blnErrorTrapping As Boolean
   Dim blnCA As Boolean
@@ -1232,11 +1232,11 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   
   'set directory
   strDir = Environ("TEMP") & "\"
-  strFile = "WBS_DESCRIPTIVE_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".csv"
+  strFileName = "WBS_DESCRIPTIVE_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".csv"
   If Dir(strDir & strFile) <> vbNullString Then Kill strDir & strFile
 
   lngFile = FreeFile
-  Open strDir & strFile For Output As #lngFile
+  Open strDir & strFileName For Output As #lngFile
   
   If myBackbone_frm.chkIncludeHeaders Then
     strHeader = "WBS ID,"
@@ -1291,7 +1291,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   Close #lngFile
   
   'open it in notepad
-  Shell "notepad.exe """ & strDir & strFile & """", vbNormalFocus
+  ShellExecute 0, "open", strDir & strFilename, vbNullString, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -1343,7 +1343,7 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
   Dim strOutlineCode As String
   Dim strDescription As String
   Dim strCode As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strHeader As String
   'longs
   Dim lngItem As Long
@@ -1371,10 +1371,10 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
   End If
   
   'setup the export file
-  strFile = Environ("TEMP") & "\CODE_FILE_WBS.csv"
+  strFileName = Environ("TEMP") & "\CODE_FILE_WBS.csv"
   If Dir(strFile) <> vbNullString Then Kill strFile
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   
   'export header
   strHeader = "Code,"
@@ -1419,8 +1419,8 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
   Next lngItem
 
   Close #lngFile
-  
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 
 exit_here:
   On Error Resume Next

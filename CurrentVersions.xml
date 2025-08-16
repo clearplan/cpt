@@ -115,14 +115,14 @@
 	<Module>
 		<Name>cptCostRateTables_bas</Name>
 		<FileName>cptCostRateTables_bas.bas</FileName>
-		<Version>v1.0.2</Version>
+		<Version>v1.1.0</Version>
 		<Type>1</Type>
 		<Directory>CostRateTables</Directory>
 	</Module>
 	<Module>
 		<Name>cptCostRateTables_frm</Name>
 		<FileName>cptCostRateTables_frm.frm</FileName>
-		<Version>v1.0.2</Version>
+		<Version>v1.1.0</Version>
 		<Type>3</Type>
 		<Directory>CostRateTables</Directory>
 	</Module>
@@ -164,21 +164,21 @@
 	<Module>
 		<Name>cptDECM_bas</Name>
 		<FileName>cptDECM_bas.bas</FileName>
-		<Version>v7.0.1</Version>
+		<Version>v7.1.0</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptDECM_frm</Name>
 		<FileName>cptDECM_frm.frm</FileName>
-		<Version>v7.0.1</Version>
+		<Version>v7.1.0</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptDECMTargetUID_frm</Name>
 		<FileName>cptDECMTargetUID_frm.frm</FileName>
-		<Version>v7.0.1</Version>
+		<Version>v7.1.0</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
@@ -227,14 +227,14 @@
 	<Module>
 		<Name>cptFiscal_bas</Name>
 		<FileName>cptFiscal_bas.bas</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.2.0</Version>
 		<Type>1</Type>
 		<Directory>Calendar</Directory>
 	</Module>
 	<Module>
 		<Name>cptFiscal_frm</Name>
 		<FileName>cptFiscal_frm.frm</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.2.0</Version>
 		<Type>3</Type>
 		<Directory>Calendar</Directory>
 	</Module>
@@ -416,14 +416,14 @@
 	<Module>
 		<Name>cptText_bas</Name>
 		<FileName>cptText_bas.bas</FileName>
-		<Version>v1.5.5</Version>
+		<Version>v1.6.0</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptText_frm</Name>
 		<FileName>cptText_frm.frm</FileName>
-		<Version>v1.5.5</Version>
+		<Version>v1.6.0</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
