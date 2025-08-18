@@ -545,7 +545,7 @@ next_task:
     For lngItem = 0 To .lboStatusSheets.ListCount - 1
       blnValid = True
       strFileName = .lboStatusSheets.List(lngItem, 0) & .lboStatusSheets.List(lngItem, 1)
-      Set oWorkbook = oExcel.Workbooks.Open(strFile, ReadOnly:=True)
+      Set oWorkbook = oExcel.Workbooks.Open(strFileName, ReadOnly:=True)
       .lboStatusSheets.Selected(lngItem) = True
       DoEvents
       Print #lngFile, String(25, "=")
@@ -691,7 +691,7 @@ do_stuff:
                     End If
                   End If
                   If FormatDateTime(dtNewDate, vbShortDate) <> FormatDateTime(oTask.Start, vbShortDate) Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, "START", "", CStr(FormatDateTime(oTask.Start, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, "START", "", CStr(FormatDateTime(oTask.Start, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
                   End If
                 End If
               End If
@@ -741,7 +741,7 @@ skip_ns:
                     End If
                   End If
                   If FormatDateTime(dtNewDate, vbShortDate) <> FormatDateTime(oTask.Finish, vbShortDate) Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, "FINISH", "", CStr(FormatDateTime(oTask.Finish, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, "FINISH", "", CStr(FormatDateTime(oTask.Finish, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
                   End If
                 End If
               End If
@@ -771,13 +771,13 @@ skip_nf:
                   oTask.SetField lngEV, lngEVP
                   Print #lngFile, "UID " & oTask.UniqueID & " EV% > " & lngEVP & "%"
                   If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
-                  Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, Split(strEVP, "|")(1), "", cptRegEx(oTask.GetField(Split(strEVP, "|")(0)), "[0-9]{1,}"), CStr(lngEVP)), ",")
+                  Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, Split(strEVP, "|")(1), "", cptRegEx(oTask.GetField(Split(strEVP, "|")(0)), "[0-9]{1,}"), CStr(lngEVP)), ",")
                 End If
               Else 'log
                 oTask.SetField lngEV, lngEVP
                 Print #lngFile, "UID " & oTask.UniqueID & " EV% > " & lngEVP & "%"
                 If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
-                Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, "EV%", "", "<unknown>", CStr(lngEVP)), ",")
+                Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, "EV%", "", "<unknown>", CStr(lngEVP)), ",")
               End If
             End If
             
@@ -817,83 +817,83 @@ skip_evp:
                 'only import if updated
                 If Round(dblWas, 2) <> Round(dblETC, 2) Then
                   If lngETC = pjTaskNumber1 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number1 = dblETC
                     oTask.Number1 = oTask.Number1 + dblETC
                   ElseIf lngETC = pjTaskNumber2 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number2 = dblETC
                     oTask.Number2 = oTask.Number2 + dblETC
                   ElseIf lngETC = pjTaskNumber3 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number3 = dblETC
                     oTask.Number3 = oTask.Number3 + dblETC
                   ElseIf lngETC = pjTaskNumber4 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number4 = dblETC
                     oTask.Number4 = oTask.Number4 + dblETC
                   ElseIf lngETC = pjTaskNumber5 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number5 = dblETC
                     oTask.Number5 = oTask.Number5 + dblETC
                   ElseIf lngETC = pjTaskNumber6 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number6 = dblETC
                     oTask.Number6 = oTask.Number6 + dblETC
                   ElseIf lngETC = pjTaskNumber7 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number7 = dblETC
                     oTask.Number7 = oTask.Number7 + dblETC
                   ElseIf lngETC = pjTaskNumber8 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number8 = dblETC
                     oTask.Number8 = oTask.Number8 + dblETC
                   ElseIf lngETC = pjTaskNumber9 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number9 = dblETC
                     oTask.Number9 = oTask.Number9 + dblETC
                   ElseIf lngETC = pjTaskNumber10 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number10 = dblETC
                     oTask.Number10 = oTask.Number10 + dblETC
                   ElseIf lngETC = pjTaskNumber11 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number11 = dblETC
                     oTask.Number11 = oTask.Number11 + dblETC
                   ElseIf lngETC = pjTaskNumber12 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number12 = dblETC
                     oTask.Number12 = oTask.Number12 + dblETC
                   ElseIf lngETC = pjTaskNumber13 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number13 = dblETC
                     oTask.Number13 = oTask.Number13 + dblETC
                   ElseIf lngETC = pjTaskNumber14 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number14 = dblETC
                     oTask.Number14 = oTask.Number14 + dblETC
                   ElseIf lngETC = pjTaskNumber15 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number15 = dblETC
                     oTask.Number15 = oTask.Number15 + dblETC
                   ElseIf lngETC = pjTaskNumber16 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number16 = dblETC
                     oTask.Number16 = oTask.Number16 + dblETC
                   ElseIf lngETC = pjTaskNumber17 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number17 = dblETC
                     oTask.Number17 = oTask.Number17 + dblETC
                   ElseIf lngETC = pjTaskNumber18 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number18 = dblETC
                     oTask.Number18 = oTask.Number18 + dblETC
                   ElseIf lngETC = pjTaskNumber19 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number19 = dblETC
                     oTask.Number19 = oTask.Number19 + dblETC
                   ElseIf lngETC = pjTaskNumber20 Then
-                    Print #lngDeconflictionFile, Join(Array(strFile, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number20 = dblETC
                     oTask.Number20 = oTask.Number20 + dblETC
                   End If
@@ -987,11 +987,11 @@ next_file:
 next_worksheet1:
         Next oWorksheet
         'save a copy
-        strFileName = Replace(strFile, ".xlsx", "_invalid.xlsx")
-        If Dir(strFile) <> vbNullString Then Kill strFile
-        oWorkbook.SaveCopyAs strFile
+        strFileName = Replace(strFileName, ".xlsx", "_invalid.xlsx")
+        If Dir(strFileName) <> vbNullString Then Kill strFileName
+        oWorkbook.SaveCopyAs strFileName
         'attach it
-        oMailItem.Attachments.Add strFile
+        oMailItem.Attachments.Add strFileName
         'show it
         oInspector.WindowState = 2 'olNormalWindow
       End If
@@ -1216,7 +1216,9 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     lngEVT = Split(strEVT, "|")(0) 'FieldNameToFieldConstant(strEVT)
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If lngEVT > 0 Then
-      TableEditEx Name:="cptStatusSheetImport Table", TaskTable:=True, NewFieldName:=Split(strEVT, "|")(1), Title:="EVT", Width:=10, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+      If cptCustomFieldExists(CStr(Split(strEVT, "|")(1))) Then
+        TableEditEx Name:="cptStatusSheetImport Table", TaskTable:=True, NewFieldName:=Split(strEVT, "|")(1), Title:="EVT", Width:=10, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+      End If
     End If
   End If
 
