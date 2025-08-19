@@ -1,6 +1,8 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
 '<cpt_version>v1.3.3</cpt_version>
 Option Explicit
+Private rBad As Excel.Range
+Private oBad As Scripting.Dictionary
 
 Sub cptShowStatusSheetImport_frm()
   'objects
@@ -274,7 +276,6 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim oWorksheet As Excel.Worksheet
   Dim oListObject As Excel.ListObject
   Dim oRange As Excel.Range
-  Dim oCell As Excel.Range
   Dim oComboBox As MSForms.ComboBox
   Dim rst As ADODB.Recordset
   'strings
@@ -294,6 +295,8 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim strSettings As String
   Dim strGUID As String
   'longs
+  Dim lngUID As Long
+  Dim lngBadItem As Long
   Dim lngEVT As Long 'EVT LCF
   Dim lngMultiplier As Long
   Dim lngDeconflictionFile As Long
@@ -302,7 +305,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim lngTasks As Long
   Dim lngTaskNameCol As Long
   Dim lngEVTCol As Long
-  Dim lnvEVPCol As Long
+  Dim lngEVPCol As Long
   Dim lngUIDCol As Long
   Dim lngFile As Long
   Dim lngRow As Long
@@ -537,7 +540,7 @@ next_task:
   
   'set up array of updated  UIDs
   Set oDict = CreateObject("Scripting.Dictionary")
-  
+  Set oBad = CreateObject("Scripting.Dictionary")
   'set up excel
   Set oExcel = CreateObject("Excel.Application")
   With myStatusSheetImport_frm
@@ -552,15 +555,18 @@ next_task:
       Print #lngFile, "IMPORTING Workbook: " & strFileName & " (" & oWorkbook.Sheets.Count & " Worksheets)"
       Print #lngFile, String(25, "-")
       For Each oWorksheet In oWorkbook.Sheets
+        Set rBad = Nothing
+        oBad.RemoveAll
         If oWorksheet.Name = "Conditional Formatting" Then
           Print #lngFile, "SKIPPING Worksheet: " & oWorksheet.Name
           GoTo next_worksheet
         End If
+        
         Print #lngFile, "IMPORTING Worksheet: " & oWorksheet.Name
 '        myStatusSheetImport_frm.lblStatus.Caption = "Importing...(" & Format(oWorksheet.Index / oWorkbook.Sheets.Count, "0%") & ")"
 '        myStatusSheetImport_frm.lblProgress.Width = (oWorksheet.Index / oWorkbook.Sheets.Count) * myStatusSheetImport_frm.lblStatus.Width
         DoEvents
-        
+        If oBad.Count > 0 Then oBad.RemoveAll
         'unhide columns and rows (sort is blocked by sheet protection...)
         oWorksheet.Columns.Hidden = False
         oWorksheet.Rows.Hidden = False
@@ -577,32 +583,25 @@ next_task:
         'get header row
         lngUIDCol = 1
         On Error Resume Next
-        lngHeaderRow = oWorksheet.Columns(lngUIDCol).Find(what:="UID").Row
+        lngHeaderRow = WorksheetFunction.Match("UID", oWorksheet.Columns(lngUIDCol), 0)
         If Err.Number = 1004 Then 'invalid oWorkbook
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
           Print #lngFile, "INVALID Worksheet - UID column not found"
           GoTo next_worksheet
         End If
         'get header columns
-        lngTaskNameCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Task Name", lookat:=xlPart).Column
-        lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find(what:="EVT", lookat:=xlWhole).Column
-        lngNSCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Actual Start", lookat:=xlPart).Column
-        lngNFCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Actual Finish", lookat:=xlPart).Column
-        lnvEVPCol = oWorksheet.Rows(lngHeaderRow).Find(what:="New EV%", lookat:=xlWhole).Column
-        On Error Resume Next
-        Set oCell = oWorksheet.Rows(lngHeaderRow).Find(what:="New ETC", lookat:=xlWhole)
-        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-        If oCell Is Nothing Then
-          lngETCCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Revised ETC", lookat:=xlWhole).Column 'for backwards compatibility
-        Else
-          lngETCCol = oWorksheet.Rows(lngHeaderRow).Find(what:="New ETC", lookat:=xlWhole).Column
-        End If
+        lngTaskNameCol = WorksheetFunction.Match("Task Name / Scope", oWorksheet.Rows(lngHeaderRow))
+        lngEVTCol = WorksheetFunction.Match("EVT", oWorksheet.Rows(lngHeaderRow), 0)
+        lngNSCol = WorksheetFunction.Match("New Forecast/ Actual Start", oWorksheet.Rows(lngHeaderRow), 0)
+        lngNFCol = WorksheetFunction.Match("New Forecast/ Actual Finish", oWorksheet.Rows(lngHeaderRow), 0)
+        lngEVPCol = WorksheetFunction.Match("New EV%", oWorksheet.Rows(lngHeaderRow), 0)
+        lngETCCol = WorksheetFunction.Match("ETC", oWorksheet.Rows(lngHeaderRow), 0) + 1
         strNotesColTitle = cptGetSetting("StatusSheet", "txtNotesColTitle")
         On Error Resume Next
         If Len(strNotesColTitle) > 0 Then
-          lngCommentsCol = oWorksheet.Rows(lngHeaderRow).Find(what:=strNotesColTitle, lookat:=xlWhole).Column
+          lngCommentsCol = WorksheetFunction.Match(strNotesColTitle, oWorksheet.Rows(lngHeaderRow), 0)
         Else
-          lngCommentsCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Reason / Action / Impact", lookat:=xlWhole).Column
+          lngCommentsCol = WorksheetFunction.Match("Reason / Action / Impact", oWorksheet.Rows(lngHeaderRow), 0)
         End If
         If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
         If lngCommentsCol = 0 Then
@@ -636,7 +635,7 @@ next_task:
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
           If oTask Is Nothing Then 'it's nothing: notify user
             Print #lngFile, "UID " & oWorksheet.Cells(lngRow, lngUIDCol) & " in Status Sheet not found in IMS! Note: could be a missing Task or a missing Resource/Assignment."
-            oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
+            cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
             GoTo next_row
           Else
             blnTask = True
@@ -645,7 +644,7 @@ next_task:
 do_stuff:
           'set Task
           If blnTask Then
-                    
+            lngUID = oTask.UniqueID
             'skip completed tasks (which are also italicized)
             If IsDate(oTask.ActualFinish) Then
               If FormatDateTime(oTask.ActualFinish, vbShortDate) = FormatDateTime(oWorksheet.Cells(lngRow, lngNFCol).Value, vbShortDate) Then GoTo next_row
@@ -654,20 +653,20 @@ do_stuff:
             'new start date
             If Not oWorksheet.Cells(lngRow, lngNSCol).Locked Then
               If oWorksheet.Cells(lngRow, lngNSCol).DisplayFormat.Interior.Color = 13551615 Then
-                Print #lngFile, "UID " & oTask.UniqueID & " - Should Have Started " & String(10, "<")
-                oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
+                Print #lngFile, "UID " & lngUID & " - Should Have Started " & String(10, "<")
+                cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 blnValid = False
                 GoTo skip_ns
               End If
               
               oWorksheet.Cells(lngRow, lngNSCol).NumberFormat = "0.00" 'work around overflow issue
               If oWorksheet.Cells(lngRow, lngNSCol).Value > 91312 Then 'invalid
-                oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
-                Print #lngFile, "UID " & oTask.UniqueID & " - invalid New Start Date " & String(10, "<")
+                cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
+                Print #lngFile, "UID " & lngUID & " - invalid New Start Date " & String(10, "<")
               Else
                 oWorksheet.Cells(lngRow, lngNSCol).NumberFormat = "m/d/yyyy" 'restore date format
                 If Len(oWorksheet.Cells(lngRow, lngNSCol).Value) > 0 And Not IsDate(oWorksheet.Cells(lngRow, lngNSCol).Value) Then
-                  Print #lngFile, "UID " & oTask.UniqueID & " - invalid New Start Date " & String(10, "<")
+                  Print #lngFile, "UID " & lngUID & " - invalid New Start Date " & String(10, "<")
                 ElseIf oWorksheet.Cells(lngRow, lngNSCol).Value > 0 Then
                   dtNewDate = FormatDateTime(CDate(oWorksheet.Cells(lngRow, lngNSCol).Value), vbShortDate)
                   'determine actual or forecast
@@ -677,21 +676,21 @@ do_stuff:
                     Else
                       oTask.SetField lngAS, CDate(dtNewDate & " 08:00 AM")
                     End If
-                    Print #lngFile, "UID " & oTask.UniqueID & " AS > " & FormatDateTime(dtNewDate, vbShortDate)
-                    If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+                    Print #lngFile, "UID " & lngUID & " AS > " & FormatDateTime(dtNewDate, vbShortDate)
+                    If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
                   ElseIf dtNewDate > dtStatus Then 'forecast start
                     If FormatDateTime(oTask.Start, vbShortDate) <> dtNewDate Then
                       If dtNewDate > #12/31/2149# Then
-                        Print #lngFile, "UID " & oTask.UniqueID & " FS > ERROR (" & FormatDateTime(dtNewDate, vbShortDate) & " is outside allowable range)"
+                        Print #lngFile, "UID " & lngUID & " FS > ERROR (" & FormatDateTime(dtNewDate, vbShortDate) & " is outside allowable range)"
                       Else
                         oTask.SetField lngFS, CDate(dtNewDate & " 08:00 AM")
-                        Print #lngFile, "UID " & oTask.UniqueID & " FS > " & FormatDateTime(dtNewDate, vbShortDate)
-                        If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+                        Print #lngFile, "UID " & lngUID & " FS > " & FormatDateTime(dtNewDate, vbShortDate)
+                        If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
                       End If
                     End If
                   End If
                   If FormatDateTime(dtNewDate, vbShortDate) <> FormatDateTime(oTask.Start, vbShortDate) Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, "START", "", CStr(FormatDateTime(oTask.Start, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, "START", "", CStr(FormatDateTime(oTask.Start, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
                   End If
                 End If
               End If
@@ -702,22 +701,30 @@ skip_ns:
             'new finish date
             If Not oWorksheet.Cells(lngRow, lngNFCol).Locked Then
               If oWorksheet.Cells(lngRow, lngNFCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid
-                Print #lngFile, "UID " & oTask.UniqueID & " = invalid New Finish Date " & String(10, "<")
-                oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
+                Print #lngFile, "UID " & lngUID & " = invalid New Finish Date " & String(10, "<")
+                cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 blnValid = False
                 GoTo skip_nf
+              End If
+              If oWorksheet.Cells(lngRow, lngNFCol).DisplayFormat.Interior.Color = 10079487 Then
+                If Len(oWorksheet.Cells(lngRow, lngNFCol)) = 0 Then
+                  Print #lngFile, "UID " & lngUID & " = invalid New Finish Date " & String(10, "<")
+                  cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
+                  blnValid = False
+                  GoTo skip_nf
+                End If
               End If
               
               oWorksheet.Cells(lngRow, lngNFCol).NumberFormat = "0.00" 'work around overflow issue
               If oWorksheet.Cells(lngRow, lngNFCol).Value > 91312 Then 'invalid
-                Print #lngFile, "UID " & oTask.UniqueID & " - invalid New Finish Date " & String(10, "<")
-                oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
+                Print #lngFile, "UID " & lngUID & " - invalid New Finish Date " & String(10, "<")
+                cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 blnValid = False
               Else
                 oWorksheet.Cells(lngRow, lngNFCol).NumberFormat = "m/d/yyyy" 'restore date format
                 If Len(oWorksheet.Cells(lngRow, lngNFCol).Value) > 0 And Not IsDate(oWorksheet.Cells(lngRow, lngNFCol).Value) Then
-                  Print #lngFile, "UID " & oTask.UniqueID & " - invalid New Finish Date " & String(10, "<")
-                  oWorksheet.Cells(lngRow, lngNFCol).Style = "Bad"
+                  Print #lngFile, "UID " & lngUID & " - invalid New Finish Date " & String(10, "<")
+                  cptAddRange rBad, oWorksheet.Cells(lngRow, lngNFCol)
                 ElseIf oWorksheet.Cells(lngRow, lngNFCol).Value > 0 Then
                   dtNewDate = FormatDateTime(CDate(oWorksheet.Cells(lngRow, lngNFCol)), vbShortDate)
                   'determine actual or forecast
@@ -727,21 +734,21 @@ skip_ns:
                     Else
                       oTask.SetField lngAF, CDate(dtNewDate & " 05:00 PM")
                     End If
-                    Print #lngFile, "UID " & oTask.UniqueID & " AF > " & FormatDateTime(dtNewDate, vbShortDate)
-                    If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+                    Print #lngFile, "UID " & lngUID & " AF > " & FormatDateTime(dtNewDate, vbShortDate)
+                    If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
                   ElseIf dtNewDate > dtStatus Then 'forecast finish
                     If FormatDateTime(oTask.Finish, vbShortDate) <> FormatDateTime(dtNewDate, vbShortDate) Then
                       If dtNewDate > #12/31/2149# Then
-                        Print #lngFile, "UID " & oTask.UniqueID & " FF > ERROR (" & FormatDateTime(dtNewDate, vbShortDate) & " is outside allowable range) " & String(10, "<")
+                        Print #lngFile, "UID " & lngUID & " FF > ERROR (" & FormatDateTime(dtNewDate, vbShortDate) & " is outside allowable range) " & String(10, "<")
                       Else
                         oTask.SetField lngFF, CDate(dtNewDate & " 05:00 PM")
-                        Print #lngFile, "UID " & oTask.UniqueID & " FF > " & FormatDateTime(dtNewDate, vbShortDate)
-                        If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+                        Print #lngFile, "UID " & lngUID & " FF > " & FormatDateTime(dtNewDate, vbShortDate)
+                        If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
                       End If
                     End If
                   End If
                   If FormatDateTime(dtNewDate, vbShortDate) <> FormatDateTime(oTask.Finish, vbShortDate) Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, "FINISH", "", CStr(FormatDateTime(oTask.Finish, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, "FINISH", "", CStr(FormatDateTime(oTask.Finish, vbShortDate)), CStr(FormatDateTime(dtNewDate, vbShortDate))), ",")
                   End If
                 End If
               End If
@@ -756,28 +763,28 @@ skip_nf:
               If oTask.GetField(lngEVT) = strLOE Then GoTo skip_evp
             End If
             'secondary catch to skip LOE
-            If oWorksheet.Cells(lngRow, lnvEVPCol).Value <> "-" Then
-              If oWorksheet.Cells(lngRow, lnvEVPCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid EV
-                Print #lngFile, "UID " & oTask.UniqueID & " - Invalid EV " & String(10, "<")
-                oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad"
+            If oWorksheet.Cells(lngRow, lngEVPCol).Value <> "-" Then
+              If oWorksheet.Cells(lngRow, lngEVPCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid EV
+                Print #lngFile, "UID " & lngUID & " - Invalid EV " & String(10, "<")
+                cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 blnValid = False
                 GoTo skip_evp
               End If
               
-              lngEVP = Round(oWorksheet.Cells(lngRow, lnvEVPCol).Value * 100, 0)
+              lngEVP = Round(oWorksheet.Cells(lngRow, lngEVPCol).Value * 100, 0)
               strEVP = cptGetSetting("Integration", "EVP")
               If Len(strEVP) > 0 Then 'compare
                 If CLng(cptRegEx(oTask.GetField(Split(strEVP, "|")(0)), "[0-9]{1,}")) <> lngEVP Then
                   oTask.SetField lngEV, lngEVP
-                  Print #lngFile, "UID " & oTask.UniqueID & " EV% > " & lngEVP & "%"
-                  If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
-                  Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, Split(strEVP, "|")(1), "", cptRegEx(oTask.GetField(Split(strEVP, "|")(0)), "[0-9]{1,}"), CStr(lngEVP)), ",")
+                  Print #lngFile, "UID " & lngUID & " EV% > " & lngEVP & "%"
+                  If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
+                  Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, Split(strEVP, "|")(1), "", cptRegEx(oTask.GetField(Split(strEVP, "|")(0)), "[0-9]{1,}"), CStr(lngEVP)), ",")
                 End If
               Else 'log
                 oTask.SetField lngEV, lngEVP
-                Print #lngFile, "UID " & oTask.UniqueID & " EV% > " & lngEVP & "%"
-                If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
-                Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, "EV%", "", "<unknown>", CStr(lngEVP)), ",")
+                Print #lngFile, "UID " & lngUID & " EV% > " & lngEVP & "%"
+                If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
+                Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, "EV%", "", "<unknown>", CStr(lngEVP)), ",")
               End If
             End If
             
@@ -796,14 +803,14 @@ skip_evp:
             
           ElseIf Not blnTask Then 'it's an Assignment
             If oAssignment Is Nothing Then
-              Print #lngFile, "MISSING: TASK UID: [" & oTask.UniqueID & "] ASSIGNMENT UID: [" & oWorksheet.Cells(lngRow, lngUIDCol).Value & "] - " & oWorksheet.Cells(lngRow, lngTaskNameCol).Value
+              Print #lngFile, "MISSING: TASK UID: [" & lngUID & "] ASSIGNMENT UID: [" & oWorksheet.Cells(lngRow, lngUIDCol).Value & "] - " & oWorksheet.Cells(lngRow, lngTaskNameCol).Value
             Else
               Set oTask = oAssignment.Task
               If Not oWorksheet.Cells(lngRow, lngETCCol).Locked Then
                 If oWorksheet.Cells(lngRow, lngETCCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid ETC
-                  Print #lngFile, "UID " & oTask.UniqueID & " - Invalid ETC for " & oAssignment.ResourceName & " " & String(10, "<")
-                  oWorksheet.Cells(lngRow, lngUIDCol).Style = "Bad" 'assignment level
-                  oWorksheet.Cells(oWorksheet.Evaluate("MATCH(" & oTask.UniqueID & ",A:A,0)"), lngUIDCol).Style = "Bad"  'task level
+                  Print #lngFile, "UID " & lngUID & " - Invalid ETC for " & oAssignment.ResourceName & " " & String(10, "<")
+                  cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
+                  cptAddRange rBad, oWorksheet.Cells(oWorksheet.Evaluate("MATCH(" & lngUID & ",A:A,0)"), lngUIDCol)
                   blnValid = False
                   GoTo next_row
                 End If
@@ -817,88 +824,88 @@ skip_evp:
                 'only import if updated
                 If Round(dblWas, 2) <> Round(dblETC, 2) Then
                   If lngETC = pjTaskNumber1 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number1 = dblETC
                     oTask.Number1 = oTask.Number1 + dblETC
                   ElseIf lngETC = pjTaskNumber2 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number2 = dblETC
                     oTask.Number2 = oTask.Number2 + dblETC
                   ElseIf lngETC = pjTaskNumber3 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number3 = dblETC
                     oTask.Number3 = oTask.Number3 + dblETC
                   ElseIf lngETC = pjTaskNumber4 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number4 = dblETC
                     oTask.Number4 = oTask.Number4 + dblETC
                   ElseIf lngETC = pjTaskNumber5 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number5 = dblETC
                     oTask.Number5 = oTask.Number5 + dblETC
                   ElseIf lngETC = pjTaskNumber6 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number6 = dblETC
                     oTask.Number6 = oTask.Number6 + dblETC
                   ElseIf lngETC = pjTaskNumber7 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number7 = dblETC
                     oTask.Number7 = oTask.Number7 + dblETC
                   ElseIf lngETC = pjTaskNumber8 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number8 = dblETC
                     oTask.Number8 = oTask.Number8 + dblETC
                   ElseIf lngETC = pjTaskNumber9 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number9 = dblETC
                     oTask.Number9 = oTask.Number9 + dblETC
                   ElseIf lngETC = pjTaskNumber10 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number10 = dblETC
                     oTask.Number10 = oTask.Number10 + dblETC
                   ElseIf lngETC = pjTaskNumber11 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number11 = dblETC
                     oTask.Number11 = oTask.Number11 + dblETC
                   ElseIf lngETC = pjTaskNumber12 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number12 = dblETC
                     oTask.Number12 = oTask.Number12 + dblETC
                   ElseIf lngETC = pjTaskNumber13 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number13 = dblETC
                     oTask.Number13 = oTask.Number13 + dblETC
                   ElseIf lngETC = pjTaskNumber14 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number14 = dblETC
                     oTask.Number14 = oTask.Number14 + dblETC
                   ElseIf lngETC = pjTaskNumber15 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number15 = dblETC
                     oTask.Number15 = oTask.Number15 + dblETC
                   ElseIf lngETC = pjTaskNumber16 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number16 = dblETC
                     oTask.Number16 = oTask.Number16 + dblETC
                   ElseIf lngETC = pjTaskNumber17 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number17 = dblETC
                     oTask.Number17 = oTask.Number17 + dblETC
                   ElseIf lngETC = pjTaskNumber18 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number18 = dblETC
                     oTask.Number18 = oTask.Number18 + dblETC
                   ElseIf lngETC = pjTaskNumber19 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number19 = dblETC
                     oTask.Number19 = oTask.Number19 + dblETC
                   ElseIf lngETC = pjTaskNumber20 Then
-                    Print #lngDeconflictionFile, Join(Array(strFileName, oTask.UniqueID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
+                    Print #lngDeconflictionFile, Join(Array(strFileName, lngUID, FieldConstantToFieldName(lngETC), oAssignment.ResourceName, dblWas, dblETC), ",")
                     oAssignment.Number20 = dblETC
                     oTask.Number20 = oTask.Number20 + dblETC
                   End If
-                  Print #lngFile, "UID " & oTask.UniqueID & " [" & oAssignment.Resource.Name & "] ETC > " & dblETC
-                  If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+                  Print #lngFile, "UID " & lngUID & " [" & oAssignment.Resource.Name & "] ETC > " & dblETC
+                  If Not oDict.Exists(lngUID) Then oDict.Add lngUID, lngUID
                 End If
                 If .chkAppend And Len(oWorksheet.Cells(lngRow, lngCommentsCol)) > 0 Then
                   If .cboAppendTo = "Top of Task Note" Then
@@ -921,7 +928,12 @@ next_row:
           DoEvents
         Next lngRow
 next_worksheet:
-        
+        If Not rBad Is Nothing Then rBad.Style = "Bad"
+        If oBad.Count > 0 Then
+          For lngBadItem = 0 To oBad.Count - 1
+            oBad.Items(lngBadItem).Style = "Bad"
+          Next lngBadItem
+        End If
         Print #lngFile, String(25, "-")
       Next oWorksheet
 next_file:
@@ -1043,6 +1055,7 @@ next_worksheet1:
   
 exit_here:
   On Error Resume Next
+  Set oBad = Nothing
   Set oInspector = Nothing
   Set oOutlook = Nothing
   Set oMailItem = Nothing
@@ -1083,7 +1096,6 @@ exit_here:
   If Dir(Environ("tmp") & "\Schema.ini") <> vbNullString Then Kill Environ("tmp") & "\Schema.ini"
   If Dir(Environ("tmp") & "\imported.csv") <> vbNullString Then Kill Environ("tmp") & "\imported.csv"
   Set oRange = Nothing
-  Set oCell = Nothing
   Set oListObject = Nothing
   Set oWorksheet = Nothing
   'If Not oWorkbook Is Nothing Then oWorkbook.Close False
@@ -1347,3 +1359,14 @@ err_here:
   Resume exit_here
 End Sub
 
+Sub cptAddRange(ByRef rBad As Excel.Range, ByRef oRange As Excel.Range)
+  If rBad Is Nothing Then
+    Set rBad = oRange
+  Else
+    Set rBad = oRange.Application.Union(rBad, oRange)
+  End If
+  If Len(rBad.Address) > 200 Then
+    oBad.Add rBad, rBad
+    Set rBad = Nothing
+  End If
+End Sub
