@@ -892,102 +892,105 @@ Sub cptCalendarCompareMain()
   End If 'subprojects.count>0
   
   Reset
-  Set oWorkbook = oExcel.Workbooks.Add
-  Set oWorksheet = oWorkbook.Sheets(1)
-  oWorksheet.Name = "DATA"
   Set oRecordset = CreateObject("ADODB.Recordset")
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("tmp") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   strSQL = "SELECT * FROM [cpt-calendar-compare.csv]"
   oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-  For lngItem = 0 To oRecordset.Fields.Count - 1
-    oWorksheet.Cells(1, lngItem + 1) = oRecordset.Fields(lngItem).Name
-  Next lngItem
-  oWorksheet.[A2].CopyFromRecordset oRecordset
-  
-  Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
-  oListObject.Name = "DATA"
-  
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.DisplayGridlines = False
-  oExcel.ActiveWindow.SplitRow = 1
-  oExcel.ActiveWindow.SplitColumn = 0
-  oExcel.ActiveWindow.FreezePanes = True
-  cptAddBorders oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown))
-  cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
-  oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
-  oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).EntireColumn.AutoFit
-  cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)), True
-  
-  Set oWorksheet = oWorkbook.Worksheets.Add(oWorkbook.Sheets("Data"))
-  oWorksheet.Name = "Compare"
-  oWorksheet.[A1] = "EXCEPTION"
-  oWorksheet.[B1] = "DATE"
-  oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(DATA,3,4))"
-  oWorksheet.[C1].Formula2 = "=TOROW(SORT(UNIQUE(DATA[PROJECT])))"
-  lngLastRow = oWorksheet.[A1].End(xlDown).Row
-  lngLastCol = oWorksheet.[A1].End(xlToRight).Column
-  oWorksheet.Range(oWorksheet.Cells(2, 2), oWorksheet.Cells(lngLastRow, 2)).NumberFormat = "m/d/yyyy"
-  oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = "=IF(COUNTIFS(DATA[EXCEPTION],RC1,DATA[DATE],RC2,DATA[PROJECT],R1C)>=1,2,0)"
-  With oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol))
-    .FormatConditions.AddIconSetCondition
-    .FormatConditions(.FormatConditions.Count).SetFirstPriority
-    With .FormatConditions(1)
-      .ReverseOrder = False
-      .ShowIconOnly = True
-      .IconSet = oWorkbook.IconSets(xl3Symbols)
+  If oRecordset.RecordCount > 0 Then
+    Set oWorkbook = oExcel.Workbooks.Add
+    Set oWorksheet = oWorkbook.Sheets(1)
+    oWorksheet.Name = "DATA"
+    For lngItem = 0 To oRecordset.Fields.Count - 1
+      oWorksheet.Cells(1, lngItem + 1) = oRecordset.Fields(lngItem).Name
+    Next lngItem
+    oWorksheet.[A2].CopyFromRecordset oRecordset
+    
+    Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
+    oListObject.Name = "DATA"
+    
+    oExcel.ActiveWindow.Zoom = 85
+    oExcel.ActiveWindow.DisplayGridlines = False
+    oExcel.ActiveWindow.SplitRow = 1
+    oExcel.ActiveWindow.SplitColumn = 0
+    oExcel.ActiveWindow.FreezePanes = True
+    cptAddBorders oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown))
+    cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
+    oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).EntireColumn.AutoFit
+    cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)), True
+    
+    Set oWorksheet = oWorkbook.Worksheets.Add(oWorkbook.Sheets("Data"))
+    oWorksheet.Name = "Compare"
+    oWorksheet.[A1] = "EXCEPTION"
+    oWorksheet.[B1] = "DATE"
+    oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(DATA,3,4))"
+    oWorksheet.[C1].Formula2 = "=TOROW(SORT(UNIQUE(DATA[PROJECT])))"
+    lngLastRow = oWorksheet.[A1].End(xlDown).Row
+    lngLastCol = oWorksheet.[A1].End(xlToRight).Column
+    oWorksheet.Range(oWorksheet.Cells(2, 2), oWorksheet.Cells(lngLastRow, 2)).NumberFormat = "m/d/yyyy"
+    oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = "=IF(COUNTIFS(DATA[EXCEPTION],RC1,DATA[DATE],RC2,DATA[PROJECT],R1C)>=1,2,0)"
+    With oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol))
+      .FormatConditions.AddIconSetCondition
+      .FormatConditions(.FormatConditions.Count).SetFirstPriority
+      With .FormatConditions(1)
+        .ReverseOrder = False
+        .ShowIconOnly = True
+        .IconSet = oWorkbook.IconSets(xl3Symbols)
+      End With
+      With .FormatConditions(1).IconCriteria(2)
+        .Type = xlConditionValueNumber
+        .Value = 0
+        .Operator = 5
+      End With
+      With .FormatConditions(1).IconCriteria(3)
+        .Type = xlConditionValueNumber
+        .Value = 2
+        .Operator = 7
+      End With
+      .HorizontalAlignment = xlCenter
+      .VerticalAlignment = xlBottom
+      .WrapText = False
+      .Orientation = 0
+      .AddIndent = False
+      .IndentLevel = 0
+      .ShrinkToFit = False
+      .ReadingOrder = xlContext
+      .MergeCells = False
     End With
-    With .FormatConditions(1).IconCriteria(2)
-      .Type = xlConditionValueNumber
-      .Value = 0
-      .Operator = 5
+    
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[B2].End(xlDown)).EntireColumn.AutoFit
+    
+    With oWorksheet.Range(oWorksheet.Cells(1, 3), oWorksheet.Cells(1, lngLastCol))
+      .HorizontalAlignment = xlCenter
+      .VerticalAlignment = xlBottom
+      .WrapText = False
+      .Orientation = 45
+      .AddIndent = False
+      .IndentLevel = 0
+      .ShrinkToFit = False
+      .ReadingOrder = xlContext
+      .MergeCells = False
     End With
-    With .FormatConditions(1).IconCriteria(3)
-      .Type = xlConditionValueNumber
-      .Value = 2
-      .Operator = 7
-    End With
-    .HorizontalAlignment = xlCenter
-    .VerticalAlignment = xlBottom
-    .WrapText = False
-    .Orientation = 0
-    .AddIndent = False
-    .IndentLevel = 0
-    .ShrinkToFit = False
-    .ReadingOrder = xlContext
-    .MergeCells = False
-  End With
-  
-  oWorksheet.Range(oWorksheet.[A1], oWorksheet.[B2].End(xlDown)).EntireColumn.AutoFit
-  
-  With oWorksheet.Range(oWorksheet.Cells(1, 3), oWorksheet.Cells(1, lngLastCol))
-    .HorizontalAlignment = xlCenter
-    .VerticalAlignment = xlBottom
-    .WrapText = False
-    .Orientation = 45
-    .AddIndent = False
-    .IndentLevel = 0
-    .ShrinkToFit = False
-    .ReadingOrder = xlContext
-    .MergeCells = False
-  End With
-  
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.DisplayGridlines = False
-  oExcel.ActiveWindow.SplitRow = 1
-  oExcel.ActiveWindow.SplitColumn = 0
-  oExcel.ActiveWindow.FreezePanes = True
-  cptAddBorders oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown))
-  cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
-  oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
-  oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).EntireColumn.AutoFit
-  'cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)), True
-  
-  'count mismatches & notify
-  lngMismatched = oExcel.WorksheetFunction.CountIf(oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol)), 0)
-  MsgBox Format(lngMismatched, "#,##0") & " mismatched exceptions.", vbInformation + vbOKOnly, "Calendar Compare"
-  oExcel.Visible = True
-  oExcel.ScreenUpdating = True
-  
+    
+    oExcel.ActiveWindow.Zoom = 85
+    oExcel.ActiveWindow.DisplayGridlines = False
+    oExcel.ActiveWindow.SplitRow = 1
+    oExcel.ActiveWindow.SplitColumn = 0
+    oExcel.ActiveWindow.FreezePanes = True
+    cptAddBorders oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown))
+    cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
+    oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).EntireColumn.AutoFit
+    'cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)), True
+    
+    'count mismatches & notify
+    lngMismatched = oExcel.WorksheetFunction.CountIf(oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol)), 0)
+    MsgBox Format(lngMismatched, "#,##0") & " mismatched exceptions.", vbInformation + vbOKOnly, "Calendar Compare"
+    oExcel.Visible = True
+    oExcel.ScreenUpdating = True
+  Else
+    MsgBox "No mismatches found.", vbInformation + vbOKOnly, "Calendar Compare"
+  End If
 exit_here:
   On Error Resume Next
   If oRecordset.State Then oRecordset.Close
