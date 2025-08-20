@@ -48,7 +48,7 @@ Sub cptDECM_GET_DATA()
   Dim strUpdateView As String
   Dim strProgramAcronym As String
   Dim strRequiredFields As String
-  Dim strLinks  As String
+  Dim strLinks As String
   Dim strPE As String
   Dim strSE As String
   Dim strRecord As String
@@ -142,7 +142,7 @@ Sub cptDECM_GET_DATA()
   lngFile = FreeFile
   strDir = Environ("tmp")
   strFileName = strDir & "\Schema.ini"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngFile
   Print #lngFile, "[tasks.csv]"
   Print #lngFile, "Format=CSVDelimited"
@@ -245,22 +245,22 @@ Sub cptDECM_GET_DATA()
   lngTaskFile = FreeFile
   strFileName = strDir & "\tasks.csv"
   
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngTaskFile
   
   lngLinkFile = FreeFile
   strFileName = strDir & "\links.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngLinkFile
   
   lngAssignmentFile = FreeFile
   strFileName = strDir & "\assignments.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngAssignmentFile
   
   lngTargetFile = FreeFile
   strFileName = strDir & "\targets.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngTargetFile
   
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
@@ -562,26 +562,26 @@ next_task:
   Application.StatusBar = "Task history file..."
   DoEvents
   strFileName = cptDir & "\settings\cpt-cei.adtg"
-  If Dir(strFile) <> vbNullString Then
+  If Dir(strFileName) <> vbNullString Then
     myDECM_frm.lblStatus.Caption = "Task history file found. Querying..."
     Application.StatusBar = "Task history file found. Querying..."
     DoEvents
     
     'copy cpt-cei.adtg to tmp dir
-    FileCopy strFile, strDir & "\cpt-cei.adtg"
+    FileCopy strFileName, strDir & "\cpt-cei.adtg"
     
     'convert to csv for sql query...
     strFileName = strDir & "\cpt-cei.adtg"
     Set oRecordset = CreateObject("ADODB.Recordset")
-    oRecordset.Open strFile
+    oRecordset.Open strFileName
     'limit to program
     oRecordset.Filter = "PROJECT='" & strProgramAcronym & "'"
-    oRecordset.Save strFile, adPersistADTG
+    oRecordset.Save strFileName, adPersistADTG
     oRecordset.Close
     
     'clean it up (remove commas)
     'todo: any other fields that might have a comma?
-    oRecordset.Open strFile
+    oRecordset.Open strFileName
     oRecordset.Filter = "TASK_NAME LIKE '%,%'"
     If Not oRecordset.EOF Then
       oRecordset.MoveFirst
@@ -591,7 +591,7 @@ next_task:
       Loop
     End If
     oRecordset.Filter = 0
-    oRecordset.Save strFile
+    oRecordset.Save strFileName
     
     If oRecordset.RecordCount > 0 Then
       'capture field names
@@ -1715,17 +1715,25 @@ Sub DECM_10A103a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   If lngY > 0 Then
     If blnFiscalExists Then
       Set oWorkbook = cptGetEVTAnalysis
-      Set oWorksheet = oWorkbook.Sheets(1)
-      Set oListObject = oWorksheet.ListObjects(1)
-      lngY = oListObject.DataBodyRange.Rows.Count
-      lngX = oWorksheet.Evaluate("COUNTIFS(Table1[FiscalPeriods],"">1"")")
-      strList = ""
-      If lngX > 0 Then
-        For Each oCell In oListObject.ListColumns("WP").DataBodyRange.SpecialCells(xlCellTypeVisible).Cells
-          If InStr(strList, oCell.Value) = 0 Then strList = strList & oCell.Value & vbTab
-        Next oCell
+      If Not oWorkbook Is Nothing Then
+        Set oWorksheet = oWorkbook.Sheets(1)
+        Set oListObject = oWorksheet.ListObjects(1)
+        lngY = oListObject.DataBodyRange.Rows.Count
+        lngX = oWorksheet.Evaluate("COUNTIFS(Table1[FiscalPeriods],"">1"")")
+        strList = ""
+        If lngX > 0 Then
+          For Each oCell In oListObject.ListColumns("WP").DataBodyRange.SpecialCells(xlCellTypeVisible).Cells
+            If InStr(strList, oCell.Value) = 0 Then strList = strList & oCell.Value & vbTab
+          Next oCell
+        End If
+        oWorkbook.Close True
+      Else
+        If Not IsDate(ActiveProject.BaselineSavedDate(pjBaseline)) Then
+          MsgBox "This project has no BaselineSavedDate for the default Baseline." & vbCrLf & vbCrLf & "DECM 10A103a skipped.", vbExclamation + vbOKOnly, "DECM 10A103a"
+        End If
+        strList = ""
+        lngX = lngY
       End If
-      oWorkbook.Close True
     Else 'blnFiscalExists
       lngX = lngY 'triggers failure
     End If
@@ -2034,7 +2042,7 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   End If
   lngFile = FreeFile
   strFileName = Environ("tmp") & "\segregated.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngFile
   Print #lngFile, "CA,WP,WP_BLW,"
   oRecordset.MoveFirst
@@ -2079,7 +2087,7 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
   lngFile = FreeFile
   strFileName = Environ("tmp") & "\itemized.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Open strFileName For Output As #lngFile
   Print #lngFile, "CA,CA_BAC,WP_BAC,discrepancy,"
   If oRecordset.RecordCount > 0 Then
@@ -3351,7 +3359,7 @@ err_here:
 
 End Sub
 
-Sub opencsv(strFileName As string)
+Sub opencsv(strFileName As String)
   strFileName = Environ("tmp") & "\" & strFileName
   ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
@@ -4483,7 +4491,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strList
-        Sort Key1:="Finish", ascending1:=True, Key2:="Duration", ascending2:=False, renumber:=False, Outline:=False
+        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, renumber:=False, Outline:=False
         SelectBeginning
         EditGoTo Date:=ActiveSelection.Tasks(1).Finish
       Else

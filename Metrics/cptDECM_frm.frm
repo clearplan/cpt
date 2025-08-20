@@ -51,7 +51,7 @@ Private Sub cmdDone_Click()
       oExcel.Windows(vFile).Close False
       If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     End If
-    If Dir(strFile) <> vbNullString Then Kill strFile
+    If Dir(strFileName) <> vbNullString Then Kill strFileName
   Next vFile
   cptResetAll
 
@@ -338,14 +338,14 @@ Private Sub lboMetrics_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
     Select Case strMetric
       Case "06A101a"
         strFileName = Environ("tmp") & "\" & strMetric & ".xlsx"
-        If Dir(strFile) <> vbNullString Then
+        If Dir(strFileName) <> vbNullString Then
           If MsgBox("Open " & strMetric & ".xslx?", vbQuestion + vbYesNo, strMetric & " Details") = vbYes Then
             Shell "excel.exe """ & strFileName & """", vbMaximizedFocus
           End If
         End If
       Case Else
         strFileName = Environ("tmp") & "\" & strMetric & ".xlsm"
-        If Dir(strFile) <> vbNullString Then
+        If Dir(strFileName) <> vbNullString Then
           If MsgBox("Open " & strMetric & ".xslm?", vbQuestion + vbYesNo, strMetric & " Details") = vbYes Then
             Shell "excel.exe """ & strFileName & """", vbMaximizedFocus
           End If
@@ -577,8 +577,8 @@ Private Sub txtTitle_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, By
         End With
       End With
       strFileName = Environ("tmp") & "\" & strMetric & ".xlsx"
-      If Dir(strFile) <> vbNullString Then Kill strFile
-      oWorkbook.SaveAs strFile, 51
+      If Dir(strFileName) <> vbNullString Then Kill strFileName
+      oWorkbook.SaveAs strFileName, 51
       'oWorkbook.Close 'todo: keep open
       .Close
     End If
