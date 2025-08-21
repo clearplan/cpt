@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.3</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
 
 Private Sub cboAF_Change()
@@ -136,8 +136,11 @@ Private Sub cmdImport_Click()
     cptSaveSetting "StatusSheetImport", "optTaskUsage", IIf(Me.optAbove, "above", "below")
     cptSaveSetting "StatusSheetImport", "chkImportLog", IIf(Me.chkImportLog, "1", "0")
     cptSaveSetting "StatusSheetImport", "chkKickout", IIf(Me.chkKickoutReport, "1", "0")
-    
-    cptStatusSheetImport Me
+    If Me.chkSpeed Then
+      cptStatusSheetImport2 Me
+    Else
+      cptStatusSheetImport Me
+    End If
   End If
   
 End Sub
@@ -427,11 +430,13 @@ End Sub
 
 Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   If CloseMode = VbQueryClose.vbFormControlMenu Then
+    Application.StatusBar = ""
     Me.Hide
     Cancel = True
   End If
 End Sub
 
 Private Sub UserForm_Terminate()
+  Application.StatusBar = ""
   Unload Me
 End Sub
