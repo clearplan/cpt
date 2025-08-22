@@ -770,10 +770,10 @@ Function cptGetLatest(strModule As String) As String
   strFileName = strDir & "\cpt-latest.adtg"
   blnStale = True
   'does file exist?
-  If Dir(strFile) <> vbNullString Then
+  If Dir(strFileName) <> vbNullString Then
     'is it stale?
     Set oFSO = CreateObject("Scripting.FileSystemObject")
-    Set oFile = oFSO.GetFile(strFile)
+    Set oFile = oFSO.GetFile(strFileName)
     'todo: use DateModified? DateCreated? notified as date or boolean?
     'todo: what if a file is installed that gets removed from the package?
     'todo: if a module gets removed then <cpt_version>remove</cpt_version>
@@ -783,7 +783,7 @@ Function cptGetLatest(strModule As String) As String
     Set oFile = Nothing
     Set oFSO = Nothing
     If blnStale Then
-      Kill strFile
+      Kill strFileName
     End If
   End If
   
@@ -827,13 +827,13 @@ Function cptGetLatest(strModule As String) As String
         oRecordset.Update
       Next xmlNode
     End If
-    oRecordset.Save strFile, adPersistADTG
+    oRecordset.Save strFileName, adPersistADTG
     oRecordset.Close
   End If
   
   'now check latest version
   Set oRecordset = CreateObject("ADODB.REcordset")
-  oRecordset.Open strFile
+  oRecordset.Open strFileName
   oRecordset.Filter = "Module='" & strModule & "'"
   If Not oRecordset.EOF Then
     strLatest = oRecordset(2)
@@ -1511,7 +1511,7 @@ Sub cptValidateXML(strXML As String)
   Close #lngFile
   
   Set oXML = New MSXML2.DOMDocument30
-  If oXML.Load(strFile) Then
+  If oXML.Load(strFileName) Then
     MsgBox "cpt ribbon xml validated", vbInformation + vbOKOnly, "success"
   Else
     MsgBox "cpt ribbon xml validation failed", vbCritical + vbOKOnly, "failure"
@@ -1520,7 +1520,7 @@ Sub cptValidateXML(strXML As String)
     End If
   End If
 
-  Kill strFile
+  Kill strFileName
 
 exit_here:
   On Error Resume Next

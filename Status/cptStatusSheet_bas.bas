@@ -2967,7 +2967,7 @@ Sub cptCaptureJournal()
   Set oRecordset = CreateObject("ADODB.Recordset")
   
   strFileName = cptDir & "\settings\cpt-journal.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     With oRecordset
       .Fields.Append "PROGRAM", adVarChar, 50
       .Fields.Append "STATUS_DATE", adDate
@@ -2978,7 +2978,7 @@ Sub cptCaptureJournal()
       .Open
     End With
   Else
-    oRecordset.Open strFile
+    oRecordset.Open strFileName
   End If
   Dim oTask As MSProject.Task, oTasks As MSProject.Tasks
   Set oTasks = ActiveProject.Tasks
@@ -3002,7 +3002,7 @@ next_task:
     Debug.Print Format(lngTask / lngTasks, "0%")
   Next oTask
   
-  oRecordset.Save strFile
+  oRecordset.Save strFileName
   oRecordset.Close
   
 exit_here:

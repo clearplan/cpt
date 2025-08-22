@@ -629,16 +629,16 @@ Sub cptResetAll()
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   strFileName = cptDir & "\settings\cpt-reset-all.adtg"
-  If Dir(strFile) <> vbNullString Then
+  If Dir(strFileName) <> vbNullString Then
     Set rstSettings = CreateObject("ADODB.Recordset")
-    rstSettings.Open strFile
+    rstSettings.Open strFileName
     rstSettings.MoveFirst
     lngSettings = rstSettings(0)
     cptSaveSetting "ResetAll", "Settings", CStr(lngSettings)
     lngOutlineLevel = rstSettings(1)
     cptSaveSetting "ResetAll", "OutlineLevel", CStr(lngOutlineLevel)
     rstSettings.Close
-    Kill strFile
+    Kill strFileName
   Else
     strSettings = cptGetSetting("ResetAll", "Settings")
     If Len(strSettings) > 0 Then lngSettings = CLng(strSettings)
@@ -863,17 +863,17 @@ Sub cptShowResetAll_frm()
   myResetAll_frm.cboViews.List = Split("<None>," & Join(vViewList, ","), ",")
   
   strFileName = cptDir & "\settings\cpt-reset-all.adtg"
-  If Dir(strFile) <> vbNullString Then
+  If Dir(strFileName) <> vbNullString Then
     'get saved settings
     Set rstSettings = CreateObject("ADODB.Recordset")
-    rstSettings.Open strFile
+    rstSettings.Open strFileName
     rstSettings.MoveFirst
     lngSettings = rstSettings(0)
     cptSaveSetting "ResetAll", "Settings", CStr(lngSettings)
     lngOutlineLevel = rstSettings(1)
     cptSaveSetting "ResetAll", "OutlineLevel", CStr(lngOutlineLevel)
     rstSettings.Close
-    Kill strFile
+    Kill strFileName
   Else
     strSettings = cptGetSetting("ResetAll", "Settings")
     If Len(strSettings) > 0 Then lngSettings = CLng(strSettings)
@@ -2214,8 +2214,8 @@ Sub cptAppendColumn(strFileName As String, strColumn As String, lngType As Long,
   
   Set oRecordset = CreateObject("ADODB.Recordset")
   Set oRecordsetNew = CreateObject("ADODB.Recordset")
-  If InStr(strFile, strDir) = 0 Then strFileName = strDir & strFile
-  oRecordset.Open strFile, , adOpenKeyset, adLockReadOnly
+  If InStr(strFileName, strDir) = 0 Then strFileName = strDir & strFileName
+  oRecordset.Open strFileName, , adOpenKeyset, adLockReadOnly
   On Error Resume Next
   Debug.Print oRecordset.Fields(strColumn)
   If Err.Number = 0 Then 'field already exists
@@ -2252,8 +2252,8 @@ Sub cptAppendColumn(strFileName As String, strColumn As String, lngType As Long,
     oRecordset.MoveNext
   Loop
   oRecordset.Close
-  Name strFileName As Replace(strFile, ".adtg", "-backup_" & Format(Now, "yyyy-mm-dd-HH-nn-ss") & ".adtg")
-  oRecordsetNew.Save strFile, adPersistADTG
+  Name strFileName As Replace(strFileName, ".adtg", "-backup_" & Format(Now, "yyyy-mm-dd-HH-nn-ss") & ".adtg")
+  oRecordsetNew.Save strFileName, adPersistADTG
   oRecordsetNew.Close
   
 exit_here:

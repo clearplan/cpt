@@ -409,7 +409,7 @@ Sub cptShowDataDictionary_frm()
   Dim strDir As String
   Dim strProgram As String
   Dim strMsg As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngField As Long
   'integers
@@ -428,11 +428,11 @@ Sub cptShowDataDictionary_frm()
   'todo: ensure IMPORT Feature Supports PROJECT_NAME, but allows for legacy files as well
   'todo: should there *still* be a 'recover' option? maybe repeat this procedure also if there are blanks in the PROJECT_NAME?
   'todo: to remove an entry, either put 'REMOVE' in the PROJECT_NAME, or delete the worksheet row
-  strFile = strDir & "\settings\cpt-data-dictionary.adtg"
+  strFileName = strDir & "\settings\cpt-data-dictionary.adtg"
   'does the file exist?
-  If Dir(strFile) <> vbNullString Then
+  If Dir(strFileName) <> vbNullString Then
     Set rst = CreateObject("ADODB.Recordset")
-    rst.Open strFile
+    rst.Open strFileName
     'does it have any records?
     If rst.RecordCount > 0 Then
       rst.MoveFirst
@@ -723,7 +723,7 @@ err_here:
   Resume exit_here
 End Sub
 
-Sub cptImportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm, Optional strFile As String)
+Sub cptImportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm, Optional strFileName As String)
   'objects
   Dim rstSaved As ADODB.Recordset
   Dim oExcel As Object
@@ -778,8 +778,8 @@ Sub cptImportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm,
     'Application.ActivateMicrosoftApp pjMicrosoftExcel
     blnClose = False
   End If
-  If Len(strFile) > 0 Then
-    vFile = strFile
+  If Len(strFileName) > 0 Then
+    vFile = strFileName
     GoTo skip_that
   Else
     vFile = oExcel.GetOpenFilename(FileFilter:="Microsoft Excel *.xls* (*.xls*),", _
@@ -801,7 +801,7 @@ skip_that:
   If oWorkbook Is Nothing Then Set oWorkbook = oExcel.Workbooks.Open(vFile)
   Set oWorksheet = oWorkbook.Sheets("Data Dictionary")
   If oWorksheet Is Nothing Then
-    MsgBox strFile & " does not appear to be a valid IMS Data Dictionary workbook. The wheet named 'Data Dictionary' not found.", vbExclamation + vbOKOnly, "Invalid Workbook"
+    MsgBox strFileName & " does not appear to be a valid IMS Data Dictionary workbook. The wheet named 'Data Dictionary' not found.", vbExclamation + vbOKOnly, "Invalid Workbook"
     GoTo exit_here
   End If
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0

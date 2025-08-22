@@ -287,7 +287,7 @@ Private Sub cmdSelectFiles_Click()
   Dim oFileDialog As Object 'FileDialog
   Dim oExcel As Excel.Application
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   'integers
@@ -322,11 +322,11 @@ Private Sub cmdSelectFiles_Click()
     If .Show = -1 Then
       If .SelectedItems.Count > 0 Then
         For lngItem = 1 To .SelectedItems.Count
-          strFile = .SelectedItems(lngItem)
-          If Dir(strFile) <> vbNullString Then
+          strFileName = .SelectedItems(lngItem)
+          If Dir(strFileName) <> vbNullString Then
             Me.lboStatusSheets.AddItem
-            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 0) = Replace(strFile, Dir(strFile), "")
-            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 1) = Dir(strFile)
+            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 0) = Replace(strFileName, Dir(strFileName), "")
+            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 1) = Dir(strFileName)
           End If
         Next lngItem
       End If

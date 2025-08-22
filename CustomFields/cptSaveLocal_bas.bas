@@ -710,7 +710,6 @@ Sub cptGetAllFields(lngFrom As Long, lngTo As Long)
   'strings
   Dim strCustomName As String
   Dim strDir As String
-  Dim strFile As String
   Dim strFieldName As String
   'longs
   'Dim lngTo As Long

@@ -1233,7 +1233,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   'set directory
   strDir = Environ("TEMP") & "\"
   strFileName = "WBS_DESCRIPTIVE_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".csv"
-  If Dir(strDir & strFile) <> vbNullString Then Kill strDir & strFile
+  If Dir(strDir & strFileName) <> vbNullString Then Kill strDir & strFileName
 
   lngFile = FreeFile
   Open strDir & strFileName For Output As #lngFile
@@ -1303,7 +1303,7 @@ exit_here:
 kill_file:
   On Error Resume Next
   Close #lngFile
-  Kill strDir & strFile
+  Kill strDir & strFileName
   Resume exit_here
   
 err_here:
@@ -1372,7 +1372,7 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
   
   'setup the export file
   strFileName = Environ("TEMP") & "\CODE_FILE_WBS.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   lngFile = FreeFile
   Open strFileName For Output As #lngFile
   
@@ -1432,7 +1432,7 @@ exit_here:
 kill_file:
   On Error Resume Next
   Close #lngFile
-  Kill strFile
+  Kill strFileName
   Resume exit_here
   
 err_here:

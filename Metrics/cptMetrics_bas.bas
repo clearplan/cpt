@@ -750,7 +750,7 @@ Sub cptCaptureWeek()
     
   Set rst = CreateObject("ADODB.Recordset")
   strFileName = cptDir & "\settings\cpt-cei.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     rst.Fields.Append "PROJECT", adVarChar, 25      '0
     rst.Fields.Append "TASK_UID", adInteger         '1
     rst.Fields.Append "TASK_NAME", adVarChar, 255   '2
@@ -769,7 +769,7 @@ Sub cptCaptureWeek()
     rst.Fields.Append "EV", adInteger               '15
     rst.Open
   Else
-    rst.Open strFile
+    rst.Open strFileName
   End If
     
   dtStatus = ActiveProject.StatusDate
@@ -841,7 +841,7 @@ next_task:
     Application.StatusBar = lngTask & " / " & lngTasks & " (" & Format(lngTask / lngTasks, "0%") & ")"
   Next oTask
   
-  rst.Save strFile, adPersistADTG
+  rst.Save strFileName, adPersistADTG
   MsgBox "Current Schedule as of " & FormatDateTime(ActiveProject.StatusDate, vbShortDate) & " captured.", vbInformation + vbOKOnly, "Complete"
 do_not_overwrite:
   rst.Close
@@ -1290,10 +1290,10 @@ next_task:
 '  strDir = strDir & Format(dtStatus, "yyyy-mm-dd") & "\"
 '  If Dir(strDir, vbDirectory) = vbNullString Then MkDir strDir
 '  strFileName = strDir & Replace(strProject, " ", "_") & "_IMS_EarlyLateStartsFinishes_" & Format(ActiveProject.StatusDate, "yyyy-mm-dd") & ".xlsx"
-'  If Dir(strFile) <> vbNullString Then Kill strFile
+'  If Dir(strFileName) <> vbNullString Then Kill strFileName
   oExcel.Calculation = xlCalculationAutomatic
   oExcel.ScreenUpdating = True
-  'oWorkbook.SaveAs strFile, 51
+  'oWorkbook.SaveAs strFileName, 51
   'oWorkbook.Close True
   
   'capture BEI
@@ -1351,7 +1351,7 @@ Sub cptCaptureMetric(strProgram As String, dtStatus As Date, strMetric As String
   Set oRecordset = CreateObject("ADODB.Recordset")
   strFileName = cptDir & "\settings\cpt-metrics.adtg"
   With oRecordset
-    If Dir(strFile) = vbNullString Then
+    If Dir(strFileName) = vbNullString Then
       'create it
       .Fields.Append "PROGRAM", adVarChar, 50
       .Fields.Append "STATUS_DATE", adDate
@@ -1365,7 +1365,7 @@ Sub cptCaptureMetric(strProgram As String, dtStatus As Date, strMetric As String
       .Fields.Append "ES", adDate
       .Open
     Else
-      .Open strFile
+      .Open strFileName
     End If
     .Filter = "PROGRAM='" & strProgram & "' AND STATUS_DATE=#" & dtStatus & "#"
     If Not .EOF Then
@@ -1375,7 +1375,7 @@ Sub cptCaptureMetric(strProgram As String, dtStatus As Date, strMetric As String
       .AddNew Array("PROGRAM", "STATUS_DATE", strMetric), Array(strProgram, dtStatus, CDbl(vMetric))
     End If
     .Filter = ""
-    .Save strFile, adPersistADTG
+    .Save strFileName, adPersistADTG
     .Close
   End With
 
@@ -1642,7 +1642,7 @@ Sub cptGetTrend_CEI()
   Application.StatusBar = "Confirming cpt-cei.adtg exists..."
   DoEvents
   strFileName = strCptDir & "\settings\cpt-cei.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     MsgBox "CEI data file not found!" & vbCrLf & vbCrLf & "Please open a previous version of the schedule and run Schedule > Status > Capture Week before proceeding.", vbExclamation + vbOKOnly, "File Not Found"
     GoTo exit_here
   End If
@@ -1652,7 +1652,7 @@ Sub cptGetTrend_CEI()
   DoEvents
   Set oRecordset = CreateObject("ADODB.REcordset")
   With oRecordset
-    .Open strFile
+    .Open strFileName
     .Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE<#" & FormatDateTime(dtThisWeek, vbGeneralDate) & "#"
     .Sort = "STATUS_DATE DESC"
     If .EOF Then
@@ -1672,7 +1672,7 @@ Sub cptGetTrend_CEI()
   strFileName = strCptDir & "\settings\cpt-metrics.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
-    .Open strFile
+    .Open strFileName
     .Filter = "PROGRAM='" & strProgram & "'"
     .Sort = "STATUS_DATE DESC"
     If .EOF Then
@@ -1744,7 +1744,7 @@ Sub cptGetTrend_CEI()
   oListObject.ShowTotals = True
   strFileName = strCptDir & "\settings\cpt-cei.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
-  oRecordset.Open strFile
+  oRecordset.Open strFileName
   If oRecordset.RecordCount > 0 Then
     oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & FormatDateTime(dtLastWeek, vbGeneralDate) & "#"
     If oRecordset.EOF Then 'this cannot happen given what's happened above
@@ -1921,7 +1921,7 @@ next_task:
   Set oRecordset = Nothing
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
-    .Open strFile, , adOpenKeyset, adLockReadOnly
+    .Open strFileName, , adOpenKeyset, adLockReadOnly
     .Filter = "PROGRAM='" & strProgram & "'"
     'todo: limit number of periods on cei trend?
     If .EOF Then
@@ -2204,7 +2204,7 @@ Sub cptGetTrend(strMetric As String, Optional dtStatus As Date)
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strFileName = cptDir & "\settings\cpt-metrics.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     MsgBox strFileName & " not found.", vbExclamation + vbOKOnly, "File Not Found"
     GoTo exit_here
   Else
@@ -2223,7 +2223,7 @@ Sub cptGetTrend(strMetric As String, Optional dtStatus As Date)
     End If
     Set oRecordset = CreateObject("ADODB.Recordset")
     With oRecordset
-      .Open strFile
+      .Open strFileName
       If .RecordCount = 0 Then
         MsgBox "No records found!", vbExclamation + vbOKOnly, "Trend Data: " & strMetric
         GoTo exit_here
@@ -2492,13 +2492,13 @@ Sub cptExportMetricsData()
   DoEvents
   strDir = cptDir
   strFileName = strDir & "\settings\cpt-metrics.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     MsgBox strFileName & " not found!", vbCritical + vbOKOnly, "File Not Found"
     GoTo exit_here
   End If
   
   strFileName = strDir & "\settings\cpt-cei.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     MsgBox strFileName & " not found!", vbCritical + vbOKOnly, "File Not Found"
     GoTo exit_here
   End If
@@ -2511,7 +2511,7 @@ Sub cptExportMetricsData()
   
   strFileName = strDir & "\settings\cpt-metrics.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
-  oRecordset.Open strFile
+  oRecordset.Open strFileName
   oRecordset.Filter = "PROGRAM='" & strProgram & "'"
   If oRecordset.RecordCount > 0 Then
     On Error Resume Next
@@ -2545,7 +2545,7 @@ Sub cptExportMetricsData()
   
   strFileName = strDir & "\settings\cpt-cei.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
-  oRecordset.Open strFile
+  oRecordset.Open strFileName
   oRecordset.Filter = "PROJECT='" & strProgram & "'"
   If oRecordset.RecordCount > 0 Then
     On Error Resume Next
@@ -3040,7 +3040,7 @@ Sub cptShowMetricsData_frm()
   
   'ensure file exists
   strFileName = cptDir & "\settings\cpt-metrics.adtg"
-  If Dir(strFile) = vbNullString Then
+  If Dir(strFileName) = vbNullString Then
     MsgBox strFileName & " does not exist.", vbExclamation + vbOKOnly, "File Not Found"
     GoTo exit_here
   End If
@@ -3050,7 +3050,7 @@ Sub cptShowMetricsData_frm()
   
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
-    .Open strFile
+    .Open strFileName
     If .RecordCount = 0 Then
       MsgBox "No records found.", vbExclamation + vbOKOnly, "No Data"
       GoTo exit_here
@@ -3066,7 +3066,7 @@ Sub cptShowMetricsData_frm()
     Loop
     Set myMetricsData_frm = New cptMetricsData_frm
     myMetricsData_frm.Caption = "cpt Metrics Data (" & cptGetVersion("cptMetricsData_frm") & ")"
-    'myMetricsData_frm.lblDir.Caption = strFile
+    'myMetricsData_frm.lblDir.Caption = strFileName
     .MoveFirst
     .Sort = "STATUS_DATE DESC"
     .Filter = "PROGRAM='" & strProgram & "'"
