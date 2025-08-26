@@ -650,8 +650,8 @@ next_task:
       strSQL = strSQL & "                WHERE "
       strSQL = strSQL & "                    PROJECT = '" & strProgramAcronym & "' "
       strSQL = strSQL & "            ) T2 ON T2.[STATUS_DATE] = T1.FISCAL_END "
-      strSQL = strSQL & "    )"
-      oRecordset.Open strSQL, strCon, adOpenKeyset
+      strSQL = strSQL & "    ) "
+      oRecordset.Open strSQL & " WHERE T2.[STATUS_DATE]<=#" & dtStatus & "# ", strCon, adOpenKeyset
       If oRecordset.EOF Then
         oRecordset.Close
         blnTaskHistoryExists = False
@@ -711,8 +711,8 @@ next_task:
     'get X
     strSQL = "SELECT "
     strSQL = strSQL & "    t1.TASK_UID, "
-    strSQL = strSQL & "    t1.TASK_AS AS TASK_AS_IS, "
-    strSQL = strSQL & "    t2.TASK_AS_WAS "
+    strSQL = strSQL & "    t2.TASK_AS_WAS, "
+    strSQL = strSQL & "    t1.TASK_AS AS TASK_AS_IS "
     strSQL = strSQL & "FROM "
     strSQL = strSQL & "    [cpt-cei.csv] AS t1 "
     strSQL = strSQL & "    INNER JOIN ( "
@@ -731,6 +731,7 @@ next_task:
     strSQL = strSQL & "    AND TASK_AS IS NOT NULL "
     strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrent & "# "
     strSQL = strSQL & "    AND T1.TASK_AS <> T2.TASK_AS_WAS; "
+
     oRecordset.Open strSQL, strCon, adOpenKeyset
     If Not oRecordset.EOF Then lngX = oRecordset.RecordCount Else lngX = 0
     strList = ""
@@ -805,8 +806,8 @@ next_task:
     'get X
     strSQL = "SELECT "
     strSQL = strSQL & "    t1.TASK_UID, "
-    strSQL = strSQL & "    t1.TASK_AF AS TASK_AF_IS, "
-    strSQL = strSQL & "    t2.TASK_AF_WAS "
+    strSQL = strSQL & "    t2.TASK_AF_WAS, "
+    strSQL = strSQL & "    t1.TASK_AF AS TASK_AF_IS "
     strSQL = strSQL & "FROM "
     strSQL = strSQL & "    [cpt-cei.csv] AS t1 "
     strSQL = strSQL & "    INNER JOIN ( "
@@ -4363,6 +4364,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
 
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
   Set oShading = Nothing
   Set oBorders = Nothing
   Set o06A101a = Nothing
@@ -4388,7 +4390,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
   ActiveWindow.TopPane.Activate
   FilterClear
   GroupClear
-  Sort "ID", renumber:=False, Outline:=True
+  Sort "ID", Renumber:=False, Outline:=True
   OptionsViewEx DisplaySummaryTasks:=True
   OutlineShowAllTasks
   If strMetric <> "06A208a" Then OptionsViewEx DisplaySummaryTasks:=False
@@ -4491,7 +4493,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strList
-        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, renumber:=False, Outline:=False
+        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, Renumber:=False, Outline:=False
         SelectBeginning
         EditGoTo Date:=ActiveSelection.Tasks(1).Finish
       Else
