@@ -279,6 +279,11 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim oComboBox As MSForms.ComboBox
   Dim rst As ADODB.Recordset
   'strings
+  Dim strAS As String
+  Dim strAF As String
+  Dim strNS As String
+  Dim strNF As String
+  Dim strETC As String
   Dim strUIDList As String
   Dim strLOE As String
   Dim strEVT As String
@@ -301,8 +306,6 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim lngMultiplier As Long
   Dim lngDeconflictionFile As Long
   Dim lngEVP As Long
-  Dim lngTask As Long
-  Dim lngTasks As Long
   Dim lngTaskNameCol As Long
   Dim lngEVTCol As Long
   Dim lngEVPCol As Long
@@ -440,103 +443,33 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Open strDeconflictionFile For Output As #lngDeconflictionFile
   Print #lngDeconflictionFile, "FILE,TASK_UID,FIELD,RESOURCE_NAME,WAS,IS"
   
-  'clear existing values from selected import fields -- but not oTask.ActualStart or oTask.ActualFinish
-  myStatusSheetImport_frm.lblStatus = "Clearing existing values..."
-  cptSpeed True
-  If ActiveProject.Subprojects.Count > 0 Then
-    For Each oSubproject In ActiveProject.Subprojects
-      lngTasks = lngTasks + oSubproject.SourceProject.Tasks.Count
-    Next
-  Else
-    lngTasks = ActiveProject.Tasks.Count
-  End If
+  'clear existing values from selected import fields
+  myStatusSheetImport_frm.lblStatus = "Clearing previous values..."
+  'clear out previous values tasks
+  strAS = FieldConstantToFieldName(lngAS)
+  strAF = FieldConstantToFieldName(lngAF)
+  strNS = FieldConstantToFieldName(lngFS)
+  strNF = FieldConstantToFieldName(lngFF)
+  strEVP = FieldConstantToFieldName(lngEVP)
+  strETC = FieldConstantToFieldName(lngETC)
   
-  For Each oTask In ActiveProject.Tasks
-    lngTask = lngTask + 1
-    If oTask Is Nothing Then GoTo next_task
-    If oTask.Summary Then GoTo next_task
-    If oTask.ExternalTask Then GoTo next_task
-    If Not oTask.Active Then GoTo next_task
-    'clear dates
-    For Each vField In Array(lngAS, lngAF, lngFS, lngFF)
-      If vField = 188743721 Then GoTo next_field 'DO NOT clear out Actual Start
-      If vField = 188743722 Then GoTo next_field 'DO NOT clear out Actual Finish
-      If Not oTask.GetField(vField) = "NA" Then
-        oTask.SetField vField, ""
-      End If
-next_field:
-    Next vField
-    'clear EV
-    oTask.SetField lngEV, CStr(0)
-    'clear ETC
-    For Each oAssignment In oTask.Assignments
-      If lngETC = pjTaskNumber1 Then
-        oAssignment.Number1 = 0
-        oTask.Number1 = 0
-      ElseIf lngETC = pjTaskNumber2 Then
-        oAssignment.Number2 = 0
-        oTask.Number2 = 0
-      ElseIf lngETC = pjTaskNumber3 Then
-        oAssignment.Number3 = 0
-        oTask.Number3 = 0
-      ElseIf lngETC = pjTaskNumber4 Then
-        oAssignment.Number4 = 0
-        oTask.Number4 = 0
-      ElseIf lngETC = pjTaskNumber5 Then
-        oAssignment.Number5 = 0
-        oTask.Number5 = 0
-      ElseIf lngETC = pjTaskNumber6 Then
-        oAssignment.Number6 = 0
-        oTask.Number6 = 0
-      ElseIf lngETC = pjTaskNumber7 Then
-        oAssignment.Number7 = 0
-        oTask.Number7 = 0
-      ElseIf lngETC = pjTaskNumber8 Then
-        oAssignment.Number8 = 0
-        oTask.Number8 = 0
-      ElseIf lngETC = pjTaskNumber9 Then
-        oAssignment.Number9 = 0
-        oTask.Number9 = 0
-      ElseIf lngETC = pjTaskNumber10 Then
-        oAssignment.Number10 = 0
-        oTask.Number10 = 0
-      ElseIf lngETC = pjTaskNumber11 Then
-        oAssignment.Number11 = 0
-        oTask.Number11 = 0
-      ElseIf lngETC = pjTaskNumber12 Then
-        oAssignment.Number12 = 0
-        oTask.Number12 = 0
-      ElseIf lngETC = pjTaskNumber13 Then
-        oAssignment.Number13 = 0
-        oTask.Number13 = 0
-      ElseIf lngETC = pjTaskNumber14 Then
-        oAssignment.Number14 = 0
-        oTask.Number14 = 0
-      ElseIf lngETC = pjTaskNumber15 Then
-        oAssignment.Number15 = 0
-        oTask.Number15 = 0
-      ElseIf lngETC = pjTaskNumber16 Then
-        oAssignment.Number16 = 0
-        oTask.Number16 = 0
-      ElseIf lngETC = pjTaskNumber17 Then
-        oAssignment.Number17 = 0
-        oTask.Number17 = 0
-      ElseIf lngETC = pjTaskNumber18 Then
-        oAssignment.Number18 = 0
-        oTask.Number18 = 0
-      ElseIf lngETC = pjTaskNumber19 Then
-        oAssignment.Number19 = 0
-        oTask.Number19 = 0
-      ElseIf lngETC = pjTaskNumber20 Then
-        oAssignment.Number20 = 0
-        oTask.Number20 = 0
-      End If
-    Next oAssignment
-next_task:
-    myStatusSheetImport_frm.lblStatus.Caption = "Clearing Previous Values...(" & Format(lngTask / lngTasks, "0%") & ")"
-    myStatusSheetImport_frm.lblProgress.Width = (lngTask / lngTasks) * myStatusSheetImport_frm.lblStatus.Width
-    DoEvents
-  Next oTask
+  ActiveWindow.TopPane.Activate
+  ViewApply "Task Usage"
+  FilterClear
+  'GroupClear 'todo: capture group name
+  OptionsViewEx DisplaySummaryTasks:=True
+  SelectAll
+  OutlineShowAllTasks
+  Sort "ID", Renumber:=False, Outline:=True
+  SelectAll
+  SetField strAS, ""
+  SetField strAF, ""
+  SetField strNS, ""
+  SetField strNF, ""
+  SetField strEVP, ""
+  SetField strETC, ""
+  myStatusSheetImport_frm.lblStatus.Caption = "Clearing previous values...done."
+  ViewApply "cptStatusSheetImport View"
   
   'set up array of updated  UIDs
   Set oDict = CreateObject("Scripting.Dictionary")
@@ -563,8 +496,6 @@ next_task:
         End If
         
         Print #lngFile, "IMPORTING Worksheet: " & oWorksheet.Name
-'        myStatusSheetImport_frm.lblStatus.Caption = "Importing...(" & Format(oWorksheet.Index / oWorkbook.Sheets.Count, "0%") & ")"
-'        myStatusSheetImport_frm.lblProgress.Width = (oWorksheet.Index / oWorkbook.Sheets.Count) * myStatusSheetImport_frm.lblStatus.Width
         DoEvents
         If oBad.Count > 0 Then oBad.RemoveAll
         'unhide columns and rows (sort is blocked by sheet protection...)
@@ -652,15 +583,22 @@ do_stuff:
 
             'new start date
             If Not oWorksheet.Cells(lngRow, lngNSCol).Locked Then
-              If oWorksheet.Cells(lngRow, lngNSCol).DisplayFormat.Interior.Color = 13551615 Then
+              If oWorksheet.Cells(lngRow, lngNSCol).DisplayFormat.Interior.Color = 13551615 Then '13551615 = Style = "Bad"
                 Print #lngFile, "UID " & lngUID & " - Should Have Started " & String(10, "<")
                 cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 blnValid = False
                 GoTo skip_ns
               End If
-              
+              If oWorksheet.Cells(lngRow, lngNSCol).DisplayFormat.Interior.Color = 10079487 Then '10079487 = Style = "Input"
+                If Len(oWorksheet.Cells(lngRow, lngNSCol)) = 0 Then
+                  Print #lngFile, "UID " & lngUID & " = invalid New Start Date " & String(10, "<")
+                  cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
+                  blnValid = False
+                  GoTo skip_ns
+                End If
+              End If
               oWorksheet.Cells(lngRow, lngNSCol).NumberFormat = "0.00" 'work around overflow issue
-              If oWorksheet.Cells(lngRow, lngNSCol).Value > 91312 Then 'invalid
+              If oWorksheet.Cells(lngRow, lngNSCol).Value > 91312 Then 'dates greater than 12/31/2149 are invalid
                 cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 Print #lngFile, "UID " & lngUID & " - invalid New Start Date " & String(10, "<")
               Else
@@ -700,13 +638,13 @@ skip_ns:
             
             'new finish date
             If Not oWorksheet.Cells(lngRow, lngNFCol).Locked Then
-              If oWorksheet.Cells(lngRow, lngNFCol).DisplayFormat.Interior.Color = 13551615 Then 'invalid
+              If oWorksheet.Cells(lngRow, lngNFCol).DisplayFormat.Interior.Color = 13551615 Then 'red = invalid
                 Print #lngFile, "UID " & lngUID & " = invalid New Finish Date " & String(10, "<")
                 cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
                 blnValid = False
                 GoTo skip_nf
               End If
-              If oWorksheet.Cells(lngRow, lngNFCol).DisplayFormat.Interior.Color = 10079487 Then
+              If oWorksheet.Cells(lngRow, lngNFCol).DisplayFormat.Interior.Color = 10079487 Then 'orange = input
                 If Len(oWorksheet.Cells(lngRow, lngNFCol)) = 0 Then
                   Print #lngFile, "UID " & lngUID & " = invalid New Finish Date " & String(10, "<")
                   cptAddRange rBad, oWorksheet.Cells(lngRow, lngUIDCol)
@@ -939,6 +877,7 @@ next_worksheet:
 next_file:
 
       If Not blnValid And blnKickoutReport Then
+        Application.StatusBar = "Kickouts! Generating email..."
         'get outlook
         On Error Resume Next
         Set oOutlook = GetObject(, "Outlook.Application")
@@ -1017,6 +956,7 @@ next_worksheet1:
   End With 'myStatusSheetImport_frm
   
   'were there any conflicts?
+  Application.StatusBar = "Checking for conflicting updates..."
   Close #lngDeconflictionFile
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("temp") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   
@@ -1027,8 +967,10 @@ next_worksheet1:
   Set oRecordset = CreateObject("ADODB.Recordset")
   oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
   If oRecordset.RecordCount > 0 Then
+    Application.StatusBar = "Conflicts found! Generating report..."
     Print #lngFile, ">>> " & oRecordset.RecordCount & " POTENTIAL CONFLICTS IDENTIFIED <<<"
     If MsgBox("Potential conflicts found!" & vbCrLf & vbCrLf & "Review in Excel?", vbExclamation + vbYesNo, "Please Review") = vbYes Then
+      Application.StatusBar = "Conflicts found! Generating report..."
       oExcel.Visible = True
       Set oWorkbook = oExcel.Workbooks.Add
       Set oWorksheet = oWorkbook.Sheets(1)
@@ -1039,6 +981,7 @@ next_worksheet1:
       oExcel.ActiveWindow.Zoom = 85
       oWorksheet.Columns.AutoFit
     Else
+      Application.StatusBar = "Conflicts found! Skipping report..."
       For lngItem = 0 To oRecordset.Fields.Count - 1
         strHeader = strHeader & oRecordset.Fields(lngItem).Name & ","
       Next lngItem
@@ -1071,25 +1014,22 @@ exit_here:
   myStatusSheetImport_frm.lblStatus.Caption = "Import Complete."
   myStatusSheetImport_frm.lblProgress.Width = myStatusSheetImport_frm.lblStatus.Width
   DoEvents
-  'If blnValid Then
-    'close log for output
-    Print #lngFile, String(25, "=")
-    Print #lngFile, "COMPLETE: " & FormatDateTime(Now, vbGeneralDate) & " [" & Format(Now - dtStart, "hh:nn:ss") & "]" & vbCrLf
-    Print #lngFile, "UPDATED UIDs:"
-    If Len(strUIDList) = 0 Then
-      Print #lngFile, "< no updates >"
-    Else
-      Print #lngFile, strUIDList
-    End If
-    Close #lngFile
-  'End If
+  'close log for output
+  Print #lngFile, String(25, "=")
+  Print #lngFile, "COMPLETE: " & FormatDateTime(Now, vbGeneralDate) & " [" & Format(Now - dtStart, "hh:nn:ss") & "]" & vbCrLf
+  Print #lngFile, "UPDATED UIDs:"
+  If Len(strUIDList) = 0 Then
+    Print #lngFile, "< no updates >"
+  Else
+    Print #lngFile, strUIDList
+  End If
   myStatusSheetImport_frm.lblStatus.Caption = "Ready..."
+  Application.StatusBar = "Ready..."
   cptSpeed False
   Set oAssignment = Nothing
   Set oResource = Nothing
   Set oTask = Nothing
   Reset 'closes all active files opened by the Open statement and writes the contents of all file buffers to disk.
-  Close #lngDeconflictionFile
   If Dir(strImportLog) <> vbNullString And blnImportLog Then 'open log in notepad
     ShellExecute 0, "open", strImportLog, vbNullString, vbNullString, 1
   End If
