@@ -136,7 +136,6 @@ Private Sub cmdImport_Click()
     cptSaveSetting "StatusSheetImport", "optTaskUsage", IIf(Me.optAbove, "above", "below")
     cptSaveSetting "StatusSheetImport", "chkImportLog", IIf(Me.chkImportLog, "1", "0")
     cptSaveSetting "StatusSheetImport", "chkKickout", IIf(Me.chkKickoutReport, "1", "0")
-    
     cptStatusSheetImport Me
   End If
   
@@ -427,11 +426,13 @@ End Sub
 
 Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   If CloseMode = VbQueryClose.vbFormControlMenu Then
+    Application.StatusBar = ""
     Me.Hide
     Cancel = True
   End If
 End Sub
 
 Private Sub UserForm_Terminate()
+  Application.StatusBar = ""
   Unload Me
 End Sub
