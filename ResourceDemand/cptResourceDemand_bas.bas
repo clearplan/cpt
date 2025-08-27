@@ -10,7 +10,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim oShell As Object
   Dim oSettings As Object
   Dim oListObject As Excel.ListObject 'Object
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -895,10 +895,14 @@ Sub cptShowExportResourceDemand_frm()
   Dim strWeekday As String
   Dim strMissing As String
   Dim strActiveView As String
-  Dim strFieldName As String, strFileName As String
+  Dim strFieldName As String
+  Dim strFileName As String
   'longs
-  Dim lngResourceCount As Long, lngResource As Long
-  Dim lngField As Long, lngItem As Long
+  Dim lngFile As Long
+  Dim lngResourceCount As Long
+  Dim lngResource As Long
+  Dim lngField As Long
+  Dim lngItem As Long
   'integers
   'booleans
   'variants
@@ -1155,12 +1159,23 @@ next_saved_field:
       End If
     End If
     .Caption = "Export Resource Demand (" & cptGetVersion("cptResourceDemand_frm") & ")"
+    If Len(strMissing) > 0 Then
+      If UBound(Split(strMissing, vbCrLf)) > 10 Then
+        lngFile = FreeFile
+        strFileName = Environ("tmp") & "\cpt-resourcedemand-missing-fields.txt"
+        Open strFileName For Output As #lngFile
+        Print #lngFile, "The following saved fields do not exist in this project:"
+        Print #lngFile, strMissing
+        Close #lngFile
+        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        MsgBox "There are " & UBound(Split(strMissing, vbCrLf)) & " saved fields that do not exist in this project.", vbCritical + vbOKOnly, "Saved Settings"
+      Else
+        MsgBox "The following saved fields do not exist in this project:" & vbCrLf & strMissing, vbInformation + vbOKOnly, "Saved Settings"
+      End If
+    End If
     .Show 'False
   End With
   
-  If Len(strMissing) > 0 Then
-    MsgBox "The following saved fields do not exist in this project:" & vbCrLf & strMissing, vbInformation + vbOKOnly, "Saved Settings"
-  End If
 
 exit_here:
   On Error Resume Next
