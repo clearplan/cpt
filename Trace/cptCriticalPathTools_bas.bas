@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPathTools_bas"
-'<cpt_version>v1.1.0</cpt_version>
+'<cpt_version>v1.2.0</cpt_version>
 Option Explicit
 
 Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendEmail As Boolean = False, Optional blnKeepOpen As Boolean = False, Optional ByRef oTargetTask As MSProject.Task)

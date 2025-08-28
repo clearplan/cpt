@@ -136,7 +136,7 @@
 	<Module>
 		<Name>cptCriticalPathTools_bas</Name>
 		<FileName>cptCriticalPathTools_bas.bas</FileName>
-		<Version>v1.1.0</Version>
+		<Version>v1.2.0</Version>
 		<Type>1</Type>
 		<Directory>Trace</Directory>
 	</Module>
@@ -269,7 +269,7 @@
 	<Module>
 		<Name>cptMetricsData_frm</Name>
 		<FileName>cptMetricsData_frm.frm</FileName>
-		<Version>v1.0.0</Version>
+		<Version>v1.1.0</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
@@ -304,28 +304,28 @@
 	<Module>
 		<Name>cptResourceDemand_bas</Name>
 		<FileName>cptResourceDemand_bas.bas</FileName>
-		<Version>v1.4.4</Version>
+		<Version>v1.5.0</Version>
 		<Type>1</Type>
 		<Directory>ResourceDemand</Directory>
 	</Module>
 	<Module>
 		<Name>cptResourceDemand_frm</Name>
 		<FileName>cptResourceDemand_frm.frm</FileName>
-		<Version>v1.4.4</Version>
+		<Version>v1.5.0</Version>
 		<Type>3</Type>
 		<Directory>ResourceDemand</Directory>
 	</Module>
 	<Module>
 		<Name>cptSaveLocal_bas</Name>
 		<FileName>cptSaveLocal_bas.bas</FileName>
-		<Version>v1.2.0</Version>
+		<Version>v1.3.0</Version>
 		<Type>1</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
 	<Module>
 		<Name>cptSaveLocal_frm</Name>
 		<FileName>cptSaveLocal_frm.frm</FileName>
-		<Version>v1.2.0</Version>
+		<Version>v1.3.0</Version>
 		<Type>3</Type>
 		<Directory>CustomFields</Directory>
 	</Module>

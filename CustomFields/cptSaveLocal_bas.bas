@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSaveLocal_bas"
-'<cpt_version>v1.2.0</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 Public strStartView As String
 Public strStartTable As String

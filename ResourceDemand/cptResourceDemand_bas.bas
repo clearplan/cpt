@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.4.4</cpt_version>
+'<cpt_version>v1.5.0</cpt_version>
 Option Explicit
 
 Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm, Optional lngTaskCount As Long)
