@@ -13,7 +13,11 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.4.1</cpt_version>
+
+
+
+
+'<cpt_version>v1.5.0</cpt_version>
 Option Explicit
 
 Private Sub cboOpenWorkbooks_Change()

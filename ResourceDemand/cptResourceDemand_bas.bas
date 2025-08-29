@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.4.4</cpt_version>
+'<cpt_version>v1.5.0</cpt_version>
 Option Explicit
 
 Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm, Optional lngTaskCount As Long)
@@ -10,7 +10,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim oShell As Object
   Dim oSettings As Object
   Dim oListObject As Excel.ListObject 'Object
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -29,9 +29,13 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim oPivotTable As Excel.PivotTable 'Object
   'dates
   Dim dtWeek As Date
-  Dim dtStart As Date, dtFinish As Date, dtMin As Date, dtMax As Date
+  Dim dtStart As Date
+  Dim dtFinish As Date
+  Dim dtMin As Date
+  Dim dtMax As Date
   'doubles
-  Dim dblWork As Double, dblCost As Double
+  Dim dblWork As Double
+  Dim dblCost As Double
   'strings
   Dim strFields As String
   Dim strCostSets As String
@@ -39,9 +43,11 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim strSettings As String
   Dim strTask As String
   Dim strView As String
-  Dim strFile As String, strRange As String
-  Dim strTitle As String, strHeaders As String
-  Dim strRecord As String, strFileName As String
+  Dim strFileName As String
+  Dim strRange As String
+  Dim strTitle As String
+  Dim strHeaders As String
+  Dim strRecord As String
   Dim strCost As String
   'longs
   Dim lngLastRow As Long
@@ -52,8 +58,12 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim lngRateSets As Long
   Dim lngCol As Long
   Dim lngOriginalRateSet As Long
-  Dim lngFile As Long, lngTasks As Long, lngTask As Long
-  Dim lngWeekCol As Long, lngExport As Long, lngField As Long
+  Dim lngFile As Long
+  Dim lngTasks As Long
+  Dim lngTask As Long
+  Dim lngWeekCol As Long
+  Dim lngExport As Long
+  Dim lngField As Long
   Dim lngRateSet As Long
   Dim lngRow As Long
   'variants
@@ -132,15 +142,15 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   
   lngFile = FreeFile
   Set oShell = CreateObject("WScript.Shell")
-  strFile = cptRegEx(ActiveProject.Name, "[^\\/]{1,}$") 'works with local, server, and sharepoint
-  strFile = Replace(strFile, ".mpp", "") 'remove .mpp if local
-  strFile = Replace(strFile, " ", "_") 'replace spaces with '_'
-  strFile = oShell.SpecialFolders("Desktop") & "\" & strFile
-  strFile = strFile & "_ResourceDemand_" & Format(Now(), "yyyy-mm-dd-hh-nn-ss") & ".csv"
+  strFileName = cptRegEx(ActiveProject.Name, "[^\\/]{1,}$") 'works with local, server, and sharepoint
+  strFileName = Replace(strFileName, ".mpp", "") 'remove .mpp if local
+  strFileName = Replace(strFileName, " ", "_") 'replace spaces with '_'
+  strFileName = oShell.SpecialFolders("Desktop") & "\" & strFileName
+  strFileName = strFileName & "_ResourceDemand_" & Format(Now(), "yyyy-mm-dd-hh-nn-ss") & ".csv"
   
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   strHeaders = "PROJECT,[UID] TASK,RESOURCE_NAME,"
   '<issue42> get selected rate sets
   With myResourceDemand_frm
@@ -442,7 +452,7 @@ next_task:
 
   'is previous run still open?
   On Error Resume Next
-  Set oWorkbook = oExcel.oWorkbooks(strFile)
+  Set oWorkbook = oExcel.oWorkbooks(strFileName)
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If Not oWorkbook Is Nothing Then oWorkbook.Close False
   On Error Resume Next
@@ -450,16 +460,16 @@ next_task:
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If Not oWorkbook Is Nothing Then 'add timestamp to existing file
     If oWorkbook.Application.Visible = False Then oWorkbook.Application.Visible = True
-    strMsg = "'" & strFile & "' already exists and is open."
-    strFile = Replace(strFile, ".xlsx", "_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".xlsx")
-    strMsg = strMsg & "Your new file will be saved as:" & vbCrLf & strFile
+    strMsg = "'" & strFileName & "' already exists and is open."
+    strFileName = Replace(strFileName, ".xlsx", "_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".xlsx")
+    strMsg = strMsg & "Your new file will be saved as:" & vbCrLf & strFileName
     MsgBox strMsg, vbExclamation + vbOKOnly, "File Exists and is Open"
   End If
     
   'create a new Workbook
   Application.StatusBar = "Opening exported data..."
   myResourceDemand_frm.lblStatus.Caption = Application.StatusBar
-  Set oWorkbook = oExcel.Workbooks.Open(strFile)
+  Set oWorkbook = oExcel.Workbooks.Open(strFileName)
 
   Application.StatusBar = "Saving workbook..."
   myResourceDemand_frm.lblStatus.Caption = Application.StatusBar
@@ -472,7 +482,7 @@ next_task:
   Else
     oWorkbook.SaveAs Environ("TEMP") & "\ExportResourceDemand.xlsx", 51
   End If
-  If Dir(strFile) <> vbNullString Then Kill strFile '</issue14-15>
+  If Dir(strFileName) <> vbNullString Then Kill strFileName '</issue14-15>
   
   blnFiscal = False
   If myResourceDemand_frm.cboMonths.Value = 1 Then 'fiscal
@@ -791,15 +801,15 @@ next_task:
   
   'save the file
   '<issue49> - file exists in location
-  strFile = oShell.SpecialFolders("Desktop") & "\" & Replace(oWorkbook.Name, ".xlsx", "_" & Format(Now(), "yyyy-mm-dd-hh-nn-ss") & ".xlsx") '<issue49>
-  If Dir(strFile) <> vbNullString Then '<issue49>
-    If MsgBox("A file named '" & strFile & "' already exists in this location. Replace?", vbYesNo + vbExclamation, "Overwrite?") = vbYes Then '<issue49>
-      Kill strFile '<issue49>
-      oWorkbook.SaveAs strFile, 51 '<issue49>
-      MsgBox "Saved to your Desktop:" & vbCrLf & vbCrLf & Dir(strFile), vbInformation + vbOKOnly, "Resource Demand Exported" '<issue49>
+  strFileName = oShell.SpecialFolders("Desktop") & "\" & Replace(oWorkbook.Name, ".xlsx", "_" & Format(Now(), "yyyy-mm-dd-hh-nn-ss") & ".xlsx") '<issue49>
+  If Dir(strFileName) <> vbNullString Then '<issue49>
+    If MsgBox("A file named '" & strFileName & "' already exists in this location. Replace?", vbYesNo + vbExclamation, "Overwrite?") = vbYes Then '<issue49>
+      Kill strFileName '<issue49>
+      oWorkbook.SaveAs strFileName, 51 '<issue49>
+      MsgBox "Saved to your Desktop:" & vbCrLf & vbCrLf & Dir(strFileName), vbInformation + vbOKOnly, "Resource Demand Exported" '<issue49>
     End If '<issue49>
   Else '<issue49>
-    oWorkbook.SaveAs strFile, 51  '<issue49>
+    oWorkbook.SaveAs strFileName, 51  '<issue49>
   End If '</issue49>
   
   If myResourceDemand_frm.cboMonths.Value = 1 Then 'fiscal
@@ -885,10 +895,14 @@ Sub cptShowExportResourceDemand_frm()
   Dim strWeekday As String
   Dim strMissing As String
   Dim strActiveView As String
-  Dim strFieldName As String, strFileName As String
+  Dim strFieldName As String
+  Dim strFileName As String
   'longs
-  Dim lngResourceCount As Long, lngResource As Long
-  Dim lngField As Long, lngItem As Long
+  Dim lngFile As Long
+  Dim lngResourceCount As Long
+  Dim lngResource As Long
+  Dim lngField As Long
+  Dim lngItem As Long
   'integers
   'booleans
   'variants
@@ -1145,12 +1159,23 @@ next_saved_field:
       End If
     End If
     .Caption = "Export Resource Demand (" & cptGetVersion("cptResourceDemand_frm") & ")"
+    If Len(strMissing) > 0 Then
+      If UBound(Split(strMissing, vbCrLf)) > 10 Then
+        lngFile = FreeFile
+        strFileName = Environ("tmp") & "\cpt-resourcedemand-missing-fields.txt"
+        Open strFileName For Output As #lngFile
+        Print #lngFile, "The following saved fields do not exist in this project:"
+        Print #lngFile, strMissing
+        Close #lngFile
+        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        MsgBox "There are " & UBound(Split(strMissing, vbCrLf)) & " saved fields that do not exist in this project.", vbCritical + vbOKOnly, "Saved Settings"
+      Else
+        MsgBox "The following saved fields do not exist in this project:" & vbCrLf & strMissing, vbInformation + vbOKOnly, "Saved Settings"
+      End If
+    End If
     .Show 'False
   End With
   
-  If Len(strMissing) > 0 Then
-    MsgBox "The following saved fields do not exist in this project:" & vbCrLf & strMissing, vbInformation + vbOKOnly, "Saved Settings"
-  End If
 
 exit_here:
   On Error Resume Next

@@ -1,11 +1,6 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.4</cpt_version>
+'<cpt_version>v1.6.5</cpt_version>
 Option Explicit
-#If Win64 And VBA7 Then '<issue53>
-  Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
-#Else '<issue53>
-  Declare Function GetTickCount Lib "kernel32" () As Long
-#End If '<issue53>
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
 Private strStartingViewBottomPane As String
@@ -279,7 +274,7 @@ skip_fields:
             .txtFileName = "StatusRequest_[item]_[yyyy-mm-dd]"
             If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
             If Err.Number > 0 Then
-              MsgBox "Unable to set 'For Each' Field to '" & rstFields(1) & "' - contact cpt@ClearPlanConsulting.com if you need assistance.", vbExclamation + vbOKOnly, "Cannot assign For Each"
+              MsgBox "Unable to set 'For Each' Field to '" & rstFields(1) & "' - contact help@ClearPlanConsulting.com if you need assistance.", vbExclamation + vbOKOnly, "Cannot assign For Each"
               Err.Clear
             End If
           End If
@@ -1225,6 +1220,7 @@ Sub cptRefreshStatusTable(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optiona
   Else
     ViewApply "Gantt Chart"
   End If
+  OptionsViewEx DisplaySummaryTasks:=True
   
   'reset the group
   Application.StatusBar = "Resetting the cptStatusSheet Group..."
@@ -2951,7 +2947,7 @@ Sub cptCaptureJournal()
   Dim oRecordset As ADODB.Recordset
   'strings
   Dim strProgram As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngTask As Long
   Dim lngTasks As Long
@@ -2970,8 +2966,8 @@ Sub cptCaptureJournal()
   
   Set oRecordset = CreateObject("ADODB.Recordset")
   
-  strFile = cptDir & "\settings\cpt-journal.adtg"
-  If Dir(strFile) = vbNullString Then
+  strFileName = cptDir & "\settings\cpt-journal.adtg"
+  If Dir(strFileName) = vbNullString Then
     With oRecordset
       .Fields.Append "PROGRAM", adVarChar, 50
       .Fields.Append "STATUS_DATE", adDate
@@ -2982,7 +2978,7 @@ Sub cptCaptureJournal()
       .Open
     End With
   Else
-    oRecordset.Open strFile
+    oRecordset.Open strFileName
   End If
   Dim oTask As MSProject.Task, oTasks As MSProject.Tasks
   Set oTasks = ActiveProject.Tasks
@@ -3006,7 +3002,7 @@ next_task:
     Debug.Print Format(lngTask / lngTasks, "0%")
   Next oTask
   
-  oRecordset.Save strFile
+  oRecordset.Save strFileName
   oRecordset.Close
   
 exit_here:
@@ -3045,7 +3041,7 @@ Sub cptExportCompletedWork()
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngEVPCol As Long
   Dim lngCA As Long
@@ -3109,9 +3105,9 @@ Sub cptExportCompletedWork()
   strEVP = CustomFieldGetName(lngEVP)
   
   'create Schema
-  strFile = Environ("tmp") & "\Schema.ini"
+  strFileName = Environ("tmp") & "\Schema.ini"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, "[wp.csv]"
   Print #lngFile, "Format=CSVDelimited"
   Print #lngFile, "ColNameHeader=True"
@@ -3127,9 +3123,9 @@ Sub cptExportCompletedWork()
   Print #lngFile, "Col10=PercentComplete Long"
   Close #lngFile
   
-  strFile = Environ("tmp") & "\wp.csv"
+  strFileName = Environ("tmp") & "\wp.csv"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, "UID,WBS,OBS,CA,CAM,WP,WPM,LC,AF,PercentComplete,"
   
   lngTasks = ActiveProject.Tasks.Count
@@ -3617,7 +3613,7 @@ Sub cptFindCompleteThrough()
   Dim oTask As MSProject.Task
   'strings
   Dim strReport As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngFile As Long
   Dim lngComplete As Long
@@ -3633,8 +3629,8 @@ Sub cptFindCompleteThrough()
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\completeThrough.txt"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\completeThrough.txt"
+  Open strFileName For Output As #lngFile
   
   On Error Resume Next
   Set oTask = ActiveSelection.Tasks(1)
@@ -3704,7 +3700,7 @@ Sub cptFindCompleteThrough()
 '  Print #lngFile, "TIP: if the graphical progress bar is causing confusion, set it to run from [Actual Start] through [Stop] instead of from [Actual Start] through [CompleteThrough]."
 '  Print #lngFile, String(20, "-")
   Close #lngFile
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -3741,7 +3737,7 @@ Sub cptFindAssignmentsWithoutWork()
   'strings
   Dim strResultUID As String
   Dim strResult As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strMissingForecastWork As String
   'longs
   Dim lngCount As Long
@@ -3805,9 +3801,9 @@ next_task:
     Application.StatusBar = "Analyzing...(" & Format(lngTask / lngTasks, "0%") & ") | " & Format(lngCount, "#,##0") & " found"
   Next oTask
   If lngCount > 0 Then
-    strFile = Environ("tmp") & "\cpt-assignments-without-work_" & Format(Now, "yyyy-mm-dd_hh-nn-ss") & ".txt"
+    strFileName = Environ("tmp") & "\cpt-assignments-without-work_" & Format(Now, "yyyy-mm-dd_hh-nn-ss") & ".txt"
     lngFile = FreeFile
-    Open strFile For Output As #lngFile
+    Open strFileName For Output As #lngFile
     Print #lngFile, "FILE: " & ActiveProject.FullName
     Print #lngFile, "DATE: " & FormatDateTime(Now, vbGeneralDate) & vbCrLf
     Print #lngFile, "'ASSIGNMENTS WITHOUT WORK' MEANS:"
@@ -3830,7 +3826,7 @@ next_task:
     End If
     Print #lngFile, "NOTE: Resources can have the same name in MS Project. Confirm Resource Unique ID before deleting."
     Close #lngFile
-    Shell "notepad.exe """ & strFile & """", vbNormalFocus
+    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", Join(oDict.Keys, vbTab)
   Else
     MsgBox "There are ZERO assignments without remaining work!", vbInformation + vbOKOnly, "Well Done"

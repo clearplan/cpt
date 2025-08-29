@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptTaskHistory_bas"
-'<cpt_version>v1.1.1</cpt_version>
+'<cpt_version>v1.1.2</cpt_version>
 Option Explicit
 Public oTaskHistory As ADODB.Recordset
 
@@ -8,7 +8,7 @@ Sub cptShowTaskHistory_frm()
   Dim myTaskHistory_frm As cptTaskHistory_frm
   'strings
   Dim strProgramAcronym As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   'integers
   'doubles
@@ -23,13 +23,13 @@ Sub cptShowTaskHistory_frm()
   strProgramAcronym = cptGetProgramAcronym
   
   'ensure file exists
-  strFile = cptDir & "\settings\cpt-cei.adtg"
-  If Dir(strFile) = vbNullString Then
+  strFileName = cptDir & "\settings\cpt-cei.adtg"
+  If Dir(strFileName) = vbNullString Then
     MsgBox "Please run 'capture week' for each week's file that you want recorded.", vbCritical + vbOKOnly, "File Not Found"
     GoTo exit_here
   End If
   Set oTaskHistory = CreateObject("ADODB.Recordset")
-  oTaskHistory.Open strFile
+  oTaskHistory.Open strFileName
   oTaskHistory.MoveFirst
   
   'ensure NOTE field exists
@@ -39,8 +39,8 @@ Sub cptShowTaskHistory_frm()
   If Err.Number = 3265 Then blnFieldExists = False
   If Not blnFieldExists Then
     oTaskHistory.Close
-    cptAppendColumn strFile, "NOTE", 203, 500 '203=adLongVarWChar
-    oTaskHistory.Open strFile
+    cptAppendColumn strFileName, "NOTE", 203, 500 '203=adLongVarWChar
+    oTaskHistory.Open strFileName
   End If
   Set myTaskHistory_frm = New cptTaskHistory_frm
   cptUpdateTaskHistory myTaskHistory_frm
@@ -65,7 +65,7 @@ Sub cptUpdateTaskHistory(ByRef myTaskHistory_frm As cptTaskHistory_frm)
   Dim oTasks As Object
   'strings
   Dim strNote As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strProgramAcronym As String
   'longs
   Dim lngUID As Long
@@ -208,7 +208,7 @@ End Sub
 Sub cptUpdateTaskHistoryNote(ByRef myTaskHistory_frm As cptTaskHistory_frm, lngUID As Long, dtStatus As Date, strVariance As String)
   'objects
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   'integers

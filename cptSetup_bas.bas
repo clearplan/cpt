@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.9.10</cpt_version>
+'<cpt_version>v1.10.0</cpt_version>
 Option Explicit
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
 Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() lives in cptCore_bas
@@ -105,7 +105,7 @@ Sub cptSetup()
       strMsg = strMsg & "Please try the manual installation method instead." & vbCrLf & vbCrLf & "Would you like to open the online instructions now?"  '</issue35>
       If MsgBox(strMsg, vbExclamation + vbYesNo, "XML Error") = vbYes Then
         If Not Application.FollowHyperlink("https://github.com/clearplan/cpt#installation") Then
-          MsgBox "Your organization appears to have blocked this url." & vbCrLf & vbCrLf & "Please contact cpt@ClearPlanConsulting.com for further assistance.", vbCritical + vbOKOnly, "Apologies!"
+          MsgBox "Your organization appears to have blocked this url." & vbCrLf & vbCrLf & "Please contact help@ClearPlanConsulting.com for further assistance.", vbCritical + vbOKOnly, "Apologies!"
         End If
       End If
     End If
@@ -316,7 +316,7 @@ this_project:
 skip_import:
 
   If Len(strError) > 0 Then
-    strError = "The following modules did not download correctly:" & vbCrLf & strError & vbCrLf & vbCrLf & "Please contact cpt@ClearPlanConsulting.com for assistance."
+    strError = "The following modules did not download correctly:" & vbCrLf & strError & vbCrLf & vbCrLf & "Please contact help@ClearPlanConsulting.com for assistance."
     MsgBox strError, vbCritical + vbOKOnly, "Unknown Error"
     'Debug.Print strError
   End If
@@ -480,7 +480,7 @@ Public Function cptBuildRibbonTab()
       'ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bReplicateProcess"" label=""Replicate A Process (WIP)"" imageMso=""DuplicateSelectedSlides"" onAction=""cptReplicateProcess"" visible=""true"" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFindDuplicates"" label=""Find Duplicate Task Names"" imageMso=""RemoveDuplicates"" onAction=""cptFindDuplicateTaskNames"" visible=""true"" supertip=""Clearly worded tasks represent well-defined tasks and are important for estimating and providing status. Click to find duplicate task names and create a report in Excel. Remember: Noun and Verb!"" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bResetRowHeight"" label=""Reset Row Height"" imageMso=""RowHeight"" onAction=""cptResetRowHeight"" visible=""true"" supertip=""Another one for our fellow 'Type A' folks out there--reset all row heights after they get all jacked up. Give it a go; you'll like it."" />"
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnnoyances"" label=""Annoyances"" imageMso=""SnapToRulerSubdivisions"" onAction=""cptCheckAnnoyances"" visible=""true"" supertip=""Yet another 'Type A' friendly utility--check for start times not equal to 8:00 AM or finish times not equal to 5:00 PM or fractional durations. Have another idea? Let us know cpt@ClearPlanConsulting.com."" />"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnnoyances"" label=""Annoyances"" imageMso=""SnapToRulerSubdivisions"" onAction=""cptCheckAnnoyances"" visible=""true"" supertip=""Yet another 'Type A' friendly utility--check for start times not equal to 8:00 AM or finish times not equal to 5:00 PM or fractional durations. Have another idea? Let us know help@ClearPlanConsulting.com."" />"
       ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
       ribbonXML = ribbonXML + vbCrLf & "</mso:splitButton>"
     Else
@@ -692,6 +692,9 @@ Public Function cptBuildRibbonTab()
     End If
     If cptModuleExists("cptCalendarExceptions_frm") And cptModuleExists("cptCalendarExceptions_bas") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalDetails"" label=""Details"" imageMso=""MonthlyView"" onAction=""cptShowCalendarExceptions_frm"" visible=""true"" supertip=""Export Calendar Exceptions, WorkWeeks, and settings."" />"
+      If ActiveProject.Subprojects.Count > 0 Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalCompare"" label=""Compare"" imageMso=""MonthlyView"" onAction=""cptCalendarCompareMain"" visible=""true"" supertip=""Compare Calendar Exceptions between Master Project and Subprojects."" />"
+      End if
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
@@ -747,7 +750,7 @@ Function cptGetLatest(strModule As String) As String
   'strings
   Dim strLatest As String
   Dim strURL As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strDir As String
   'longs
   'integers
@@ -764,13 +767,13 @@ Function cptGetLatest(strModule As String) As String
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
   
-  strFile = strDir & "\cpt-latest.adtg"
+  strFileName = strDir & "\cpt-latest.adtg"
   blnStale = True
   'does file exist?
-  If Dir(strFile) <> vbNullString Then
+  If Dir(strFileName) <> vbNullString Then
     'is it stale?
     Set oFSO = CreateObject("Scripting.FileSystemObject")
-    Set oFile = oFSO.GetFile(strFile)
+    Set oFile = oFSO.GetFile(strFileName)
     'todo: use DateModified? DateCreated? notified as date or boolean?
     'todo: what if a file is installed that gets removed from the package?
     'todo: if a module gets removed then <cpt_version>remove</cpt_version>
@@ -780,7 +783,7 @@ Function cptGetLatest(strModule As String) As String
     Set oFile = Nothing
     Set oFSO = Nothing
     If blnStale Then
-      Kill strFile
+      Kill strFileName
     End If
   End If
   
@@ -824,13 +827,13 @@ Function cptGetLatest(strModule As String) As String
         oRecordset.Update
       Next xmlNode
     End If
-    oRecordset.Save strFile, adPersistADTG
+    oRecordset.Save strFileName, adPersistADTG
     oRecordset.Close
   End If
   
   'now check latest version
   Set oRecordset = CreateObject("ADODB.REcordset")
-  oRecordset.Open strFile
+  oRecordset.Open strFileName
   oRecordset.Filter = "Module='" & strModule & "'"
   If Not oRecordset.EOF Then
     strLatest = oRecordset(2)
@@ -1219,7 +1222,7 @@ next_task_single:
   Print #lngFile, "-> The location of this file is " & strFileName & vbCrLf
   Print #lngFile, strMsg
   Close #lngFile
-  Shell "notepad.exe """ & strFileName & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   Application.StatusBar = "Opening https://clearplan.happyfox.com/new..."
   Application.FollowHyperlink "https://clearplan.happyfox.com/new/"
   
@@ -1490,7 +1493,7 @@ Sub cptValidateXML(strXML As String)
   'objects
   Dim oXML As MSXML2.DOMDocument30
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngFile As Long
   'integers
@@ -1501,14 +1504,14 @@ Sub cptValidateXML(strXML As String)
   
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
   
-  strFile = Environ("tmp") & "\cpt-validate.xml"
+  strFileName = Environ("tmp") & "\cpt-validate.xml"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, strXML
   Close #lngFile
   
   Set oXML = New MSXML2.DOMDocument30
-  If oXML.Load(strFile) Then
+  If oXML.Load(strFileName) Then
     MsgBox "cpt ribbon xml validated", vbInformation + vbOKOnly, "success"
   Else
     MsgBox "cpt ribbon xml validation failed", vbCritical + vbOKOnly, "failure"
@@ -1517,7 +1520,7 @@ Sub cptValidateXML(strXML As String)
     End If
   End If
 
-  Kill strFile
+  Kill strFileName
 
 exit_here:
   On Error Resume Next

@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v7.0.1</cpt_version>
+'<cpt_version>v7.1.0</cpt_version>
 Option Explicit
 Private strWBS As String
 Private strOBS As String
@@ -48,14 +48,14 @@ Sub cptDECM_GET_DATA()
   Dim strUpdateView As String
   Dim strProgramAcronym As String
   Dim strRequiredFields As String
-  Dim strLinks  As String
+  Dim strLinks As String
   Dim strPE As String
   Dim strSE As String
   Dim strRecord As String
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strLOE As String
   Dim strList As String
   'longs
@@ -141,9 +141,9 @@ Sub cptDECM_GET_DATA()
   
   lngFile = FreeFile
   strDir = Environ("tmp")
-  strFile = strDir & "\Schema.ini"
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngFile
+  strFileName = strDir & "\Schema.ini"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngFile
   Print #lngFile, "[tasks.csv]"
   Print #lngFile, "Format=CSVDelimited"
   Print #lngFile, "ColNameHeader=True"
@@ -243,25 +243,25 @@ Sub cptDECM_GET_DATA()
   Close #lngFile
   
   lngTaskFile = FreeFile
-  strFile = strDir & "\tasks.csv"
+  strFileName = strDir & "\tasks.csv"
   
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngTaskFile
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngTaskFile
   
   lngLinkFile = FreeFile
-  strFile = strDir & "\links.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngLinkFile
+  strFileName = strDir & "\links.csv"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngLinkFile
   
   lngAssignmentFile = FreeFile
-  strFile = strDir & "\assignments.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngAssignmentFile
+  strFileName = strDir & "\assignments.csv"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngAssignmentFile
   
   lngTargetFile = FreeFile
-  strFile = strDir & "\targets.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngTargetFile
+  strFileName = strDir & "\targets.csv"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngTargetFile
   
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   
@@ -518,8 +518,8 @@ next_task:
   If blnFiscalExists Then
     'export fiscal.csv
     lngFile = FreeFile
-    strFile = strDir & "\fiscal.csv"
-    Open strFile For Output As #lngFile
+    strFileName = strDir & "\fiscal.csv"
+    Open strFileName For Output As #lngFile
     Print #1, "FISCAL_END,LABEL,"
     For Each oException In ActiveProject.BaseCalendars("cptFiscalCalendar").Exceptions
       Print #1, oException.Finish & " 5:00 PM," & oException.Name & ","
@@ -561,27 +561,27 @@ next_task:
   myDECM_frm.lblStatus.Caption = "Task history file..."
   Application.StatusBar = "Task history file..."
   DoEvents
-  strFile = cptDir & "\settings\cpt-cei.adtg"
-  If Dir(strFile) <> vbNullString Then
+  strFileName = cptDir & "\settings\cpt-cei.adtg"
+  If Dir(strFileName) <> vbNullString Then
     myDECM_frm.lblStatus.Caption = "Task history file found. Querying..."
     Application.StatusBar = "Task history file found. Querying..."
     DoEvents
     
     'copy cpt-cei.adtg to tmp dir
-    FileCopy strFile, strDir & "\cpt-cei.adtg"
+    FileCopy strFileName, strDir & "\cpt-cei.adtg"
     
     'convert to csv for sql query...
-    strFile = strDir & "\cpt-cei.adtg"
+    strFileName = strDir & "\cpt-cei.adtg"
     Set oRecordset = CreateObject("ADODB.Recordset")
-    oRecordset.Open strFile
+    oRecordset.Open strFileName
     'limit to program
     oRecordset.Filter = "PROJECT='" & strProgramAcronym & "'"
-    oRecordset.Save strFile, adPersistADTG
+    oRecordset.Save strFileName, adPersistADTG
     oRecordset.Close
     
     'clean it up (remove commas)
     'todo: any other fields that might have a comma?
-    oRecordset.Open strFile
+    oRecordset.Open strFileName
     oRecordset.Filter = "TASK_NAME LIKE '%,%'"
     If Not oRecordset.EOF Then
       oRecordset.MoveFirst
@@ -591,7 +591,7 @@ next_task:
       Loop
     End If
     oRecordset.Filter = 0
-    oRecordset.Save strFile
+    oRecordset.Save strFileName
     
     If oRecordset.RecordCount > 0 Then
       'capture field names
@@ -650,8 +650,8 @@ next_task:
       strSQL = strSQL & "                WHERE "
       strSQL = strSQL & "                    PROJECT = '" & strProgramAcronym & "' "
       strSQL = strSQL & "            ) T2 ON T2.[STATUS_DATE] = T1.FISCAL_END "
-      strSQL = strSQL & "    )"
-      oRecordset.Open strSQL, strCon, adOpenKeyset
+      strSQL = strSQL & "    ) "
+      oRecordset.Open strSQL & " WHERE T2.[STATUS_DATE]<=#" & dtStatus & "# ", strCon, adOpenKeyset
       If oRecordset.EOF Then
         oRecordset.Close
         blnTaskHistoryExists = False
@@ -711,8 +711,8 @@ next_task:
     'get X
     strSQL = "SELECT "
     strSQL = strSQL & "    t1.TASK_UID, "
-    strSQL = strSQL & "    t1.TASK_AS AS TASK_AS_IS, "
-    strSQL = strSQL & "    t2.TASK_AS_WAS "
+    strSQL = strSQL & "    t2.TASK_AS_WAS, "
+    strSQL = strSQL & "    t1.TASK_AS AS TASK_AS_IS "
     strSQL = strSQL & "FROM "
     strSQL = strSQL & "    [cpt-cei.csv] AS t1 "
     strSQL = strSQL & "    INNER JOIN ( "
@@ -731,6 +731,7 @@ next_task:
     strSQL = strSQL & "    AND TASK_AS IS NOT NULL "
     strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrent & "# "
     strSQL = strSQL & "    AND T1.TASK_AS <> T2.TASK_AS_WAS; "
+
     oRecordset.Open strSQL, strCon, adOpenKeyset
     If Not oRecordset.EOF Then lngX = oRecordset.RecordCount Else lngX = 0
     strList = ""
@@ -805,8 +806,8 @@ next_task:
     'get X
     strSQL = "SELECT "
     strSQL = strSQL & "    t1.TASK_UID, "
-    strSQL = strSQL & "    t1.TASK_AF AS TASK_AF_IS, "
-    strSQL = strSQL & "    t2.TASK_AF_WAS "
+    strSQL = strSQL & "    t2.TASK_AF_WAS, "
+    strSQL = strSQL & "    t1.TASK_AF AS TASK_AF_IS "
     strSQL = strSQL & "FROM "
     strSQL = strSQL & "    [cpt-cei.csv] AS t1 "
     strSQL = strSQL & "    INNER JOIN ( "
@@ -1715,17 +1716,25 @@ Sub DECM_10A103a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   If lngY > 0 Then
     If blnFiscalExists Then
       Set oWorkbook = cptGetEVTAnalysis
-      Set oWorksheet = oWorkbook.Sheets(1)
-      Set oListObject = oWorksheet.ListObjects(1)
-      lngY = oListObject.DataBodyRange.Rows.Count
-      lngX = oWorksheet.Evaluate("COUNTIFS(Table1[FiscalPeriods],"">1"")")
-      strList = ""
-      If lngX > 0 Then
-        For Each oCell In oListObject.ListColumns("WP").DataBodyRange.SpecialCells(xlCellTypeVisible).Cells
-          If InStr(strList, oCell.Value) = 0 Then strList = strList & oCell.Value & vbTab
-        Next oCell
+      If Not oWorkbook Is Nothing Then
+        Set oWorksheet = oWorkbook.Sheets(1)
+        Set oListObject = oWorksheet.ListObjects(1)
+        lngY = oListObject.DataBodyRange.Rows.Count
+        lngX = oWorksheet.Evaluate("COUNTIFS(Table1[FiscalPeriods],"">1"")")
+        strList = ""
+        If lngX > 0 Then
+          For Each oCell In oListObject.ListColumns("WP").DataBodyRange.SpecialCells(xlCellTypeVisible).Cells
+            If InStr(strList, oCell.Value) = 0 Then strList = strList & oCell.Value & vbTab
+          Next oCell
+        End If
+        oWorkbook.Close True
+      Else
+        If Not IsDate(ActiveProject.BaselineSavedDate(pjBaseline)) Then
+          MsgBox "This project has no BaselineSavedDate for the default Baseline." & vbCrLf & vbCrLf & "DECM 10A103a skipped.", vbExclamation + vbOKOnly, "DECM 10A103a"
+        End If
+        strList = ""
+        lngX = lngY
       End If
-      oWorkbook.Close True
     Else 'blnFiscalExists
       lngX = lngY 'triggers failure
     End If
@@ -1979,7 +1988,7 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   Dim strSQL As String
   Dim strList As String
   Dim strDir As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim lngX As Long
   Dim lngFile As Long
   Dim dblScore As Double
@@ -2033,9 +2042,9 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     DoEvents
   End If
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\segregated.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\segregated.csv"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngFile
   Print #lngFile, "CA,WP,WP_BLW,"
   oRecordset.MoveFirst
   Print #lngFile, oRecordset.GetString(adClipString, , ",", vbCrLf, vbNullString)
@@ -2078,9 +2087,9 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   
   oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\itemized.csv"
-  If Dir(strFile) <> vbNullString Then Kill strFile
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\itemized.csv"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  Open strFileName For Output As #lngFile
   Print #lngFile, "CA,CA_BAC,WP_BAC,discrepancy,"
   If oRecordset.RecordCount > 0 Then
     oRecordset.MoveFirst
@@ -3351,9 +3360,11 @@ err_here:
 
 End Sub
 
-Sub opencsv(strFileName)
-  Shell "notepad.exe """ & Environ("tmp") & "\" & strFileName & """", vbNormalFocus
+Sub opencsv(strFileName As String)
+  strFileName = Environ("tmp") & "\" & strFileName
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
+
 Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolean = False)
   'objects
   Dim oShading As Object
@@ -4353,6 +4364,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
 
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
   Set oShading = Nothing
   Set oBorders = Nothing
   Set o06A101a = Nothing
@@ -4378,7 +4390,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
   ActiveWindow.TopPane.Activate
   FilterClear
   GroupClear
-  Sort "ID", renumber:=False, Outline:=True
+  Sort "ID", Renumber:=False, Outline:=True
   OptionsViewEx DisplaySummaryTasks:=True
   OutlineShowAllTasks
   If strMetric <> "06A208a" Then OptionsViewEx DisplaySummaryTasks:=False
@@ -4481,7 +4493,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strList
-        Sort key1:="Finish", ascending1:=True, key2:="Duration", ascending2:=False, renumber:=False, Outline:=False
+        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, Renumber:=False, Outline:=False
         SelectBeginning
         EditGoTo Date:=ActiveSelection.Tasks(1).Finish
       Else
@@ -4612,7 +4624,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   Dim strProjectNumber As String
   Dim strProjectName As String
   Dim strDir As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   Dim lngLagType As Long
@@ -5009,7 +5021,7 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngWP As Long
   Dim lngFiscalPeriodsCol As Long
@@ -5048,8 +5060,8 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
 '  'export the calendar
 '  Set oCalendar = ActiveProject.BaseCalendars("cptFiscalCalendar")
 '  lngFile = FreeFile
-'  strFile = Environ("tmp") & "\fiscal.csv"
-'  Open strFile For Output As #lngFile
+'  strFileName = Environ("tmp") & "\fiscal.csv"
+'  Open strFileName For Output As #lngFile
 '  Print #lngFile, "fisc_end,label,"
 '  For Each oException In oCalendar.Exceptions
 '    Print #lngFile, oException.Finish & "," & oException.Name

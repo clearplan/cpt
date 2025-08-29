@@ -12,8 +12,9 @@ Dim vbComponent As Object 'adodb.stream
 Dim strMsg As String
 Dim strModule As String
 Dim strDirectory As String
-Dim strFile As String
-Dim strXML As String, strVersion As String, strFileName As String
+Dim strFileName As String
+Dim strXML As String
+Dim strVersion As String
 Dim strBranch As String
 'longs
 Dim lngItem As Long
@@ -338,7 +339,7 @@ err_here:
 
 End Function
 
-Sub cptSQL(strFile As String, Optional blnExport As Boolean = False)
+Sub cptSQL(strFileName As String, Optional blnExport As Boolean = False)
   'objects
   Dim oListObject As Excel.ListObject
   Dim oWorksheet As Excel.Worksheet
@@ -367,10 +368,10 @@ Sub cptSQL(strFile As String, Optional blnExport As Boolean = False)
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  strFile = cptDir & strFile
+  strFileName = cptDir & strFileName
 
-  If Dir(strFile) = vbNullString Then
-    Debug.Print "Invalid file: " & strFile
+  If Dir(strFileName) = vbNullString Then
+    Debug.Print "Invalid file: " & strFileName
     GoTo exit_here
   End If
   
@@ -382,7 +383,7 @@ Sub cptSQL(strFile As String, Optional blnExport As Boolean = False)
   
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
-    .Open strFile
+    .Open strFileName
     If .EOF Then
       MsgBox "No records.", vbInformation + vbOKOnly, "cptSQL"
       .Close

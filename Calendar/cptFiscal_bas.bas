@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFiscal_bas"
-'<cpt_version>v1.1.0</cpt_version>
+'<cpt_version>v1.2.0</cpt_version>
 Option Explicit
 
 Sub cptShowFiscal_frm()
@@ -264,7 +264,7 @@ Sub cptImportCalendarExceptions(ByRef myFiscal_frm As cptFiscal_frm)
   Dim fd As Object 'FileDialog
   Dim oExcel As Excel.Application
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   Dim strSkipCalendar As String
   'longs
   Dim lngErrorCount As Long
@@ -292,8 +292,8 @@ Sub cptImportCalendarExceptions(ByRef myFiscal_frm As cptFiscal_frm)
   'prep for errors
   lngFile = FreeFile
   lngErrorCount = 0
-  strFile = Environ("tmp") & "\cpt-FiscalImportErrors.txt"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\cpt-FiscalImportErrors.txt"
+  Open strFileName For Output As #lngFile
   
   Set fd = oExcel.FileDialog(msoFileDialogFilePicker)
   With fd
@@ -366,7 +366,7 @@ next_record:
   
   'kick out an error report
   If lngErrorCount > 0 Then
-    Shell "notepad.exe """ & strFile & """", vbNormalFocus
+    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
 exit_here:
@@ -444,7 +444,7 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngFiscalPeriodsCol As Long
   Dim lngFiscalEndCol As Long
@@ -495,8 +495,8 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   
   'create the Schema.ini
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\Schema.ini"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\Schema.ini"
+  Open strFileName For Output As #lngFile
   Print #1, "[fiscal.csv]"
   Print #1, "ColNameHeader=True"
   Print #1, "Format=CSVDelimited"
@@ -514,8 +514,8 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   'export the calendar
   Set oCalendar = ActiveProject.BaseCalendars("cptFiscalCalendar")
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\fiscal.csv"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\fiscal.csv"
+  Open strFileName For Output As #lngFile
   Print #lngFile, "fisc_end,label,"
   For Each oException In oCalendar.Exceptions
     Print #lngFile, oException.Finish & "," & oException.Name
@@ -524,8 +524,8 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   
   'export discrete, PMB tasks
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\tasks.csv"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\tasks.csv"
+  Open strFileName For Output As #lngFile
   Print #lngFile, "UID,BLS,BLF," & strEVT & ","
   For Each oTask In oProject.Tasks
     If oTask Is Nothing Then GoTo next_task

@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.0.0</cpt_version>
+'<cpt_version>v1.1.0</cpt_version>
 Option Explicit
 
 Private Sub cmdDelete_Click()
@@ -21,7 +21,7 @@ Private Sub cmdDelete_Click()
   Dim oRecordset As ADODB.Recordset
   'strings
   Dim strProgram As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   'integers
@@ -38,13 +38,13 @@ Private Sub cmdDelete_Click()
       strProgram = Me.lboMetricsData.List(lngItem, 0)
       dtStatus = CDate(Me.lboMetricsData.List(lngItem, 1))
       If MsgBox("Permanently delete record for " & strProgram & " - " & dtStatus & "?", vbExclamation + vbYesNo, "Confirm") = vbYes Then
-        strFile = cptDir & "\settings\cpt-metrics.adtg"
-        If Dir(strFile) = vbNullString Then
+        strFileName = cptDir & "\settings\cpt-metrics.adtg"
+        If Dir(strFileName) = vbNullString Then
           MsgBox "File suddenly disappeared!", vbCritical + vbOKOnly, "File Not Found"
           GoTo exit_here
         End If
         Set oRecordset = CreateObject("ADODB.Recordset")
-        oRecordset.Open strFile
+        oRecordset.Open strFileName
         If oRecordset.RecordCount = 0 Then
           MsgBox "No Records", vbExclamation + vbOKOnly, "No Data"
           oRecordset.Close
@@ -55,7 +55,7 @@ Private Sub cmdDelete_Click()
         If Not oRecordset.EOF Then
           oRecordset.Delete adAffectCurrent
           oRecordset.Filter = 0
-          oRecordset.Save strFile, adPersistADTG
+          oRecordset.Save strFileName, adPersistADTG
         Else
           MsgBox "This record cannot be found.", vbExclamation + vbOKOnly, "Record Not Found"
           oRecordset.Close

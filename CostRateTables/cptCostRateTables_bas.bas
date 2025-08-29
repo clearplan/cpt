@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCostRateTables_bas"
-'<cpt_version>v1.0.2</cpt_version>
+'<cpt_version>v1.1.0</cpt_version>
 Option Explicit
 
 Sub cptShowCostRateTables_frm()
@@ -188,7 +188,7 @@ Sub cptImportCostRateTables(ByRef myCostRateTables_frm As cptCostRateTables_frm,
   Dim oWorkbook As Object 'Excel.Workbook
   Dim oWorksheet As Object 'Excel.Worksheet
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   Dim strOverwrite As String
   Dim strAddResources As String
   Dim strCostRateTable As String
@@ -376,14 +376,14 @@ cost_rate_tables:
   
   If Not blnImportStatus Then
     lngFile = FreeFile
-    strFile = Environ("tmp") & "\cpt-CostRateTableImportStatus.csv"
-    Open strFile For Output As #lngFile
+    strFileName = Environ("tmp") & "\cpt-CostRateTableImportStatus.csv"
+    Open strFileName For Output As #lngFile
     Print #lngFile, "UID,RESOURCE,STATUS_NOTE"
     For lngItem = 0 To oDict.Count - 1
       Print #lngFile, Split(oDict.Keys(lngItem), "|")(0) & "," & Chr(34) & Split(oDict.Keys(lngItem), "|")(1) & Chr(34) & "," & Chr(34) & oDict.Items(lngItem) & Chr(34)
     Next lngItem
     Close #lngFile
-    Shell "notepad.exe """ & strFile & """", vbNormalFocus
+    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
   With myCostRateTables_frm

@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.1</cpt_version>
+'<cpt_version>v1.3.2</cpt_version>
 Option Explicit
 
 Private Sub cmdDone_Click()
@@ -21,13 +21,15 @@ Private Sub cmdDone_Click()
 End Sub
 
 Private Sub cmdEdit_Click()
-Dim strMsg As String
+  Dim strMsg As String
+  Dim strFileName As String
   strMsg = "...unless you *really* know what you're doing." & vbCrLf & vbCrLf
-  strMsg = strMsg & "Contact cpt@ClearPlanConsulting.com if you need help." & vbCrLf & vbCrLf
+  strMsg = strMsg & "Contact help@ClearPlanConsulting.com if you need help." & vbCrLf & vbCrLf
   strMsg = strMsg & "Do you still wish to venture forth?"
   If MsgBox(strMsg, vbCritical + vbYesNo, "Do Not Attempt This...") = vbYes Then
     MsgBox "...you've been warned.", vbInformation + vbOKOnly, "OK"
-    Shell "notepad.exe """ & cptDir & "\settings\cpt-settings.ini""", vbNormalFocus
+    strFileName = cptDir & "\settings\cpt-settings.ini"
+    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
 End Sub
 
@@ -39,7 +41,7 @@ Private Sub cmdSetProgramAcronym_Click()
   'strings
   Dim strDir As String
   Dim strUpdated As String
-  Dim strFile As String
+  Dim strFileName  As String
   Dim strOld As String, strNew As String
   'longs
   Dim lngUpdated As Long
@@ -66,11 +68,11 @@ Private Sub cmdSetProgramAcronym_Click()
       Case vbYes
         Set oRecordset = CreateObject("ADODB.Recordset")
         '\settings\cpt-cei.adtg
-        strFile = strDir & "\settings\cpt-cei.adtg"
+        strFileName = strDir & "\settings\cpt-cei.adtg"
         lngUpdated = 0
-        If Dir(strFile) <> vbNullString Then
+        If Dir(strFileName) <> vbNullString Then
           With oRecordset
-            .Open strFile
+            .Open strFileName
             .MoveFirst
             Do While Not .EOF
               If .Fields("PROJECT") = strOld Then
@@ -79,17 +81,17 @@ Private Sub cmdSetProgramAcronym_Click()
               End If
               .MoveNext
             Loop
-            .Save strFile, adPersistADTG
+            .Save strFileName, adPersistADTG
             .Close
           End With
           strUpdated = Format(lngUpdated, "#,##0") & " record(s) updated in CEI data." & vbCrLf
         End If
         'settings\cpt-data-dictionary.adtg
-        strFile = strDir & "\settings\cpt-data-dictionary.adtg"
+        strFileName = strDir & "\settings\cpt-data-dictionary.adtg"
         lngUpdated = 0
-        If Dir(strFile) <> vbNullString Then
+        If Dir(strFileName) <> vbNullString Then
           With oRecordset
-            .Open strFile
+            .Open strFileName
             .MoveFirst
             Do While Not .EOF
               If .Fields("PROJECT_NAME") = strOld Then
@@ -98,17 +100,17 @@ Private Sub cmdSetProgramAcronym_Click()
               End If
               .MoveNext
             Loop
-            .Save strFile, adPersistADTG
+            .Save strFileName, adPersistADTG
             .Close
           End With
           strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in Data Dictionary." & vbCrLf
         End If
         '\cpt-marked.adtg
-        strFile = strDir & "\cpt-marked.adtg"
+        strFileName = strDir & "\cpt-marked.adtg"
         lngUpdated = 0
-        If Dir(strFile) <> vbNullString Then
+        If Dir(strFileName) <> vbNullString Then
           With oRecordset
-            .Open strFile
+            .Open strFileName
             .MoveFirst
             Do While Not .EOF
               If .Fields("PROJECT_ID") = strOld Then
@@ -117,17 +119,17 @@ Private Sub cmdSetProgramAcronym_Click()
               End If
               .MoveNext
             Loop
-            .Save strFile, adPersistADTG
+            .Save strFileName, adPersistADTG
             .Close
           End With
           strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in Marked tasks data." & vbCrLf
         End If
         '\settings\cpt-metrics.adtg
-        strFile = strDir & "\settings\cpt-metrics.adtg"
+        strFileName = strDir & "\settings\cpt-metrics.adtg"
         lngUpdated = 0
-        If Dir(strFile) <> vbNullString Then
+        If Dir(strFileName) <> vbNullString Then
           With oRecordset
-            .Open strFile
+            .Open strFileName
             .MoveFirst
             Do While Not .EOF
               If .Fields("PROGRAM") = strOld Then
@@ -136,29 +138,10 @@ Private Sub cmdSetProgramAcronym_Click()
               End If
               .MoveNext
             Loop
-            .Save strFile, adPersistADTG
+            .Save strFileName, adPersistADTG
             .Close
           End With
           strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in Metrics data." & vbCrLf
-        End If
-        '\settings\cpt-qbd.adtg
-        strFile = strDir & "\settings\cpt-qbd.adtg"
-        lngUpdated = 0
-        If Dir(strFile) <> vbNullString Then
-          With oRecordset
-            .Open strFile
-            .MoveFirst
-            Do While Not .EOF
-              If .Fields("PROGRAM") = strOld Then
-                .Fields("PROGRAM") = strNew
-                lngUpdated = lngUpdated + 1
-              End If
-              .MoveNext
-            Loop
-            .Save strFile, adPersistADTG
-            .Close
-          End With
-          strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in QBD data."
         End If
         MsgBox strUpdated, vbInformation + vbOKOnly, "Data Files Updated"
       Case vbNo
@@ -263,9 +246,9 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
 End Sub
 
 Private Sub UserForm_Terminate()
-  Dim strFile As String
-  strFile = cptDir & "\settings\cpt-settings.adtg"
-  If Dir(strFile) <> vbNullString Then Kill strFile
+  Dim strFileName  As String
+  strFileName = cptDir & "\settings\cpt-settings.adtg"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Unload Me
 End Sub
 
@@ -274,7 +257,7 @@ Sub cptUpdateSetting(strFeature As String, strKey As String, strVal As String)
   Dim rst As ADODB.Recordset
   'strings
   Dim strFeatures As String
-  Dim strFile As String
+  Dim strFileName  As String
   'longs
   Dim lngItem As Long
   'integers
@@ -286,10 +269,10 @@ Sub cptUpdateSetting(strFeature As String, strKey As String, strVal As String)
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  strFile = cptDir & "\settings\cpt-settings.adtg"
+  strFileName = cptDir & "\settings\cpt-settings.adtg"
   Set rst = CreateObject("ADODB.Recordset")
   With rst
-    .Open strFile
+    .Open strFileName
     .MoveFirst
     .Find "Setting like '" & strKey & "%'"
     If Not .EOF Then
@@ -308,7 +291,7 @@ Sub cptUpdateSetting(strFeature As String, strKey As String, strVal As String)
       Me.lboFeatures.List = vFeatures
       Me.lboFeatures.Value = "General"
     End If
-    .Save strFile, adPersistADTG
+    .Save strFileName, adPersistADTG
     .Close
   End With
   

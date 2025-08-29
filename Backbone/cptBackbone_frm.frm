@@ -14,9 +14,8 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v1.2.4</cpt_version>
+'<cpt_version>v1.2.5</cpt_version>
 Option Explicit
-
 Private Sub cboExport_Change()
 
   Me.chkIncludeThresholds.Enabled = False
@@ -138,7 +137,7 @@ Private Sub cmdImport_Click()
   Dim oTask As MSProject.Task
   Dim oOutlineCode As MSProject.OutlineCode
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   Dim strMsg As String
   Dim strOutlineCode As String
   'longs
@@ -177,8 +176,8 @@ Private Sub cmdImport_Click()
       If MsgBox("Are you sure?", vbCritical + vbYesNo, "CONFIRM TASK DATA LOSS") = vbYes Then
         'backup outline code
         lngFile = FreeFile
-        strFile = Environ("tmp") & "\" & strOutlineCode & "-was.csv"
-        Open strFile For Output As #lngFile
+        strFileName = Environ("tmp") & "\" & strOutlineCode & "-was.csv"
+        Open strFileName For Output As #lngFile
         Print #lngFile, "BACKUP OF CUSTOM FIELD '" & UCase(strOutlineCode) & "' (" & FieldConstantToFieldName(lngOutlineCode) & ")"
         Print #lngFile, String(50, "-")
         Print #lngFile, "CODE,LEVEL,DESCRIPTION"
@@ -188,13 +187,13 @@ Private Sub cmdImport_Click()
           Application.StatusBar = "Backing up " & strOutlineCode & " pick-list...(" & Format(lngItem / lngItems, "0%") & ")"
         Next lngItem
         Close #lngFile
-        Shell "notepad.exe """ & strFile & """", vbMinimizedNoFocus
+        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         Application.StatusBar = ""
         
         'backup task data
         lngFile = FreeFile
-        strFile = Environ("tmp") & "\" & strOutlineCode & "-task-data.csv"
-        Open strFile For Output As #lngFile
+        strFileName = Environ("tmp") & "\" & strOutlineCode & "-task-data.csv"
+        Open strFileName For Output As #lngFile
         Print #lngFile, "BACKUP OF TASK DATA FOR CUSTOM FIELD '" & UCase(strOutlineCode) & "' (" & FieldConstantToFieldName(lngOutlineCode) & ")"
         Print #lngFile, String(50, "-")
         lngItems = ActiveProject.Tasks.Count
@@ -212,7 +211,7 @@ next_task:
           Application.StatusBar = "Backing up task data...(" & Format(lngItem / lngItems, "0%") & ")"
         Next oTask
         Close #lngFile
-        Shell "notepad.exe """ & strFile & """", vbMinimizedNoFocus
+        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         Application.StatusBar = ""
         
         'delete lookup table and start fresh

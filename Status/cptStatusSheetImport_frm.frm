@@ -13,18 +13,28 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.2</cpt_version>
+'<cpt_version>v1.3.3</cpt_version>
 Option Explicit
 
 Private Sub cboAF_Change()
   If Me.Visible Then
-    If Me.ActiveControl.Name = "cboAF" Then Call cptRefreshStatusImportTable(Me)
+    If Me.ActiveControl.Name = "cboAF" Then
+      Call cptRefreshStatusImportTable(Me)
+      cptSaveSetting "StatusSheetImport", "cboAF", Me.cboAF
+    End If
   End If
+End Sub
+
+Private Sub cboAppendTo_Change()
+  cptSaveSetting "StatusSheetImport", "cboAppendTo", Me.cboAppendTo
 End Sub
 
 Private Sub cboAS_Change()
   If Me.Visible Then
-    If Me.ActiveControl.Name = "cboAS" Then Call cptRefreshStatusImportTable(Me)
+    If Me.ActiveControl.Name = "cboAS" Then
+      Call cptRefreshStatusImportTable(Me)
+      cptSaveSetting "StatusSheetImport", "cboAS", Me.cboAS
+    End If
   End If
 End Sub
 
@@ -40,6 +50,7 @@ Private Sub cboETC_Change()
         Me.lblETC.ForeColor = 192
       Else
         Call cptRefreshStatusImportTable(Me)
+        cptSaveSetting "StatusSheetImport", "cboETC", Me.cboETC
       End If
     End If
   End If
@@ -57,6 +68,7 @@ Private Sub cboEV_Change()
         Me.lblETC.ForeColor = 192
       Else
         Call cptRefreshStatusImportTable(Me)
+        cptSaveSetting "StatusSheetImport", "cboEV", Me.cboEV
       End If
     End If
   End If
@@ -64,18 +76,33 @@ End Sub
 
 Private Sub cboFF_Change()
   If Me.Visible Then
-    If Me.ActiveControl.Name = "cboFF" Then Call cptRefreshStatusImportTable(Me)
+    If Me.ActiveControl.Name = "cboFF" Then
+      Call cptRefreshStatusImportTable(Me)
+      cptSaveSetting "StatusSheetImport", "cboFF", Me.cboFF
+    End If
   End If
 End Sub
 
 Private Sub cboFS_Change()
   If Me.Visible Then
-    If Me.ActiveControl.Name = "cboFS" Then Call cptRefreshStatusImportTable(Me)
+    If Me.ActiveControl.Name = "cboFS" Then
+      Call cptRefreshStatusImportTable(Me)
+      cptSaveSetting "StatusSheetImport", "cboFS", Me.cboFS
+    End If
   End If
 End Sub
 
 Private Sub chkAppend_Click()
   Me.cboAppendTo.Enabled = Me.chkAppend
+  cptSaveSetting "StatusSheetImport", "chkAppend", IIf(Me.chkAppend, "1", "0")
+End Sub
+
+Private Sub chkImportLog_Click()
+  cptSaveSetting "StatusSheetImport", "chkImportLog", IIf(Me.chkImportLog, "1", "0")
+End Sub
+
+Private Sub chkKickoutReport_Click()
+  cptSaveSetting "StatusSheetImport", "chkKickoutReport", IIf(Me.chkKickoutReport, "1", "0")
 End Sub
 
 Private Sub cmdDone_Click()
@@ -107,7 +134,8 @@ Private Sub cmdImport_Click()
       cptSaveSetting "StatusSheetImport", "cboAppendTo", ""
     End If
     cptSaveSetting "StatusSheetImport", "optTaskUsage", IIf(Me.optAbove, "above", "below")
-    
+    cptSaveSetting "StatusSheetImport", "chkImportLog", IIf(Me.chkImportLog, "1", "0")
+    cptSaveSetting "StatusSheetImport", "chkKickout", IIf(Me.chkKickoutReport, "1", "0")
     cptStatusSheetImport Me
   End If
   
@@ -156,18 +184,30 @@ Private Sub cmdRename_Click()
   Dim oDict As Scripting.Dictionary
   Dim oComboBox As MSForms.ComboBox
   'strings
+  Dim strMsg As String
   Dim strFieldName As String
+  Dim strCustomFieldName As String
   'longs
+  Dim i As Long
   Dim lngItem As Long
   Dim lngLCF As Long
+  Dim lngExists As Long
+  Dim lngResponse As Long
   'integers
   'doubles
   'booleans
+  Dim blnRename As Boolean
+  Dim blnErrorTrapping As Boolean
   'variants
   'dates
   
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
+  If ActiveProject.Subprojects.Count > 0 Then
+    lngResponse = MsgBox("Local Custom Fields will only be renamed in the Master project.", vbExclamation + vbOKCancel, "Notice")
+    If lngResponse = vbCancel Then GoTo exit_here
+  End If
   cptSpeed True
   
   Set oDict = CreateObject("Scripting.Dictionary")
@@ -183,9 +223,50 @@ Private Sub cmdRename_Click()
     If oComboBox.Value > 0 Then
       lngLCF = Me.Controls(oDict.Keys(lngItem)).Value
       strFieldName = FieldConstantToFieldName(lngLCF)
-      CustomFieldRename lngLCF, oDict.items(lngItem)
-      oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.items(lngItem) & ")"
+      strCustomFieldName = CustomFieldGetName(lngLCF)
+      blnRename = True
+      If Len(strCustomFieldName) > 0 And strCustomFieldName <> oDict.Items(lngItem) Then
+        lngResponse = MsgBox(strFieldName & " is currently named '" & strCustomFieldName & "'" & vbCrLf & vbCrLf & "Rename it to '" & oDict.Items(lngItem) & "?", vbQuestion + vbYesNo, "Confirm")
+        If lngResponse = vbCancel Then
+          GoTo exit_here
+        ElseIf lngResponse = vbYes Then
+          blnRename = True
+        ElseIf lngResponse = vbNo Then
+          blnRename = False
+        End If
+      End If
+      If blnRename Then
+        lngExists = cptCustomFieldExists(CStr(oDict.Items(lngItem)))
+        If lngExists > 0 Then
+          If lngExists <> oComboBox.Value Then
+            strMsg = "'" & oDict.Items(lngItem) & "' is already assigned to " & FieldConstantToFieldName(lngExists) & "!" & vbCrLf & vbCrLf
+            strMsg = strMsg & "Click YES to reassign " & oDict.Items(lngItem) & " to " & oComboBox.List(oComboBox.ListIndex, 1) & vbCrLf
+            strMsg = strMsg & "Click NO to keep " & oDict.Items(lngItem) & " assigned to " & FieldConstantToFieldName(lngExists) & vbCrLf
+            strMsg = strMsg & "Click CANCEL to do nothing and skip renaming"
+            lngResponse = MsgBox(strMsg, vbExclamation + vbYesNoCancel, "LCF Already Exists!")
+            If lngResponse = vbCancel Then
+              GoTo next_item
+            ElseIf lngResponse = vbYes Then
+              CustomFieldDelete lngExists
+              For i = 0 To oComboBox.ListCount - 1
+                If oComboBox.List(i, 0) = lngExists Then
+                  oComboBox.List(i, 1) = FieldConstantToFieldName(lngExists)
+                  Exit For
+                End If
+              Next i
+              CustomFieldRename lngLCF, oDict.Items(lngItem)
+              oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.Items(lngItem) & ")"
+            ElseIf lngResponse = vbNo Then
+              oComboBox.Value = lngExists
+            End If
+          End If
+        Else
+          CustomFieldRename lngLCF, oDict.Items(lngItem)
+          oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.Items(lngItem) & ")"
+        End If
+      End If
     End If
+next_item:
   Next lngItem
   
 exit_here:
@@ -205,7 +286,7 @@ Private Sub cmdSelectFiles_Click()
   Dim oFileDialog As Object 'FileDialog
   Dim oExcel As Excel.Application
   'strings
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   'integers
@@ -240,11 +321,11 @@ Private Sub cmdSelectFiles_Click()
     If .Show = -1 Then
       If .SelectedItems.Count > 0 Then
         For lngItem = 1 To .SelectedItems.Count
-          strFile = .SelectedItems(lngItem)
-          If Dir(strFile) <> vbNullString Then
+          strFileName = .SelectedItems(lngItem)
+          If Dir(strFileName) <> vbNullString Then
             Me.lboStatusSheets.AddItem
-            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 0) = Replace(strFile, Dir(strFile), "")
-            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 1) = Dir(strFile)
+            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 0) = Replace(strFileName, Dir(strFileName), "")
+            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 1) = Dir(strFileName)
           End If
         Next lngItem
       End If
@@ -345,11 +426,13 @@ End Sub
 
 Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   If CloseMode = VbQueryClose.vbFormControlMenu Then
+    Application.StatusBar = ""
     Me.Hide
     Cancel = True
   End If
 End Sub
 
 Private Sub UserForm_Terminate()
+  Application.StatusBar = ""
   Unload Me
 End Sub

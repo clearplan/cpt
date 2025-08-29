@@ -1,13 +1,19 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.15.0</cpt_version>
+'<cpt_version>v1.15.1</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
   Private Declare PtrSafe Function GetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare PtrSafe Function SetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+  Public Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
+  Public Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+
 #Else
   Private Declare Function GetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function SetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+  Public Declare Function GetTickCount Lib "kernel32" () As Long '<issue53>
+  Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+
 #End If
 
 Sub cptStartEvents()
@@ -378,14 +384,14 @@ Sub cptGetReferences()
   'although simply running cptSetReferences should fix it
   Dim oRef As Object 'Reference
   Dim lngFile As Long
-  Dim strFile As String
+  Dim strFileName As String
   Dim strRef As String
   Dim lngRefs As Long
   Dim lngRef As Long
   
   lngFile = FreeFile
-  strFile = Environ("tmp") & "\cpt-references.csv"
-  Open strFile For Output As #lngFile
+  strFileName = Environ("tmp") & "\cpt-references.csv"
+  Open strFileName For Output As #lngFile
   
   Print #lngFile, "NAME,DESCRIPTION,FULL_PATH,GUID,MAJOR,MINOR,BUILT_IN,IS_BROKEN,TYPE,"
   lngRefs = ThisProject.VBProject.References.Count
@@ -405,8 +411,8 @@ Sub cptGetReferences()
   Next oRef
   Reset
   
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
-  
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+
 End Sub
 
 Function cptGetDirectory(strModule As String) As String
@@ -456,19 +462,19 @@ End Function
 Sub cptGetEnviron()
   'list the environment variables and their associated values
   Dim lngIndex As Long
-  Dim strFile As String
+  Dim strFileName As String
   Dim lngFile As Long
   
-  strFile = Environ("tmp") & "\current_environment.txt"
+  strFileName = Environ("tmp") & "\current_environment.txt"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
 
   For lngIndex = 1 To 200
     Print #lngFile, lngIndex & ": " & Environ(lngIndex)
   Next
   Close #lngFile
   Reset
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 End Sub
 Function cptCheckReference(strReference As String) As Boolean
@@ -581,7 +587,7 @@ Sub cptResetAll()
   Dim strFilter As String
   Dim strOutlineLevel As String
   Dim strSettings As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strOutlineParents As String
   'longs
   Dim lngUID As Long
@@ -622,17 +628,17 @@ Sub cptResetAll()
   End If
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
-  strFile = cptDir & "\settings\cpt-reset-all.adtg"
-  If Dir(strFile) <> vbNullString Then
+  strFileName = cptDir & "\settings\cpt-reset-all.adtg"
+  If Dir(strFileName) <> vbNullString Then
     Set rstSettings = CreateObject("ADODB.Recordset")
-    rstSettings.Open strFile
+    rstSettings.Open strFileName
     rstSettings.MoveFirst
     lngSettings = rstSettings(0)
     cptSaveSetting "ResetAll", "Settings", CStr(lngSettings)
     lngOutlineLevel = rstSettings(1)
     cptSaveSetting "ResetAll", "OutlineLevel", CStr(lngOutlineLevel)
     rstSettings.Close
-    Kill strFile
+    Kill strFileName
   Else
     strSettings = cptGetSetting("ResetAll", "Settings")
     If Len(strSettings) > 0 Then lngSettings = CLng(strSettings)
@@ -801,7 +807,7 @@ Sub cptShowResetAll_frm()
   Dim strDefaultView As String
   Dim strOutlineLevel As String
   Dim strSettings As String
-  Dim strFile As String
+  Dim strFileName As String
   'longs
   Dim lngSettings As Long
   Dim lngOutlineLevel As Long
@@ -856,18 +862,18 @@ Sub cptShowResetAll_frm()
   cptQuickSort vViewList, 0, UBound(vViewList)
   myResetAll_frm.cboViews.List = Split("<None>," & Join(vViewList, ","), ",")
   
-  strFile = cptDir & "\settings\cpt-reset-all.adtg"
-  If Dir(strFile) <> vbNullString Then
+  strFileName = cptDir & "\settings\cpt-reset-all.adtg"
+  If Dir(strFileName) <> vbNullString Then
     'get saved settings
     Set rstSettings = CreateObject("ADODB.Recordset")
-    rstSettings.Open strFile
+    rstSettings.Open strFileName
     rstSettings.MoveFirst
     lngSettings = rstSettings(0)
     cptSaveSetting "ResetAll", "Settings", CStr(lngSettings)
     lngOutlineLevel = rstSettings(1)
     cptSaveSetting "ResetAll", "OutlineLevel", CStr(lngOutlineLevel)
     rstSettings.Close
-    Kill strFile
+    Kill strFileName
   Else
     strSettings = cptGetSetting("ResetAll", "Settings")
     If Len(strSettings) > 0 Then lngSettings = CLng(strSettings)
@@ -1301,7 +1307,7 @@ Function cptGetOfficeDir(strApp As String) As String
     cptGetOfficeDir = strDir
   ElseIf Len(strDir) = 0 Then 'weird installation or Excel not installed
     cptGetOfficeDir = strDir
-    MsgBox "Microsoft Office installation is not detetcted. Some features may not operate as expected." & vbCrLf & vbCrLf & "Please contact cpt@ClearPlanConsulting.com for specialized assistance.", vbCritical + vbOKOnly, "Microsoft Office Compatibility"
+    MsgBox "Microsoft Office installation is not detetcted. Some features may not operate as expected." & vbCrLf & vbCrLf & "Please contact help@ClearPlanConsulting.com for specialized assistance.", vbCritical + vbOKOnly, "Microsoft Office Compatibility"
   End If
   
 End Function
@@ -2011,7 +2017,9 @@ err_here:
 End Function
 
 Sub cptOpenSettingsFile()
-  Shell "notepad.exe """ & cptDir & "\settings\cpt-settings.ini""", vbNormalFocus
+  Dim strFileName As String
+  strFilename = cptDir & "\settings\cpt-settings.ini"
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
 
 Function cptGetMyHeaders(strTitle As String, Optional blnRequired As Boolean = False) As String
@@ -2185,7 +2193,7 @@ err_here:
   Resume exit_here
 End Function
 
-Sub cptAppendColumn(strFile As String, strColumn As String, lngType As Long, Optional lngLength As Long, Optional vDefault As Variant)
+Sub cptAppendColumn(strFileName As String, strColumn As String, lngType As Long, Optional lngLength As Long, Optional vDefault As Variant)
   'objects
   Dim oRecordsetNew As Object 'ADODB.Recordset
   Dim oRecordset As Object 'ADODB.Recordset
@@ -2206,8 +2214,8 @@ Sub cptAppendColumn(strFile As String, strColumn As String, lngType As Long, Opt
   
   Set oRecordset = CreateObject("ADODB.Recordset")
   Set oRecordsetNew = CreateObject("ADODB.Recordset")
-  If InStr(strFile, strDir) = 0 Then strFile = strDir & strFile
-  oRecordset.Open strFile, , adOpenKeyset, adLockReadOnly
+  If InStr(strFileName, strDir) = 0 Then strFileName = strDir & strFileName
+  oRecordset.Open strFileName, , adOpenKeyset, adLockReadOnly
   On Error Resume Next
   Debug.Print oRecordset.Fields(strColumn)
   If Err.Number = 0 Then 'field already exists
@@ -2244,8 +2252,8 @@ Sub cptAppendColumn(strFile As String, strColumn As String, lngType As Long, Opt
     oRecordset.MoveNext
   Loop
   oRecordset.Close
-  Name strFile As Replace(strFile, ".adtg", "-backup_" & Format(Now, "yyyy-mm-dd-HH-nn-ss") & ".adtg")
-  oRecordsetNew.Save strFile, adPersistADTG
+  Name strFileName As Replace(strFileName, ".adtg", "-backup_" & Format(Now, "yyyy-mm-dd-HH-nn-ss") & ".adtg")
+  oRecordsetNew.Save strFileName, adPersistADTG
   oRecordsetNew.Close
   
 exit_here:

@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.5.5</cpt_version>
+'<cpt_version>v1.6.0</cpt_version>
 Option Explicit
 
 Sub cptBulkAppend()
@@ -908,7 +908,7 @@ next_task:
       Next lngItem
       Print #lngFile, "COMBINED UID LIST: " & Replace(strFilter, vbTab, ",")
       Close #lngFile
-      Shell "notepad.exe """ & strFileName & """", vbNormalFocus
+      ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     End If
   End If
   

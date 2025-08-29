@@ -4,6 +4,7 @@
 *.csv
 *.diff
 *.docx
+*.exe
 *.json
 *.mpp
 *.pdf
@@ -11,6 +12,7 @@
 *.sh
 *.xlsm
 *.xlsx
+exe/*.*
 CurrentVersions.txt
 cpt-macro-map.txt
 cpt-ribbon.xml
