@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.3.1</cpt_version>
+'<cpt_version>v3.4.0/cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -33,6 +33,7 @@ Private subPID As Integer 'v3.0.0 used to temporarily store subproject ID
 Private tempproj As Project 'v3.0.0 used to temporarily reference subprojects
 Private firstTask As Boolean 'v3.0.0 used to track seed task for each path
 Private Const MODULE_NAME As String = "cptCriticalPath_bas"
+Private userView As String
 
 Sub DrivingPaths()
 'Primary analysis module that controls analysis
@@ -124,6 +125,19 @@ Sub DrivingPaths()
         
         .Caption = "cptCritical Path " & cptGetVersion("cptCriticalPath_bas")
         
+        With .UserView_Combobox
+            .AddItem "<Default>"
+            Dim v As View
+            For Each v In curProj.Views
+                .AddItem v.Name
+            Next v
+            .ListIndex = 0
+        End With
+        
+        .StartUpPosition = 0
+        .Left = Application.Left + (0.5 * Application.Width) - (0.5 * .Width)
+        .Top = Application.Top + (0.5 * Application.Height) - (0.5 * .Height)
+        
         .Show
         
         If .Tag = "cancel" Then
@@ -137,6 +151,7 @@ Sub DrivingPaths()
         CritField = .PathField_Combobox.Text
         GroupField = .GroupField_Combobox.Text
         PathCount = .pathCnt_txtBox.Value
+        userView = .UserView_Combobox.Text
     
     End With
     
@@ -432,11 +447,16 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     'Create CP Driving Path view if necessary
     curProj.Application.ViewEditSingle Name:="*ClearPlan Driving Path View", Create:=True, ShowInMenu:=True, Table:="*ClearPlan Driving Path Table", Filter:="*ClearPlan Driving Path Filter", Group:="*ClearPlan Driving Path Group"
     
+    If userView <> "<Default>" Then
+        curProj.Application.ViewApply Name:=userView
+        Exit Sub
+    End If
+    
     'Apply the CP Driving Path view
     curProj.Application.ViewApply Name:="*ClearPlan Driving Path View"
     
     'Sort the View by Finish, then by Duration to produce Waterfall Gantt
-    curProj.Application.Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", ascending2:=False, Outline:=False
+    curProj.Application.Sort key1:="Finish", Ascending1:=True, key2:="Duration", ascending2:=False, Outline:=False
     
     'Select all tasks and zoom the Gantt to display all tasks in view
     curProj.Application.SelectAll
@@ -1069,7 +1089,7 @@ Private Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType
 
 End Function
 
-Public Function ExistsInCollection(ByVal col As Collection, ByVal vKey As Variant) As Boolean
+Public Function ExistsInCollection(ByVal col As Collection, ByVal key As Variant) As Boolean
 'Check for task dependency relationship in the analyzed tasks collection
 
     Dim f As Boolean 'stores boolean value 'True' if relationship exists in the collection
@@ -1077,7 +1097,7 @@ Public Function ExistsInCollection(ByVal col As Collection, ByVal vKey As Varian
     'If error encountered, value does not exist in the collection
     On Error GoTo err
     
-    f = IsObject(col.Item(vKey)) 'Store found item; if not found, will produce error
+    f = IsObject(col.item(key)) 'Store found item; if not found, will produce error
     ExistsInCollection = True 'Set True
     Exit Function
 err: 'If error encountered, item does not exist - return "False" boolean vlaue
@@ -1176,4 +1196,3 @@ Function get_external_MasterUID(ByVal subP_Task As Task, ByVal subP_Index As Int
     Exit Function
 
 End Function
-
