@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.4.0/cpt_version>
+'<cpt_version>v3.4.0</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -456,7 +456,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     curProj.Application.ViewApply Name:="*ClearPlan Driving Path View"
     
     'Sort the View by Finish, then by Duration to produce Waterfall Gantt
-    curProj.Application.Sort key1:="Finish", Ascending1:=True, key2:="Duration", ascending2:=False, Outline:=False
+    curProj.Application.Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", ascending2:=False, Outline:=False
     
     'Select all tasks and zoom the Gantt to display all tasks in view
     curProj.Application.SelectAll
@@ -1089,7 +1089,7 @@ Private Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType
 
 End Function
 
-Public Function ExistsInCollection(ByVal col As Collection, ByVal key As Variant) As Boolean
+Public Function ExistsInCollection(ByVal col As Collection, ByVal vKey As Variant) As Boolean
 'Check for task dependency relationship in the analyzed tasks collection
 
     Dim f As Boolean 'stores boolean value 'True' if relationship exists in the collection
@@ -1097,7 +1097,7 @@ Public Function ExistsInCollection(ByVal col As Collection, ByVal key As Variant
     'If error encountered, value does not exist in the collection
     On Error GoTo err
     
-    f = IsObject(col.item(key)) 'Store found item; if not found, will produce error
+    f = IsObject(col.Item(vKey)) 'Store found item; if not found, will produce error
     ExistsInCollection = True 'Set True
     Exit Function
 err: 'If error encountered, item does not exist - return "False" boolean vlaue
