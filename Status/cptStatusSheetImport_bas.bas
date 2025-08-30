@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.3.3</cpt_version>
+'<cpt_version>v1.3.4</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -42,6 +42,9 @@ Sub cptShowStatusSheetImport_frm()
   Dim vField As Variant
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptStatusSheetImport_frm") Is Nothing Then Exit Sub
+
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 

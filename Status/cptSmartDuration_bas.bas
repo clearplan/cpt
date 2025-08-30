@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSmartDuration_bas"
-'<cpt_version>v2.1.0</cpt_version>
+'<cpt_version>v2.1.1</cpt_version>
 
 Sub cptShowSmartDuration_frm()
   'objects
@@ -12,6 +12,9 @@ Sub cptShowSmartDuration_frm()
   'booleans
   'variants
   'dates
+
+  'prevent spawning
+  If Not cptGetUserForm("cptSmartDuration_frm") Is Nothing Then Exit Sub
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   

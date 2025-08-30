@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCostRateTables_bas"
-'<cpt_version>v1.1.0</cpt_version>
+'<cpt_version>v1.1.1</cpt_version>
 Option Explicit
 
 Sub cptShowCostRateTables_frm()
@@ -19,6 +19,9 @@ Sub cptShowCostRateTables_frm()
   'variants
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptCostRateTables_frm") Is Nothing Then Exit Sub
+
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   Set myCostRateTables_frm = New cptCostRateTables_frm

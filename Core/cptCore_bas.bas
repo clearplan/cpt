@@ -266,7 +266,10 @@ Sub cptShowAbout_frm()
   'booleans
   'variants
   'dates
-
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptAbout_frm") Is Nothing Then Exit Sub
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   If Not cptModuleExists("cptAbout_frm") Then '<issue19>
@@ -410,7 +413,7 @@ Sub cptGetReferences()
   Reset
   
   ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
-
+  
 End Sub
 
 Function cptGetDirectory(strModule As String) As String
@@ -817,6 +820,9 @@ Sub cptShowResetAll_frm()
   Dim vViewList As Variant
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptResetAll_frm") Is Nothing Then Exit Sub
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
@@ -990,7 +996,10 @@ Sub cptShowUpgrades_frm()
   Dim blnUpdatesAreAvailable As Boolean
   'variants
   Dim vCol As Variant
-
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptUpgrades_frm") Is Nothing Then Exit Sub
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     
   'ensure all cpt forms are closed/unloaded
@@ -1875,6 +1884,9 @@ Sub cptShowSettings_frm()
   'variants
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptSettings_frm") Is Nothing Then Exit Sub
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
   Set mySettings_frm = New cptSettings_frm
@@ -2666,6 +2678,9 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
   Dim vFields As Variant
   Dim vControl As Variant
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptIntegration_frm") Is Nothing Then Exit Function
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0

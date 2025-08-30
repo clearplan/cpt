@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.4.0</cpt_version>
+'<cpt_version>v3.4.1</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -40,6 +40,9 @@ Sub DrivingPaths()
 'workflow through Primary, Secondary and Tertiary
 'driving paths.
 
+    'prevent spawning
+    If Not cptGetUserForm("cptCriticalPath_frm") Is Nothing Then Exit Sub
+    
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     Dim t As Task 'Stores initial user selected task
     Dim tdp As TaskDependency

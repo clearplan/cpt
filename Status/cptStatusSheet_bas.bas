@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.5</cpt_version>
+'<cpt_version>v1.6.6</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -71,6 +71,9 @@ Sub cptShowStatusSheet_frm()
   Dim dtStatus As Date
   'variants
   Dim vFieldType As Variant
+
+  'prevent spawning
+  If Not cptGetUserForm("cptStatusSheet_frm") Is Nothing Then Exit Sub
 
   'confirm existence of tasks to export
   On Error Resume Next
