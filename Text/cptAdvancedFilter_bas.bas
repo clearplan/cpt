@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptAdvancedFilter_bas"
-'<cpt_version>v0.3.1</cpt_version>
+'<cpt_version>v0.3.2</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptAdvancedFilter_bas"
 Private filterForm As cptAdvancedFilter_frm
@@ -11,6 +11,9 @@ Private CustOLCodeFields() As String
 Public isSorted As Boolean
 
 Sub cptAdvancedFilter()
+    'prevent spawning
+    If Not cptGetUserForm("cptAdvancedFilter_frm") Is Nothing Then Exit Sub
+
     If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
     Set curProj = ActiveProject

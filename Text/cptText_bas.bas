@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.6.0</cpt_version>
+'<cpt_version>v1.6.1</cpt_version>
 Option Explicit
 
 Sub cptBulkAppend()
@@ -560,6 +560,9 @@ Sub cptShowText_frm()
   'variants
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptText_frm") Is Nothing Then Exit Sub
+
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 

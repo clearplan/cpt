@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDataDictionary_bas"
-'<cpt_version>v1.5.0</cpt_version>
+'<cpt_version>v1.5.1</cpt_version>
 Option Explicit
 
 Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
@@ -46,6 +46,9 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   Dim vFieldScope As Variant
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptDataDictionary_frm") Is Nothing Then Exit Sub
+
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir

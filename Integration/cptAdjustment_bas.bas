@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptAdjustment_bas"
-'<cpt_version>v0.0.3</cpt_version>
+'<cpt_version>v0.0.4</cpt_version>
 Option Explicit
 
 Sub cptShowAdjustment_frm()
@@ -14,6 +14,9 @@ Sub cptShowAdjustment_frm()
   Dim vResources As Variant
   Dim vResource As Variant
  
+  'prevent spawning
+  If Not cptGetUserForm("cptAdjustment_frm") Is Nothing Then Exit Sub
+
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   If ActiveProject.ResourceCount = 0 Then

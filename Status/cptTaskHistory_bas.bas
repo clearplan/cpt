@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptTaskHistory_bas"
-'<cpt_version>v1.1.2</cpt_version>
+'<cpt_version>v1.1.3</cpt_version>
 Option Explicit
 Public oTaskHistory As ADODB.Recordset
 
@@ -17,6 +17,9 @@ Sub cptShowTaskHistory_frm()
   'variants
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptTaskHistory_frm") Is Nothing Then Exit Sub
+
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   'ensure program acroynm

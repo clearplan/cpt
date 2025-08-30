@@ -14,7 +14,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.3.1</cpt_version>
+'<cpt_version>v0.3.2</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptAdvancedFilter_frm"
 Private oFilterItems As Collection
