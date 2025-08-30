@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.15.1</cpt_version>
+'<cpt_version>v1.15.2</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
@@ -7,13 +7,11 @@ Private oMSPEvents As cptEvents_cls
   Private Declare PtrSafe Function SetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
   Public Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
-
 #Else
   Private Declare Function GetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function SetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare Function GetTickCount Lib "kernel32" () As Long '<issue53>
   Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
-
 #End If
 
 Sub cptStartEvents()
@@ -126,9 +124,9 @@ Function cptGetBreadcrumbs(strModule As String, strProcedure As String, strBread
           Exit For 'stop capturing
         Else
           If blnResult Then
-            strLine = Trim(vbCodeModule.lines(lngLine, 1))
+            strLine = Trim(vbCodeModule.Lines(lngLine, 1))
             If Left(strLine, 1) = "'" Then
-              If InStr(strLine, "todo") = 0 Then
+              If InStr(strLine, "todo") = 0 And InStr(strLine, "</skip-breadcrumb>") = 0 Then
                 strResult = strResult & Right(strLine, Len(strLine) - 1) & vbCrLf 'comments only, sans apostrophe
               End If
             End If
@@ -149,7 +147,7 @@ Function cptGetVersions() As String
   For Each vbComponent In ThisProject.VBProject.VBComponents
     'is the vbComponent one of ours?
     If vbComponent.CodeModule.Find("<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      strVersion = cptRegEx(vbComponent.CodeModule.lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
+      strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
       strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
       cptGetVersions = cptGetVersions & vbComponent.Name & ": " & strVersion & vbCrLf
     End If
@@ -240,7 +238,7 @@ frx:
   '<issue24> remove the whitespace added by VBE import/export
   With ThisProject.VBProject.VBComponents(strModule).CodeModule
     For lngLine = .CountOfDeclarationLines To 1 Step -1
-      If Len(.lines(lngLine, 1)) = 0 Then .DeleteLines lngLine, 1
+      If Len(.Lines(lngLine, 1)) = 0 Then .DeleteLines lngLine, 1
     Next lngLine
   End With '</issue24>
 
@@ -1066,7 +1064,7 @@ Sub cptShowUpgrades_frm()
   For Each vbComponent In ThisProject.VBProject.VBComponents
     'is the vbComponent one of ours?
     If vbComponent.CodeModule.Find("'<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      strVersion = cptRegEx(vbComponent.CodeModule.lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>", True)
+      strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>", True)
       strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
       rstStatus.MoveFirst
       rstStatus.Find "Module='" & vbComponent.Name & "'", , 1
@@ -1842,7 +1840,7 @@ Sub cptCreateFilter(strFilter As String)
 
   Select Case strFilter
     Case "Marked"
-      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
+      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
       
   End Select
   
@@ -2018,7 +2016,7 @@ End Function
 
 Sub cptOpenSettingsFile()
   Dim strFileName As String
-  strFilename = cptDir & "\settings\cpt-settings.ini"
+  strFileName = cptDir & "\settings\cpt-settings.ini"
   ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
 
@@ -2688,7 +2686,6 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
     oRequiredFields(vRequired) = True
   Next vRequired
   'todo: LOE and PP must have selection, even if it's just '<unused>'
-  'todo: in DECM, wherever LOE is filtered out, account for '<unused>'
   
   blnECF = False 'default
   For Each vControl In Split(strDefaultFields, ",")
@@ -2728,20 +2725,18 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         .chkECF.Enabled = False
       End If
     End If
-    'convert saved settings
+    'convert legacy saved settings
     strSetting = cptGetSetting("Integration", "CWBS")
     If Len(strSetting) > 0 Then
       cptSaveSetting "Integration", "WBS", strSetting
-      'delete setting CWBS
       cptDeleteSetting "Integration", "CWBS"
     End If
     strSetting = cptGetSetting("Integration", "WPCN")
     If Len(strSetting) > 0 Then
       cptSaveSetting "Integration", "WP", strSetting
-      'delete setting WPCN
       cptDeleteSetting "Integration", "WPCN"
     End If
-    cptDeleteSetting "Integration", "EOC"
+    cptDeleteSetting "Integration", "EOC" 'no longer required
     
     For Each vControl In Split(strDefaultFields, ",")
       strSetting = cptGetSetting("Integration", CStr(vControl))
@@ -2779,11 +2774,10 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         End If
       End If
       Set oComboBox = .Controls("cbo" & vControl)
+      'default to black borders
       oComboBox.BorderColor = -2147483642
       If Len(strSetting) = 0 Then
-        If oRequiredFields(vControl) Then blnValid = False
         lngField = 0
-        If oRequiredFields(vControl) Then oComboBox.BorderColor = 192
       Else
         If vControl = "LOE" Then
           strLOE = strSetting
@@ -2851,7 +2845,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         If .cboPP.ListCount > 0 Then .cboPP.Value = strPP
         If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
         GoTo next_control
-      Else 'WP,EVTMS
+      Else 'WP,EVT,EVTMS
         vFields = cptSortedArray(cptGetCustomFields("t", "Text,Outline Code", "c,cfn,loc", blnECF), 1)
         For lngItem = 0 To UBound(vFields)
           oComboBox.AddItem
@@ -2883,6 +2877,19 @@ next_control:
         oComboBox.Enabled = True
       Else
         oComboBox.Enabled = oRequiredFields(vControl)
+      End If
+      If oRequiredFields(vControl) Then
+        If vControl = "LOE" Or vControl = "PP" Then
+          If oComboBox.Value = "" Then
+            oComboBox.BorderColor = 192
+            blnValid = False
+          End If
+        Else
+          If IsNull(oComboBox.Value) Then
+            oComboBox.BorderColor = 192
+            blnValid = False
+          End If
+        End If
       End If
       Set oComboBox = Nothing
     Next vControl
