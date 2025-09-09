@@ -100,8 +100,10 @@ Sub lboFieldTypes_Click()
   End If
   If strFieldType = "Outline Code" Then
     Me.lboCustomFields.ColumnWidths = "0 pt;75 pt;120 pt;15 pt"
+    Me.lboCustomFieldsHeader.ColumnWidths = "0 pt;75 pt;120 pt;15 pt"
   Else
     Me.lboCustomFields.ColumnWidths = "0 pt;55 pt;120 pt;15 pt"
+    Me.lboCustomFieldsHeader.ColumnWidths = "0 pt;55 pt;120 pt;15 pt"
   End If
   Me.lboCustomFields.Clear
   Me.lblFormula.Visible = False

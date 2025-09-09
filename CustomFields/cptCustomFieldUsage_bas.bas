@@ -52,6 +52,8 @@ Sub cptShowCustomFieldUsage_frm()
   Dim vFieldType As Variant
   'dates
   
+  If Not cptGetUserForm("cptCustomFieldUsage_frm") Is Nothing Then Exit Sub 'prevent spawning
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
@@ -83,7 +85,17 @@ Sub cptShowCustomFieldUsage_frm()
   
   Set myCustomFieldUsage_frm = New cptCustomFieldUsage_frm
   With myCustomFieldUsage_frm
-    .Caption = "Custom Field Usage (" & cptGetVersion("cptCustomFieldUsage_bas") & ")"
+    .Caption = "Local Custom Field Usage (" & cptGetVersion("cptCustomFieldUsage_bas") & ")"
+    .lboFieldTypeHeader.AddItem "Data Type"
+    .lboCustomFieldsHeader.AddItem
+    .lboCustomFieldsHeader.List(0, 0) = "Constant"
+    .lboCustomFieldsHeader.List(0, 1) = "Field Name"
+    .lboCustomFieldsHeader.List(0, 2) = "Custom Field Name"
+    .lboCustomFieldsHeader.List(0, 3) = "Tasks"
+    .lboCustomFieldsHeader.ColumnWidths = "0 pt;55 pt;120 pt;15 pt"
+    .lboFieldTypeHeader.Height = .lboCustomFieldsHeader.Height
+    .lboFieldTypeHeader.Locked = True
+    .lboCustomFieldsHeader.Locked = True
     For Each vFieldType In Split("Cost,Date,Duration,Finish,Flag,Number,Outline Code,Start,Text", ",")
       .lboFieldTypes.AddItem vFieldType
     Next vFieldType
@@ -92,6 +104,7 @@ Sub cptShowCustomFieldUsage_frm()
     .lblLookup.Visible = False
     .lblProgress.Visible = False
     .lblStatus.Visible = False
+    .lboCustomFields.Height = .lboFieldTypes.Height
     .Show (False)
   End With
   
