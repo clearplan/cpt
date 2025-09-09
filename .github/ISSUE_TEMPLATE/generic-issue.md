@@ -25,7 +25,7 @@ assignees: ''
 - [ ] label the issue with codemodule (so fixes can be aggregated and hotfixed together)
 - [ ] checkout appropriate branch and create `topic` branch
 - [ ] design, code and test
-- [ ] update codemodule <cpt_version>x.y.z</cpt_version>
+- [ ] update codemodule `<cpt_version>x.y.z</cpt_version>`
 - [ ] update CurrentVersions.xml **manually**
 - [ ] commit message should begin with `Issue #XXX - `
 - [ ] commit the change(s)
