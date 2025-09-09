@@ -148,6 +148,20 @@
 		<Directory>Trace</Directory>
 	</Module>
 	<Module>
+		<Name>cptCustomFieldUsage_bas</Name>
+		<FileName>cptCustomFieldUsage_bas.bas</FileName>
+		<Version>v0.1.0</Version>
+		<Type>1</Type>
+		<Directory>CustomFields</Directory>
+	</Module>
+	<Module>
+		<Name>cptCustomFieldUsage_frm</Name>
+		<FileName>cptCustomFieldUsage_frm.frm</FileName>
+		<Version>v0.1.0</Version>
+		<Type>3</Type>
+		<Directory>CustomFields</Directory>
+	</Module>
+	<Module>
 		<Name>cptDataDictionary_bas</Name>
 		<FileName>cptDataDictionary_bas.bas</FileName>
 		<Version>v1.5.1</Version>
