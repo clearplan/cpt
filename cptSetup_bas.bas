@@ -694,7 +694,7 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalDetails"" label=""Details"" imageMso=""MonthlyView"" onAction=""cptShowCalendarExceptions_frm"" visible=""true"" supertip=""Export Calendar Exceptions, WorkWeeks, and settings."" />"
       If ActiveProject.Subprojects.Count > 0 Then
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalCompare"" label=""Compare"" imageMso=""MonthlyView"" onAction=""cptCalendarCompareMain"" visible=""true"" supertip=""Compare Calendar Exceptions between Master Project and Subprojects."" />"
-      End if
+      End If
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
@@ -710,6 +710,9 @@ Public Function cptBuildRibbonTab()
     End If
     If cptModuleExists("cptSaveLocal_bas") And cptModuleExists("cptSaveLocal_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bECFtoLCF"" imageMso=""CustomFieldDialog"" label=""ECF to LCF"" onAction=""cptShowSaveLocal_frm"" supertip=""Save Enterprise Custom Field (ECF) settings (and, optionally, task-level data) to Local Custom Fields (LCF). Settings are saved (by project) between sessions."" />" 'size=""large""
+    End If
+    If cptModuleExists("cptCustomFieldUsage_bas") And cptModuleExists("cptCustomFieldUsage_frm") Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLCFUsage"" imageMso=""CustomFieldDialog"" label=""LCF Usage"" onAction=""cptShowCustomFieldUsage_frm"" supertip=""Quickly Analyze what Local Custom Fields are in use."" />" 'size=""large""
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
