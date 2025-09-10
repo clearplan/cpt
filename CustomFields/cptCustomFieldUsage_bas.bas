@@ -105,6 +105,8 @@ Sub cptShowCustomFieldUsage_frm()
     .lblProgress.Visible = False
     .lblStatus.Visible = False
     .lboCustomFields.Height = .lboFieldTypes.Height
+    .tglAll.Top = .lboCustomFields.Top + .lboCustomFields.Height - .tglAll.Height
+    .tglAll.Value = False 'user setting?
     .Show (False)
   End With
   
@@ -121,9 +123,9 @@ Sub cptUpdateCustomFieldUsageView(lngLCF As Long, Optional strFieldType As Strin
   FilterClear
   If lngLCF > 0 Then
     TableEditEx "cptCustomFieldUsage Table", True, True, True, , "ID", , , , , False, True, , , , , False, False, False, False
-    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Unique ID", "UID"
-    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Name", , 85
-    TableEditEx "cptCustomFieldUsage Table", True, , , , , FieldConstantToFieldName(lngLCF), , 25
+    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Unique ID", "UID", , , , True
+    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Name", , 85, , , True
+    TableEditEx "cptCustomFieldUsage Table", True, , , , , FieldConstantToFieldName(lngLCF), , , , , True
     If blnFilter Then
       Select Case strFieldType
         Case "Cost"
@@ -148,8 +150,8 @@ Sub cptUpdateCustomFieldUsageView(lngLCF As Long, Optional strFieldType As Strin
     End If
   Else
     TableEditEx "cptCustomFieldUsage Table", True, True, True, , "ID", , , , , False, True, , , , , False, False, False, True
-    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Unique ID", "UID"
-    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Name", , 85
+    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Unique ID", "UID", , , , True
+    TableEditEx "cptCustomFieldUsage Table", True, , , , , "Name", , 85, , , True
   End If
   TableApply "cptCustomFieldUsage Table"
   SetSplitBar 4
