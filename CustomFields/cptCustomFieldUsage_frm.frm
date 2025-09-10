@@ -139,6 +139,10 @@ Sub lboFieldTypes_Click()
     Me.Repaint
   Next lngField
   cptUpdateCustomFieldUsageView 0
+  If Me.tglAll Then
+    Me.tglAll.Value = False
+    Me.tglAll.Value = True
+  End If
 exit_here:
   On Error Resume Next
   Me.lblStatus.Visible = False
@@ -149,6 +153,28 @@ exit_here:
 err_here:
   cptHandleErr "cptCustomFieldUsage_frm", "lboFieldTypes_Click", Err, Erl
   Resume exit_here
+End Sub
+
+Private Sub tglAll_Click()
+  Dim lngItem As Long
+  If Me.tglAll Then
+    Me.lblFormula.Visible = False
+    Me.lblLookup.Visible = False
+    Me.lboCustomFields.ListIndex = -1
+    Me.lboCustomFields.Enabled = False
+    For lngItem = 0 To Me.lboCustomFields.ListCount - 1
+      If lngItem = 0 Then
+        cptUpdateCustomFieldUsageView Me.lboCustomFields.List(lngItem, 0)
+      Else
+        TableEditEx "cptCustomFieldUsage Table", True, , , , , FieldConstantToFieldName(Me.lboCustomFields.List(lngItem, 0)), , , , , True
+      End If
+    Next lngItem
+    TableApply "cptCustomFieldUsage Table"
+    SetSplitBar 3 + Me.lboCustomFields.ListCount
+  Else
+    Me.lboCustomFields.Enabled = True
+    Me.lboCustomFields.Value = Me.lboCustomFields.List(0, 0)
+  End If
 End Sub
 
 Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
