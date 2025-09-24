@@ -21,7 +21,7 @@ Private Sub chkIncludeSummaryTasks_Click()
   Dim oTasks As MSProject.Tasks
   Dim lngSelected As Long
   blnSummaries = Me.chkIncludeSummaryTasks
-  OptionsViewEx Displaysummarytasks:=blnSummaries, DisplayNameIndent:=blnSummaries
+  OptionsViewEx DisplaySummaryTasks:=blnSummaries, DisplayNameIndent:=blnSummaries
   If Not Me.Visible Then Exit Sub
   If Not IsNull(Me.lboFieldTypes.Value) Then
     If Not IsNull(Me.lboCustomFields.Value) Then lngSelected = Me.lboCustomFields.ListIndex
@@ -33,10 +33,14 @@ End Sub
 
 Private Sub cmdClear_Click()
   If Not IsNull(Me.lboCustomFields.Value) Then
-    Application.OpenUndoTransaction "Clear " & FieldConstantToFieldName(Me.lboCustomFields.Value)
-    SelectColumn 4
-    SetField FieldConstantToFieldName(Me.lboCustomFields.Value), ""
-    SelectBeginning
+    Application.OpenUndoTransaction "cpt - Clear " & FieldConstantToFieldName(Me.lboCustomFields.Value)
+    SelectTaskColumn FieldConstantToFieldName(Me.lboCustomFields.Value)
+    If Me.lboFieldTypes.Value = "Flag" Then
+      SetField FieldConstantToFieldName(Me.lboCustomFields.Value), "No"
+    Else
+      SetField FieldConstantToFieldName(Me.lboCustomFields.Value), ""
+    End If
+    'SelectBeginning
     Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = 0
     Application.CloseUndoTransaction
   End If
@@ -63,15 +67,19 @@ End Sub
 
 Private Sub lboCustomFields_Click()
   Dim oTasks As MSProject.Tasks
-  cptUpdateCustomFieldUsageView Me.lboCustomFields.Value, Me.lboFieldTypes.Value, True
-  SelectColumn 4
-  On Error Resume Next
-  Set oTasks = ActiveSelection.Tasks
-  If Not oTasks Is Nothing Then
-    Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = Format(oTasks.Count, "#,##0")
-  Else
-    Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = 0
+  If Not Me.tglAll Then
+    cptUpdateCustomFieldUsageView Me.lboCustomFields.Value, Me.lboFieldTypes.Value, True
   End If
+  SelectTaskColumn FieldConstantToFieldName(Me.lboCustomFields.Value)
+'  On Error Resume Next
+'  Set oTasks = ActiveSelection.Tasks
+'  If Not oTasks Is Nothing Then
+'    If Not Me.tglAll Then
+'      Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = Format(oTasks.Count, "#,##0")
+'    End If
+'  Else
+'    Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = 0
+'  End If
   Me.lblFormula.Visible = cptHasFormula(ActiveProject, Me.lboCustomFields.Value)
   Me.lblLookup.Visible = cptHasLookup(ActiveProject, Me.lboCustomFields.Value)
   If Not Me.lblFormula.Visible And Me.lblLookup.Visible Then
@@ -83,12 +91,14 @@ Private Sub lboCustomFields_Click()
 End Sub
 
 Sub lboFieldTypes_Click()
+  Dim oTask As MSProject.Task
   Dim oTasks As MSProject.Tasks
   Dim strFieldType As String
   Dim strCustomFieldName As String
   Dim lngLCF As Long
   Dim lngField As Long
   Dim lngCustomFieldCount As Long
+  Dim lngTaskCount As Long
   
   cptSpeed True
   
@@ -130,7 +140,19 @@ Sub lboFieldTypes_Click()
     If oTasks Is Nothing Then
       Me.lboCustomFields.List(Me.lboCustomFields.ListCount - 1, 3) = 0
     Else
-      Me.lboCustomFields.List(Me.lboCustomFields.ListCount - 1, 3) = Format(oTasks.Count, "#,##0")
+      If Me.chkIncludeSummaryTasks Then
+        lngTaskCount = 0
+        For Each oTask In oTasks
+          If Not oTask Is Nothing Then
+            If Not oTask.Summary Then 'todo: what if the summary task has a value, dummy?
+              lngTaskCount = lngTaskCount + 1
+            End If
+          End If
+        Next oTask
+        Me.lboCustomFields.List(Me.lboCustomFields.ListCount - 1, 3) = Format(lngTaskCount, "#,##0")
+      Else
+        Me.lboCustomFields.List(Me.lboCustomFields.ListCount - 1, 3) = Format(oTasks.Count, "#,##0")
+      End If
     End If
     SetAutoFilter FieldConstantToFieldName(lngLCF), pjAutoFilterClear
     SelectBeginning
@@ -148,6 +170,7 @@ exit_here:
   Me.lblStatus.Visible = False
   Me.lblProgress.Visible = False
   cptSpeed False
+  Set oTask = Nothing
   Set oTasks = Nothing
   Exit Sub
 err_here:
@@ -157,11 +180,13 @@ End Sub
 
 Private Sub tglAll_Click()
   Dim lngItem As Long
+'  Me.cmdClear.Enabled = Not Me.tglAll
+'  Me.cmdRename.Enabled = Not Me.tglAll
   If Me.tglAll Then
     Me.lblFormula.Visible = False
     Me.lblLookup.Visible = False
     Me.lboCustomFields.ListIndex = -1
-    Me.lboCustomFields.Enabled = False
+    'Me.lboCustomFields.Enabled = False
     For lngItem = 0 To Me.lboCustomFields.ListCount - 1
       If lngItem = 0 Then
         cptUpdateCustomFieldUsageView Me.lboCustomFields.List(lngItem, 0)
