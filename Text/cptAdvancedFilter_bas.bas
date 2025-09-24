@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptAdvancedFilter_bas"
-'<cpt_version>v0.3.2</cpt_version>
+'<cpt_version>v0.3.3</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptAdvancedFilter_bas"
 Private filterForm As cptAdvancedFilter_frm
@@ -38,7 +38,7 @@ Sub cptAdvancedFilter()
         .sortField.ListIndex = 0
         .versionLbl = "Advanced Clipboard Filter"
         .Caption = .versionLbl.Caption & " " & cptGetVersion("cptAdvancedFilter_bas")
-        curProj.Application.Windows(1).TopPane.Activate
+        curProj.Application.ActiveWindow.TopPane.Activate
         .summaryCheckBox = curProj.Application.SummaryTasksShow
         .blnDisableChangeEvents = False
         .Show
