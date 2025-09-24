@@ -74,7 +74,7 @@ Sub cptShowCustomFieldUsage_frm()
   If cptViewExists("cptCustomFieldUsage View") Then ActiveProject.Views("cptCustomFieldUsage View").Delete
   ViewEditSingle "cptCustomFieldUsage View", True, , pjGantt, False, False, "cptCustomFieldUsage Table", "All Tasks", "No Group"
   ViewApply "cptCustomFieldUsage View"
-  OptionsViewEx Displaysummarytasks:=True, DisplayNameIndent:=True, DisplayOutlineSymbols:=True
+  OptionsViewEx DisplaySummaryTasks:=True, DisplayNameIndent:=True, DisplayOutlineSymbols:=True
   OutlineShowAllTasks
   SelectBeginning
   
