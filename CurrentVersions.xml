@@ -269,7 +269,7 @@
 	<Module>
 		<Name>cptIntegration_frm</Name>
 		<FileName>cptIntegration_frm.frm</FileName>
-		<Version>v0.1.0</Version>
+		<Version>v0.1.1</Version>
 		<Type>3</Type>
 		<Directory>Integration</Directory>
 	</Module>
