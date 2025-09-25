@@ -44,7 +44,7 @@ Sub cptShowStatusSheetImport_frm()
   
   'prevent spawning
   If Not cptGetUserForm("cptStatusSheetImport_frm") Is Nothing Then Exit Sub
-
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
@@ -182,6 +182,12 @@ Sub cptShowStatusSheetImport_frm()
       blnRename = True
     End If
     
+    'fix previous
+    strEVP = cptGetSetting("StatusSheetImport", "cboEVP")
+    If Len(strEVP) > 0 Then
+      cptSaveSetting "StatusSheetImport", "cboEV", strEVP
+      cptDeleteSetting "StatusSheetImport", "cboEVP"
+    End If
     strEVP = cptGetSetting("StatusSheetImport", "cboEV")
     If Len(strEVP) > 0 Then
       lngEVP = CLng(strEVP)
@@ -270,7 +276,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim oDict As Scripting.Dictionary
   Dim oShell As Object
   Dim oRecordset As ADODB.Recordset
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -308,7 +314,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim lngEVT As Long 'EVT LCF
   Dim lngMultiplier As Long
   Dim lngDeconflictionFile As Long
-  Dim lngEVP As Long
+  Dim lngEVP As Long 'value to import
   Dim lngTaskNameCol As Long
   Dim lngEVTCol As Long
   Dim lngEVPCol As Long
@@ -322,12 +328,12 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim lngHeaderRow As Long
   Dim lngLastRow As Long
   Dim lngItem As Long
-  Dim lngETC As Long
-  Dim lngEV As Long
-  Dim lngFF As Long
-  Dim lngFS As Long
-  Dim lngAF As Long
-  Dim lngAS As Long
+  Dim lngETC As Long 'LCF
+  Dim lngEV As Long 'LCF
+  Dim lngFF As Long 'LCF
+  Dim lngFS As Long 'LCF
+  Dim lngAF As Long 'LCF
+  Dim lngAS As Long 'LCF
   'integers
   'doubles
   Dim dblWas As Double
@@ -453,7 +459,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   strAF = FieldConstantToFieldName(lngAF)
   strNS = FieldConstantToFieldName(lngFS)
   strNF = FieldConstantToFieldName(lngFF)
-  strEVP = FieldConstantToFieldName(lngEVP)
+  strEVP = FieldConstantToFieldName(lngEV)
   strETC = FieldConstantToFieldName(lngETC)
   
   ActiveWindow.TopPane.Activate
@@ -1013,7 +1019,7 @@ exit_here:
   Set oShell = Nothing
   If oRecordset.State = 1 Then oRecordset.Close
   Set oRecordset = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   myStatusSheetImport_frm.lblStatus.Caption = "Import Complete."
   myStatusSheetImport_frm.lblProgress.Width = myStatusSheetImport_frm.lblStatus.Width
   DoEvents
@@ -1303,6 +1309,8 @@ err_here:
 End Sub
 
 Sub cptAddRange(ByRef rBad As Excel.Range, ByRef oRange As Excel.Range)
+'requires oBad (Scripting.Dictionary) exists
+'still do things to rBad if oBad.Count=0
   If rBad Is Nothing Then
     Set rBad = oRange
   Else
