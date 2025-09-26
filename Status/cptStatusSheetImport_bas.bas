@@ -206,6 +206,11 @@ Sub cptShowStatusSheetImport_frm()
       blnRename = True
     End If
     
+    strAppend = cptGetSetting("StatusSheetImport", "chkNotes")
+    If Len(strAppend) > 0 Then
+      cptSaveSetting "StatusSheetImport", "chkAppend", CBool(strAppend)
+      cptDeleteSetting "StatusSheetImport", "chkNotes"
+    End If
     strAppend = cptGetSetting("StatusSheetImport", "chkAppend")
     If Len(strAppend) > 0 Then .chkAppend = CBool(strAppend)
     strAppendTo = cptGetSetting("StatusSheetImport", "cboAppendTo")
