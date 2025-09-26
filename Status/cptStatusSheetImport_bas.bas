@@ -483,7 +483,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   SetField strEVP, ""
   SetField strETC, ""
   myStatusSheetImport_frm.lblStatus.Caption = "Clearing previous values...done."
-  ViewApply "cptStatusSheetImport View"
+  'ViewApply "cptStatusSheetImport View"
   
   'set up array of updated  UIDs
   Set oDict = CreateObject("Scripting.Dictionary")
