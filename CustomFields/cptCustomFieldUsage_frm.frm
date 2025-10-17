@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptCustomFieldUsage_frm 
    Caption         =   "Custom Field Usage"
-   ClientHeight    =   3975
+   ClientHeight    =   4275
    ClientLeft      =   120
    ClientTop       =   465
    ClientWidth     =   8100
@@ -32,15 +32,20 @@ Private Sub chkIncludeSummaryTasks_Click()
 End Sub
 
 Private Sub cmdClear_Click()
+  Dim blnMaster As Boolean
+  Dim lngLCF As Long
+  
+  blnMaster = ActiveProject.Subprojects.Count > 0
   If Not IsNull(Me.lboCustomFields.Value) Then
-    Application.OpenUndoTransaction "cpt - Clear " & FieldConstantToFieldName(Me.lboCustomFields.Value)
-    SelectTaskColumn FieldConstantToFieldName(Me.lboCustomFields.Value)
+    lngLCF = Me.lboCustomFields.Value
+    If MsgBox("Really clear data from '" & FieldConstantToFieldName(lngLCF) & "'?" & vbCrLf & vbCrLf & "Undo *should* be available...but be careful!", vbQuestion + vbYesNo, "Please confirm") = vbNo Then Exit Sub
+    Application.OpenUndoTransaction "cpt - Clear " & FieldConstantToFieldName(lngLCF)
+    SelectTaskColumn FieldConstantToFieldName(lngLCF)
     If Me.lboFieldTypes.Value = "Flag" Then
-      SetField FieldConstantToFieldName(Me.lboCustomFields.Value), "No"
+      SetField FieldConstantToFieldName(lngLCF), "No"
     Else
-      SetField FieldConstantToFieldName(Me.lboCustomFields.Value), ""
+      SetField FieldConstantToFieldName(lngLCF), ""
     End If
-    'SelectBeginning
     Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = 0
     Application.CloseUndoTransaction
   End If
@@ -65,21 +70,27 @@ Private Sub cmdRename_Click()
   End If
 End Sub
 
+Private Sub lblURL_Click()
+  
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then Application.FollowHyperlink "http://www.ClearPlanConsulting.com"
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptCustomFieldUsage_frm", "lblURL_Click()", Err, Erl)
+  Resume exit_here
+
+End Sub
+
 Private Sub lboCustomFields_Click()
-  Dim oTasks As MSProject.Tasks
   If Not Me.tglAll Then
     cptUpdateCustomFieldUsageView Me.lboCustomFields.Value, Me.lboFieldTypes.Value, True
   End If
   SelectTaskColumn FieldConstantToFieldName(Me.lboCustomFields.Value)
-'  On Error Resume Next
-'  Set oTasks = ActiveSelection.Tasks
-'  If Not oTasks Is Nothing Then
-'    If Not Me.tglAll Then
-'      Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = Format(oTasks.Count, "#,##0")
-'    End If
-'  Else
-'    Me.lboCustomFields.List(Me.lboCustomFields.ListIndex, 3) = 0
-'  End If
   Me.lblFormula.Visible = cptHasFormula(ActiveProject, Me.lboCustomFields.Value)
   Me.lblLookup.Visible = cptHasLookup(ActiveProject, Me.lboCustomFields.Value)
   If Not Me.lblFormula.Visible And Me.lblLookup.Visible Then
@@ -87,7 +98,6 @@ Private Sub lboCustomFields_Click()
   Else
     Me.lblLookup.Top = 102
   End If
-  Set oTasks = Nothing
 End Sub
 
 Sub lboFieldTypes_Click()
@@ -209,7 +219,7 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   TableApply strCustomFieldUsageStartingTable
   GroupApply strCustomFieldUsageStartingGroup
   FilterApply strCustomFieldUsageStartingFilter
-  On Error Resume Next
+  On Error Resume Next 'fails if view is in use, e.g., on another project or another window of same project
   If cptViewExists("cptCustomFieldUsage View") Then ActiveProject.Views("cptCustomFieldUsage View").Delete
   If cptTableExists("cptCustomFieldUsage Table") Then ActiveProject.TaskTables("cptCustomFieldUsage Table").Delete
 End Sub

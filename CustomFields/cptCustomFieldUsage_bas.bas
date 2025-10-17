@@ -48,6 +48,7 @@ Sub cptShowCustomFieldUsage_frm()
   'doubles
   'booleans
   Dim blnErrorTrapping As Boolean
+  Dim blnMaster As Boolean
   'variants
   Dim vFieldType As Variant
   'dates
@@ -57,6 +58,7 @@ Sub cptShowCustomFieldUsage_frm()
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
+  blnMaster = ActiveProject.Subprojects.Count > 0
   'capture view/table/group/filter
   ActiveWindow.TopPane.Activate
   If ActiveWindow.ActivePane.View.Type <> pjTaskItem Then ViewApply "Gantt Chart"
@@ -107,6 +109,17 @@ Sub cptShowCustomFieldUsage_frm()
     .lboCustomFields.Height = .lboFieldTypes.Height
     .tglAll.Top = .lboCustomFields.Top + .lboCustomFields.Height - .tglAll.Height
     .tglAll.Value = False 'user setting?
+    If blnMaster Then
+      .cmdClear.Enabled = False
+      .cmdClear.ControlTipText = "Not available in Master/Subproject setup"
+      .cmdRename.Enabled = False
+      .cmdRename.ControlTipText = "Not available in Master/Subproject setup"
+    Else
+      .cmdClear.Enabled = True
+      .cmdClear.ControlTipText = "Clear task data from selected local custom field"
+      .cmdRename.Enabled = True
+      .cmdRename.ControlTipText = "Rename the Local Custom Field"
+    End If
     .Show (False)
   End With
   
@@ -120,9 +133,14 @@ err_here:
 End Sub
 
 Sub cptUpdateCustomFieldUsageView(lngLCF As Long, Optional strFieldType As String, Optional blnFilter As Boolean = False)
+  Dim blnMaster As Boolean
+  blnMaster = ActiveProject.Subprojects.Count > 0
   FilterClear
   If lngLCF > 0 Then
     TableEditEx "cptCustomFieldUsage Table", True, True, True, , "ID", , , , , False, True, , , , , False, False, False, False
+    If blnMaster Then
+      TableEditEx "cptCustomFieldUsage Table", True, , , , , "Project", , , , , True
+    End If
     TableEditEx "cptCustomFieldUsage Table", True, , , , , "Unique ID", "UID", , , , True
     TableEditEx "cptCustomFieldUsage Table", True, , , , , "Name", , 85, , , True
     TableEditEx "cptCustomFieldUsage Table", True, , , , , FieldConstantToFieldName(lngLCF), , , , , True
@@ -150,9 +168,12 @@ Sub cptUpdateCustomFieldUsageView(lngLCF As Long, Optional strFieldType As Strin
     End If
   Else
     TableEditEx "cptCustomFieldUsage Table", True, True, True, , "ID", , , , , False, True, , , , , False, False, False, True
+    If blnMaster Then
+      TableEditEx "cptCustomFieldUsage Table", True, , , , , "Project", , , , , True
+    End If
     TableEditEx "cptCustomFieldUsage Table", True, , , , , "Unique ID", "UID", , , , True
     TableEditEx "cptCustomFieldUsage Table", True, , , , , "Name", , 85, , , True
   End If
   TableApply "cptCustomFieldUsage Table"
-  SetSplitBar 4
+  If blnMaster Then SetSplitBar 5 Else SetSplitBar 4
 End Sub
