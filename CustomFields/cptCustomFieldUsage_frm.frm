@@ -209,6 +209,7 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
   TableApply strCustomFieldUsageStartingTable
   GroupApply strCustomFieldUsageStartingGroup
   FilterApply strCustomFieldUsageStartingFilter
+  On Error Resume Next
   If cptViewExists("cptCustomFieldUsage View") Then ActiveProject.Views("cptCustomFieldUsage View").Delete
   If cptTableExists("cptCustomFieldUsage Table") Then ActiveProject.TaskTables("cptCustomFieldUsage Table").Delete
 End Sub

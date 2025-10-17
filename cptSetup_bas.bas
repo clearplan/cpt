@@ -668,7 +668,7 @@ Public Function cptBuildRibbonTab()
   
   If cptModuleExists("cptCostRateTables_bas") And cptModuleExists("cptCostRateTables_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCostRateTables"" label=""Cost Rate Tables"" imageMso=""DataTypeCurrency"" onAction=""cptShowCostRateTables_frm""  size=""large"" visible=""true"" />"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCostRateTables"" label=""Cost Rate Tables"" imageMso=""DataTypeCurrency"" onAction=""cptShowCostRateTables_frm""  size=""large"" visible=""true"" supertip=""Easily Import and Export Cost Rate Tables."" />"
   End If
   
   'mpm
