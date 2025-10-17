@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptBackbone_bas"
-'<cpt_version>v1.2.5</cpt_version>
+'<cpt_version>v1.2.6</cpt_version>
 Option Explicit
 
 Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
@@ -985,6 +985,9 @@ Sub cptShowBackbone_frm()
   Dim lngCode As Long, lngOutlineCode As Long
   'strings
   Dim strOutlineCode As String, strOutlineCodeName As String
+
+  'prevent spawning
+  If Not cptGetUserForm("cptBackbone_frm") Is Nothing Then Exit Sub
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   

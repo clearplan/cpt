@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.2.4</cpt_version>
+'<cpt_version>v1.2.5</cpt_version>
 Option Explicit
 
 Sub cptShowFilterByClipboard_frm()
@@ -16,6 +16,9 @@ Sub cptShowFilterByClipboard_frm()
   Dim blnMaster As Boolean
   'variants
   'dates
+
+  'prevent spawning
+  If Not cptGetUserForm("cptFilterByClipboard_frm") Is Nothing Then Exit Sub
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If ActiveProject.Tasks.Count = 0 Then GoTo exit_here

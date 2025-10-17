@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.15.1</cpt_version>
+'<cpt_version>v1.15.2</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
@@ -7,13 +7,11 @@ Private oMSPEvents As cptEvents_cls
   Private Declare PtrSafe Function SetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
   Public Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
-
 #Else
   Private Declare Function GetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function SetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare Function GetTickCount Lib "kernel32" () As Long '<issue53>
   Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
-
 #End If
 
 Sub cptStartEvents()
@@ -126,9 +124,9 @@ Function cptGetBreadcrumbs(strModule As String, strProcedure As String, strBread
           Exit For 'stop capturing
         Else
           If blnResult Then
-            strLine = Trim(vbCodeModule.lines(lngLine, 1))
+            strLine = Trim(vbCodeModule.Lines(lngLine, 1))
             If Left(strLine, 1) = "'" Then
-              If InStr(strLine, "todo") = 0 Then
+              If InStr(strLine, "todo") = 0 And InStr(strLine, "</skip-breadcrumb>") = 0 Then
                 strResult = strResult & Right(strLine, Len(strLine) - 1) & vbCrLf 'comments only, sans apostrophe
               End If
             End If
@@ -149,7 +147,7 @@ Function cptGetVersions() As String
   For Each vbComponent In ThisProject.VBProject.VBComponents
     'is the vbComponent one of ours?
     If vbComponent.CodeModule.Find("<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      strVersion = cptRegEx(vbComponent.CodeModule.lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
+      strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
       strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
       cptGetVersions = cptGetVersions & vbComponent.Name & ": " & strVersion & vbCrLf
     End If
@@ -240,7 +238,7 @@ frx:
   '<issue24> remove the whitespace added by VBE import/export
   With ThisProject.VBProject.VBComponents(strModule).CodeModule
     For lngLine = .CountOfDeclarationLines To 1 Step -1
-      If Len(.lines(lngLine, 1)) = 0 Then .DeleteLines lngLine, 1
+      If Len(.Lines(lngLine, 1)) = 0 Then .DeleteLines lngLine, 1
     Next lngLine
   End With '</issue24>
 
@@ -268,7 +266,10 @@ Sub cptShowAbout_frm()
   'booleans
   'variants
   'dates
-
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptAbout_frm") Is Nothing Then Exit Sub
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   If Not cptModuleExists("cptAbout_frm") Then '<issue19>
@@ -412,7 +413,7 @@ Sub cptGetReferences()
   Reset
   
   ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
-
+  
 End Sub
 
 Function cptGetDirectory(strModule As String) As String
@@ -656,7 +657,7 @@ Sub cptResetAll()
   If lngSettings > 0 Then
     'parse and apply
     If lngSettings >= 128 Then 'outline symbols
-      OptionsViewEx displayoutlinesymbols:=True
+      OptionsViewEx DisplayOutlineSymbols:=True
       lngSettings = lngSettings - 128
     End If
     If lngSettings >= 64 Then 'display name indent
@@ -818,6 +819,9 @@ Sub cptShowResetAll_frm()
   'variants
   Dim vViewList As Variant
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptResetAll_frm") Is Nothing Then Exit Sub
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -992,7 +996,10 @@ Sub cptShowUpgrades_frm()
   Dim blnUpdatesAreAvailable As Boolean
   'variants
   Dim vCol As Variant
-
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptUpgrades_frm") Is Nothing Then Exit Sub
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     
   'ensure all cpt forms are closed/unloaded
@@ -1066,7 +1073,7 @@ Sub cptShowUpgrades_frm()
   For Each vbComponent In ThisProject.VBProject.VBComponents
     'is the vbComponent one of ours?
     If vbComponent.CodeModule.Find("'<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      strVersion = cptRegEx(vbComponent.CodeModule.lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>", True)
+      strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>", True)
       strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
       rstStatus.MoveFirst
       rstStatus.Find "Module='" & vbComponent.Name & "'", , 1
@@ -1766,6 +1773,9 @@ Function cptViewExists(strView As String) As Boolean
 
   On Error Resume Next
   Set oView = ActiveProject.Views(strView)
+  If oView Is Nothing Then
+    Set oView = Application.GlobalViews(strView)
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptViewExists = Not oView Is Nothing
   
@@ -1779,12 +1789,22 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptTableExists(strTable As String) As Boolean
+Function cptTableExists(strTable As String, Optional blnResourceTable As Boolean = False) As Boolean
   'objects
   Dim oTable As MSProject.Table
 
   On Error Resume Next
-  Set oTable = ActiveProject.TaskTables(strTable)
+  If blnResourceTable Then
+    Set oTable = ActiveProject.ResourceTables(strTable)
+    If oTable Is Nothing Then
+      Set oTable = Application.GlobalResourceTables(strTable)
+    End If
+  Else
+    Set oTable = ActiveProject.TaskTables(strTable)
+    If oTable Is Nothing Then
+      Set oTable = Application.GlobalTaskTables(strTable)
+    End If
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptTableExists = Not oTable Is Nothing
   
@@ -1798,12 +1818,22 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptFilterExists(strFilter As String) As Boolean
+Function cptFilterExists(strFilter As String, Optional blnResourceFilter As Boolean = False) As Boolean
   'objects
   Dim oFilter As MSProject.Filter
 
   On Error Resume Next
-  Set oFilter = ActiveProject.TaskFilters(strFilter)
+  If blnResourceFilter Then
+    Set oFilter = ActiveProject.ResourceFilters(strFilter)
+    If oFilter Is Nothing Then
+      Set oFilter = Application.GlobalResourceFilters(strFilter)
+    End If
+  Else
+    Set oFilter = ActiveProject.TaskFilters(strFilter)
+    If oFilter Is Nothing Then
+      Set oFilter = Application.GlobalTaskFilters(strFilter)
+    End If
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptFilterExists = Not oFilter Is Nothing
   
@@ -1817,12 +1847,22 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptGroupExists(strGroup As String) As Boolean
+Function cptGroupExists(strGroup As String, Optional blnResourceGroup As Boolean = False) As Boolean
   'objects
   Dim oGroup As MSProject.Group
 
   On Error Resume Next
-  Set oGroup = ActiveProject.TaskGroups(strGroup)
+  If blnResourceGroup Then
+    Set oGroup = ActiveProject.ResourceGroups(strGroup)
+    If oGroup Is Nothing Then
+      Set oGroup = Application.ResourceGroups(strGroup)
+    End If
+  Else
+    Set oGroup = ActiveProject.TaskGroups(strGroup)
+    If oGroup Is Nothing Then
+      Set oGroup = Application.TaskGroups(strGroup)
+    End If
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptGroupExists = Not oGroup Is Nothing
   
@@ -1842,7 +1882,7 @@ Sub cptCreateFilter(strFilter As String)
 
   Select Case strFilter
     Case "Marked"
-      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
+      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
       
   End Select
   
@@ -1876,6 +1916,9 @@ Sub cptShowSettings_frm()
   'booleans
   'variants
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptSettings_frm") Is Nothing Then Exit Sub
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
@@ -2018,7 +2061,7 @@ End Function
 
 Sub cptOpenSettingsFile()
   Dim strFileName As String
-  strFilename = cptDir & "\settings\cpt-settings.ini"
+  strFileName = cptDir & "\settings\cpt-settings.ini"
   ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
 
@@ -2669,6 +2712,9 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
   Dim vControl As Variant
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptIntegration_frm") Is Nothing Then Exit Function
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
@@ -2688,7 +2734,6 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
     oRequiredFields(vRequired) = True
   Next vRequired
   'todo: LOE and PP must have selection, even if it's just '<unused>'
-  'todo: in DECM, wherever LOE is filtered out, account for '<unused>'
   
   blnECF = False 'default
   For Each vControl In Split(strDefaultFields, ",")
@@ -2728,20 +2773,18 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         .chkECF.Enabled = False
       End If
     End If
-    'convert saved settings
+    'convert legacy saved settings
     strSetting = cptGetSetting("Integration", "CWBS")
     If Len(strSetting) > 0 Then
       cptSaveSetting "Integration", "WBS", strSetting
-      'delete setting CWBS
       cptDeleteSetting "Integration", "CWBS"
     End If
     strSetting = cptGetSetting("Integration", "WPCN")
     If Len(strSetting) > 0 Then
       cptSaveSetting "Integration", "WP", strSetting
-      'delete setting WPCN
       cptDeleteSetting "Integration", "WPCN"
     End If
-    cptDeleteSetting "Integration", "EOC"
+    cptDeleteSetting "Integration", "EOC" 'no longer required
     
     For Each vControl In Split(strDefaultFields, ",")
       strSetting = cptGetSetting("Integration", CStr(vControl))
@@ -2779,11 +2822,10 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         End If
       End If
       Set oComboBox = .Controls("cbo" & vControl)
+      'default to black borders
       oComboBox.BorderColor = -2147483642
       If Len(strSetting) = 0 Then
-        If oRequiredFields(vControl) Then blnValid = False
         lngField = 0
-        If oRequiredFields(vControl) Then oComboBox.BorderColor = 192
       Else
         If vControl = "LOE" Then
           strLOE = strSetting
@@ -2851,7 +2893,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         If .cboPP.ListCount > 0 Then .cboPP.Value = strPP
         If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
         GoTo next_control
-      Else 'WP,EVTMS
+      Else 'WP,EVT,EVTMS
         vFields = cptSortedArray(cptGetCustomFields("t", "Text,Outline Code", "c,cfn,loc", blnECF), 1)
         For lngItem = 0 To UBound(vFields)
           oComboBox.AddItem
@@ -2883,6 +2925,19 @@ next_control:
         oComboBox.Enabled = True
       Else
         oComboBox.Enabled = oRequiredFields(vControl)
+      End If
+      If oRequiredFields(vControl) Then
+        If vControl = "LOE" Or vControl = "PP" Then
+          If oComboBox.Value = "" Then
+            oComboBox.BorderColor = 192
+            blnValid = False
+          End If
+        Else
+          If IsNull(oComboBox.Value) Then
+            oComboBox.BorderColor = 192
+            blnValid = False
+          End If
+        End If
       End If
       Set oComboBox = Nothing
     Next vControl
@@ -3228,11 +3283,15 @@ Function cptGetDate(dtDate As Date, Optional strFormat As String)
   End If
 End Function
 
-Function cptCustomFieldExists(strCustomFieldName As String) As Variant
+Function cptCustomFieldExists(strCustomFieldName As String, Optional blnResourceField As Boolean = False) As Variant
   'returns 0 if false; constant if true
   Dim lngCFC As Long
   On Error Resume Next
-  lngCFC = FieldNameToFieldConstant(strCustomFieldName)
+  If blnResourceField Then
+    lngCFC = FieldNameToFieldConstant(strCustomFieldName, pjResource)
+  Else
+    lngCFC = FieldNameToFieldConstant(strCustomFieldName, pjTask)
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptCustomFieldExists = lngCFC
 err_here:
@@ -3528,5 +3587,43 @@ Function cptGetConstantName(strProperty As String, lngValue As Long) As String
       strConstantName = ""
   End Select
   cptGetConstantName = strConstantName
+End Function
+
+Function cptHasFormula(ByRef oProject As MSProject.Project, lngCFC As Long) As Boolean
+  oProject.Activate
+  cptHasFormula = Len(CustomFieldGetFormula(lngCFC)) > 0
+End Function
+
+Function cptHasLookup(ByRef oProject As MSProject.Project, lngCFC As Long) As Boolean
+  Dim strFN As String
+  Dim strCFN As String
+  Dim blnHasLookup As Boolean
+  Dim blnErrorTrapping As Boolean
+  Dim oOutlineCode As MSProject.OutlineCode
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  oProject.Activate
+  strFN = FieldConstantToFieldName(lngCFC)
+  strCFN = CustomFieldGetName(lngCFC)
+  If InStr(strFN, "Outline Code") > 0 Then
+    On Error Resume Next
+    Set oOutlineCode = oProject.OutlineCodes(strCFN)
+    blnHasLookup = Not oOutlineCode Is Nothing
+  Else
+    On Error Resume Next
+    blnHasLookup = Len(CustomFieldValueListGetItem(lngCFC, pjValueListValue, 1)) > 0
+  End If
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+exit_here:
+  On Error Resume Next
+  cptHasLookup = blnHasLookup
+  Set oOutlineCode = Nothing
+  Exit Function
+err_here:
+  Call cptHandleErr("cptCore_bas", "cptHasLookup()", Err, Erl)
+  Resume exit_here
 End Function
 

@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSaveMarked_bas"
-'<cpt_version>v1.0.9</cpt_version>
+'<cpt_version>v1.0.10</cpt_version>
 Option Explicit
 
 Sub cptShowSaveMarked_frm()
@@ -16,6 +16,9 @@ Sub cptShowSaveMarked_frm()
   'variants
   'dates
   
+  'prevent spawning
+  If Not cptGetUserForm("cptSaveMarked_frm") Is Nothing Then Exit Sub
+
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   Set mySaveMarked_frm = New cptSaveMarked_frm

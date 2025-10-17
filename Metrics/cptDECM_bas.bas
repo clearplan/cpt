@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v7.1.0</cpt_version>
+'<cpt_version>v8.1.0</cpt_version>
 Option Explicit
 Private strWBS As String
 Private strOBS As String
@@ -25,7 +25,7 @@ Private oSubMap As Scripting.Dictionary
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
   'objects
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim myDECM_frm As cptDECM_frm
   Dim oException As MSProject.Exception
   Dim oTasks As MSProject.Tasks
@@ -118,6 +118,9 @@ Sub cptDECM_GET_DATA()
   Dim dtPrevious As Date
   Dim dtCurrent As Date
   Dim dtStatus As Date
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptDECM_frm") Is Nothing Then Exit Sub
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -276,13 +279,13 @@ Sub cptDECM_GET_DATA()
     Else
       oSubMap.RemoveAll
     End If
-    For Each oSubproject In ActiveProject.Subprojects
-      If Left(oSubproject.Path, 2) <> "<>" Then 'offline
-        oSubMap.Add Replace(Dir(oSubproject.Path), ".mpp", ""), 0
-      ElseIf Left(oSubproject.Path, 2) = "<>" Then 'online
-        oSubMap.Add oSubproject.Path, 0
+    For Each oSubProject In ActiveProject.Subprojects
+      If Left(oSubProject.Path, 2) <> "<>" Then 'offline
+        oSubMap.Add Replace(Dir(oSubProject.Path), ".mpp", ""), 0
+      ElseIf Left(oSubProject.Path, 2) = "<>" Then 'online
+        oSubMap.Add oSubProject.Path, 0
       End If
-    Next oSubproject
+    Next oSubProject
     For Each oTask In ActiveProject.Tasks
       If oTask Is Nothing Then GoTo next_mapping_task
       If Not oTask.Active Then GoTo next_mapping_task
@@ -3001,7 +3004,7 @@ Sub DECM_06A505a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   End With
   strSQL = "SELECT UID,EVP,[AS] FROM [tasks.csv] "
   strSQL = strSQL & "WHERE SUMMARY='No' AND EVP<100 AND EVP>0 "
-  strSQL = strSQL & "AND [AS] IS NULL"
+  strSQL = strSQL & "AND ([AS] IS NULL OR [AF] IS NOT NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -3178,8 +3181,8 @@ Sub DECM_06A506b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish before the status date
   'X = 0
   strSQL = "SELECT UID,FS,FF FROM [tasks.csv] "
-  strSQL = strSQL & "WHERE ((FS<#" & dtStatus & "# AND [AS] IS NULL) "
-  strSQL = strSQL & "OR (FF<#" & dtStatus & "# AND AF IS NULL))"
+  strSQL = strSQL & "WHERE ((FS<=#" & dtStatus & "# AND [AS] IS NULL) "
+  strSQL = strSQL & "OR (FF<=#" & dtStatus & "# AND AF IS NULL))"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -3840,6 +3843,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             strSQL = strSQL & "LEFT JOIN [tasks.csv] T3 ON T3.UID=T1.TO "
             strSQL = strSQL & "WHERE [FROM] IN (" & oDECM(strMetric) & ") "
             strSQL = strSQL & "AND T2.EVT='" & strLOE & "' "
+            strSQL = strSQL & "AND T3.EVT<>'" & strLOE & "' "
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
             oWorksheet.[A3:F3] = Split("FROM UID,FROM TASK NAME,FROM EVT,TO UID,TO TASK NAME,TO EVT", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
@@ -4608,7 +4612,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   Dim oAssignment As MSProject.Assignment
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   'Dim oSubMap As Scripting.Dictionary
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
@@ -4986,7 +4990,7 @@ exit_here:
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oSubMap = Nothing
   Application.StatusBar = ""
   oExcel.EnableEvents = True
@@ -5161,6 +5165,9 @@ Private Function cptDECMGetTargetUID() As Long
   'booleans
   'variants
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptDECMTargetUID_frm") Is Nothing Then Exit Function
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   

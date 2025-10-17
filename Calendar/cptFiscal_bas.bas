@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFiscal_bas"
-'<cpt_version>v1.2.0</cpt_version>
+'<cpt_version>v1.2.1</cpt_version>
 Option Explicit
 
 Sub cptShowFiscal_frm()
@@ -17,6 +17,9 @@ Sub cptShowFiscal_frm()
   'booleans
   'variants
   'dates
+
+  'prevent spawning
+  If Not cptGetUserForm("cptFiscal_frm") Is Nothing Then Exit Sub
 
   'get/create fiscal calendar
   On Error Resume Next

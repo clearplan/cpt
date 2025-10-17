@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSaveLocal_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
 Public strStartView As String
 Public strStartTable As String
@@ -48,6 +48,9 @@ Sub cptShowSaveLocal_frm()
   Dim vEntity As Variant
   Dim vType As Variant
   'dates
+
+  'prevent spawning
+  If Not cptGetUserForm("cptSaveLocal_frm") Is Nothing Then Exit Sub
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir

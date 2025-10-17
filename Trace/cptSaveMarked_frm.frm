@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.0.9</cpt_version>
+'<cpt_version>v1.0.10</cpt_version>
 Option Explicit
 
 Private Sub cmdDone_Click()

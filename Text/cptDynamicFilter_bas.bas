@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDynamicFilter_bas"
-'<cpt_version>v1.6.4</cpt_version>
+'<cpt_version>v1.6.5</cpt_version>
 Option Explicit
 Private pCachedRegexes As Scripting.Dictionary
 
@@ -17,6 +17,9 @@ Sub cptShowDynamicFilter_frm()
   'variants
   Dim vArray As Variant
   'dates
+
+  'prevent spawning
+  If Not cptGetUserForm("cptDynamicFilter_frm") Is Nothing Then Exit Sub
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 

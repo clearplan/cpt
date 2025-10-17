@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.3</cpt_version>
+'<cpt_version>v1.3.4</cpt_version>
 Option Explicit
 
 Private Sub cboAF_Change()
@@ -125,9 +125,9 @@ Private Sub cmdImport_Click()
     cptSaveSetting "StatusSheetImport", "cboAF", Me.cboAF.Value
     cptSaveSetting "StatusSheetImport", "cboFS", Me.cboFS.Value
     cptSaveSetting "StatusSheetImport", "cboFF", Me.cboFF.Value
-    cptSaveSetting "StatusSheetImport", "cboEVP", Me.cboEV.Value
+    cptSaveSetting "StatusSheetImport", "cboEV", Me.cboEV.Value
     cptSaveSetting "StatusSheetImport", "cboETC", Me.cboETC.Value
-    cptSaveSetting "StatusSheetImport", "chkNotes", CStr(Me.chkAppend)
+    cptSaveSetting "StatusSheetImport", "chkAppend", IIf(Me.chkAppend, "1", "0")
     If Me.chkAppend Then
       cptSaveSetting "StatusSheetImport", "cboAppendTo", Me.cboAppendTo.Value
     Else

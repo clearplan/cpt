@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.3.3</cpt_version>
+'<cpt_version>v1.3.4</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -41,6 +41,9 @@ Sub cptShowStatusSheetImport_frm()
   'variants
   Dim vField As Variant
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptStatusSheetImport_frm") Is Nothing Then Exit Sub
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -179,6 +182,12 @@ Sub cptShowStatusSheetImport_frm()
       blnRename = True
     End If
     
+    'fix previous
+    strEVP = cptGetSetting("StatusSheetImport", "cboEVP")
+    If Len(strEVP) > 0 Then
+      cptSaveSetting "StatusSheetImport", "cboEV", strEVP
+      cptDeleteSetting "StatusSheetImport", "cboEVP"
+    End If
     strEVP = cptGetSetting("StatusSheetImport", "cboEV")
     If Len(strEVP) > 0 Then
       lngEVP = CLng(strEVP)
@@ -197,6 +206,11 @@ Sub cptShowStatusSheetImport_frm()
       blnRename = True
     End If
     
+    strAppend = cptGetSetting("StatusSheetImport", "chkNotes")
+    If Len(strAppend) > 0 Then
+      cptSaveSetting "StatusSheetImport", "chkAppend", CBool(strAppend)
+      cptDeleteSetting "StatusSheetImport", "chkNotes"
+    End If
     strAppend = cptGetSetting("StatusSheetImport", "chkAppend")
     If Len(strAppend) > 0 Then .chkAppend = CBool(strAppend)
     strAppendTo = cptGetSetting("StatusSheetImport", "cboAppendTo")
@@ -235,15 +249,6 @@ Sub cptShowStatusSheetImport_frm()
 
   End With
   
-'  ActiveWindow.TopPane.Activate
-'  If blnTaskUsageBelow Then
-'    ViewApply "Task Entry"
-'  Else
-'    ViewApply "Task Usage"
-'  End If
-'  Call cptRefreshStatusImportTable(blnTaskUsageBelow)
-  
-
 exit_here:
   On Error Resume Next
   Set rst = Nothing
@@ -267,7 +272,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim oDict As Scripting.Dictionary
   Dim oShell As Object
   Dim oRecordset As ADODB.Recordset
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -299,13 +304,14 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim strAppendTo As String
   Dim strSettings As String
   Dim strGUID As String
+  Dim strUserView As String
   'longs
   Dim lngUID As Long
   Dim lngBadItem As Long
   Dim lngEVT As Long 'EVT LCF
   Dim lngMultiplier As Long
   Dim lngDeconflictionFile As Long
-  Dim lngEVP As Long
+  Dim lngEVP As Long 'value to import
   Dim lngTaskNameCol As Long
   Dim lngEVTCol As Long
   Dim lngEVPCol As Long
@@ -319,12 +325,12 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim lngHeaderRow As Long
   Dim lngLastRow As Long
   Dim lngItem As Long
-  Dim lngETC As Long
-  Dim lngEV As Long
-  Dim lngFF As Long
-  Dim lngFS As Long
-  Dim lngAF As Long
-  Dim lngAS As Long
+  Dim lngETC As Long 'LCF
+  Dim lngEV As Long 'LCF
+  Dim lngFF As Long 'LCF
+  Dim lngFS As Long 'LCF
+  Dim lngAF As Long 'LCF
+  Dim lngAS As Long 'LCF
   'integers
   'doubles
   Dim dblWas As Double
@@ -450,11 +456,12 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   strAF = FieldConstantToFieldName(lngAF)
   strNS = FieldConstantToFieldName(lngFS)
   strNF = FieldConstantToFieldName(lngFF)
-  strEVP = FieldConstantToFieldName(lngEVP)
+  strEVP = FieldConstantToFieldName(lngEV)
   strETC = FieldConstantToFieldName(lngETC)
   
   ActiveWindow.TopPane.Activate
-  ViewApply "Task Usage"
+  strUserView = ActiveProject.CurrentView
+  ViewApply "Task Usage" 'so we can clear out Assignment-level New ETC also
   FilterClear
   'GroupClear 'todo: capture group name
   OptionsViewEx DisplaySummaryTasks:=True
@@ -469,7 +476,8 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   SetField strEVP, ""
   SetField strETC, ""
   myStatusSheetImport_frm.lblStatus.Caption = "Clearing previous values...done."
-  ViewApply "cptStatusSheetImport View"
+  'ViewApply "cptStatusSheetImport View"
+  ViewApply strUserView
   
   'set up array of updated  UIDs
   Set oDict = CreateObject("Scripting.Dictionary")
@@ -1010,7 +1018,7 @@ exit_here:
   Set oShell = Nothing
   If oRecordset.State = 1 Then oRecordset.Close
   Set oRecordset = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   myStatusSheetImport_frm.lblStatus.Caption = "Import Complete."
   myStatusSheetImport_frm.lblProgress.Width = myStatusSheetImport_frm.lblStatus.Width
   DoEvents
@@ -1062,6 +1070,7 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
   Dim strEVT As String
   Dim strEVP As String
   Dim strSettings As String
+  Dim strUserGroup As String
   'longs
   Dim lngEVT As Long
   Dim lngETC As Long
@@ -1241,12 +1250,13 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     End If
     TableEditEx Name:="cptStatusSheetImportDetails Table", TaskTable:=True, NewFieldName:="Notes", Title:="", Width:=60, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
     ActiveWindow.TopPane.Activate
-    'If ActiveProject.CurrentView <> "Gantt Chart" Then ViewApply Name:="Gantt Chart"
+    If ActiveProject.CurrentGroup <> "No Group" And ActiveProject.CurrentGroup <> "Autofilter Group" Then
+      strUserGroup = ActiveProject.CurrentGroup
+    End If
     ViewApply Name:="Gantt Chart"
-    'If ActiveProject.CurrentTable <> "cptStatusSheetImport Table" Then TableApply Name:="cptStatusSheetImport Table"
     TableApply Name:="cptStatusSheetImport Table"
     SetSplitBar ShowColumns:=ActiveProject.TaskTables(ActiveProject.CurrentTable).TableFields.Count
-    'todo: reapply group?
+    If Len(strUserGroup) > 0 Then GroupApply strUserGroup
     
     On Error Resume Next
     strBottomPaneViewName = ActiveWindow.BottomPane.View.Name
@@ -1257,18 +1267,18 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     End If
     ActiveWindow.BottomPane.Activate
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    'If ActiveProject.CurrentView <> "Task Usage" Then ViewApply "Task Usage"
     ViewApply "Task Usage"
-    'If ActiveProject.CurrentTable <> "cptStatusSheetImportDetails Table" Then TableApply "cptStatusSheetImportDetails Table"
     TableApply "cptStatusSheetImportDetails Table"
     ActiveWindow.TopPane.Activate
     SetSplitBar ShowColumns:=ActiveProject.TaskTables(ActiveProject.CurrentTable).TableFields.Count
   Else
     ActiveWindow.TopPane.Activate
-    'If ActiveProject.CurrentView <> "Task Usage" Then ViewApply "Task Usage"
+    If ActiveProject.CurrentGroup <> "No Group" And ActiveProject.CurrentGroup <> "Autofilter Group" Then
+      strUserGroup = ActiveProject.CurrentGroup
+    End If
     ViewApply "Task Usage"
+    If Len(strUserGroup) > 0 Then GroupApply strUserGroup
     DoEvents
-    'If ActiveProject.CurrentTable <> "cptStatusSheetImport Table" Then TableApply Name:="cptStatusSheetImport Table"
     TableApply Name:="cptStatusSheetImport Table"
     SetSplitBar ShowColumns:=ActiveProject.TaskTables(ActiveProject.CurrentTable).TableFields.Count
     On Error Resume Next
@@ -1277,7 +1287,6 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     If Len(strBottomPaneViewName) > 0 Then
       DetailsPaneToggle
     End If
-    'todo: reapply group?
   End If
   
   'reset the filter
@@ -1300,6 +1309,8 @@ err_here:
 End Sub
 
 Sub cptAddRange(ByRef rBad As Excel.Range, ByRef oRange As Excel.Range)
+'requires oBad (Scripting.Dictionary) exists
+'still do things to rBad if oBad.Count=0
   If rBad Is Nothing Then
     Set rBad = oRange
   Else

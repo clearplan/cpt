@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.1.0</cpt_version>
+'<cpt_version>v0.1.1</cpt_version>
 Option Explicit
 Public blnValidIntegrationMap As Boolean
 
@@ -89,7 +89,7 @@ End Sub
 
 Private Sub cboEVT_Change()
   'objects
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oCDP As DocumentProperty
   Dim oDict As Scripting.Dictionary
   Dim oTask As MSProject.Task
@@ -117,8 +117,8 @@ Private Sub cboEVT_Change()
   Me.cboPP.Clear
   Set oDict = CreateObject("Scripting.Dictionary")
   If ActiveProject.Subprojects.Count > 0 Then
-    For Each oSubproject In ActiveProject.Subprojects
-      For Each oTask In oSubproject.SourceProject.Tasks
+    For Each oSubProject In ActiveProject.Subprojects
+      For Each oTask In oSubProject.SourceProject.Tasks
         If oTask Is Nothing Then GoTo next_task_master
         If Not oTask.Active Then GoTo next_task_master
         strValue = oTask.GetField(Me.cboEVT.Value)
@@ -127,7 +127,7 @@ Private Sub cboEVT_Change()
         End If
 next_task_master:
       Next oTask
-    Next oSubproject
+    Next oSubProject
   Else
     For Each oTask In ActiveProject.Tasks
       If oTask Is Nothing Then GoTo next_task_single
@@ -165,7 +165,7 @@ next_task_single:
   
 exit_here:
   On Error Resume Next
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oDict = Nothing
   Set oCDP = Nothing
 
@@ -576,7 +576,11 @@ Private Sub UpdateIntegrationSettings()
       If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
       If oCDP Is Nothing Then GoTo next_control
       If IsNull(Me.Controls("cbo" & vControl).Value) Then 'populate it
-        If Me.Controls("cbo" & vControl).Enabled Then Me.Controls("cbo" & vControl).Value = ActiveProject.CustomDocumentProperties("f" & strControl)
+        If Me.Controls("cbo" & vControl).Enabled Then
+          If cptCustomFieldExists(CStr(ActiveProject.CustomDocumentProperties("f" & strControl))) > 0 Then
+            Me.Controls("cbo" & vControl).Value = FieldNameToFieldConstant(ActiveProject.CustomDocumentProperties("f" & strControl))
+          End If
+        End If
       ElseIf CustomFieldGetName(Me.Controls("cbo" & vControl).Value) <> ActiveProject.CustomDocumentProperties("f" & strControl) Then
         If FieldConstantToFieldName(Me.Controls("cbo" & vControl).Value) <> ActiveProject.CustomDocumentProperties("f" & strControl) Then 'catch if not a custom field (e.g., Physical % Complete)
           If Me.Controls("cbo" & vControl).Enabled Then Me.Controls("cbo" & vControl).BorderColor = 192
