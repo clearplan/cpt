@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v7.1.1</cpt_version>
+'<cpt_version>v8.1.0</cpt_version>
 Option Explicit
 Private strWBS As String
 Private strOBS As String
@@ -3004,7 +3004,7 @@ Sub DECM_06A505a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   End With
   strSQL = "SELECT UID,EVP,[AS] FROM [tasks.csv] "
   strSQL = strSQL & "WHERE SUMMARY='No' AND EVP<100 AND EVP>0 "
-  strSQL = strSQL & "AND [AS] IS NULL"
+  strSQL = strSQL & "AND ([AS] IS NULL OR [AF] IS NOT NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -3181,8 +3181,8 @@ Sub DECM_06A506b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish before the status date
   'X = 0
   strSQL = "SELECT UID,FS,FF FROM [tasks.csv] "
-  strSQL = strSQL & "WHERE ((FS<#" & dtStatus & "# AND [AS] IS NULL) "
-  strSQL = strSQL & "OR (FF<#" & dtStatus & "# AND AF IS NULL))"
+  strSQL = strSQL & "WHERE ((FS<=#" & dtStatus & "# AND [AS] IS NULL) "
+  strSQL = strSQL & "OR (FF<=#" & dtStatus & "# AND AF IS NULL))"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount

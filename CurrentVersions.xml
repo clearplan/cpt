@@ -178,21 +178,21 @@
 	<Module>
 		<Name>cptDECM_bas</Name>
 		<FileName>cptDECM_bas.bas</FileName>
-		<Version>v7.1.1</Version>
+		<Version>v8.1.0</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptDECM_frm</Name>
 		<FileName>cptDECM_frm.frm</FileName>
-		<Version>v7.1.1</Version>
+		<Version>v8.1.0</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptDECMTargetUID_frm</Name>
 		<FileName>cptDECMTargetUID_frm.frm</FileName>
-		<Version>v7.1.1</Version>
+		<Version>v8.1.0</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
