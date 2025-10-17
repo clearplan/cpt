@@ -249,15 +249,6 @@ Sub cptShowStatusSheetImport_frm()
 
   End With
   
-'  ActiveWindow.TopPane.Activate
-'  If blnTaskUsageBelow Then
-'    ViewApply "Task Entry"
-'  Else
-'    ViewApply "Task Usage"
-'  End If
-'  Call cptRefreshStatusImportTable(blnTaskUsageBelow)
-  
-
 exit_here:
   On Error Resume Next
   Set rst = Nothing
@@ -313,6 +304,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim strAppendTo As String
   Dim strSettings As String
   Dim strGUID As String
+  Dim strUserView As String
   'longs
   Dim lngUID As Long
   Dim lngBadItem As Long
@@ -468,7 +460,8 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   strETC = FieldConstantToFieldName(lngETC)
   
   ActiveWindow.TopPane.Activate
-  ViewApply "Task Usage"
+  strUserView = ActiveProject.CurrentView
+  ViewApply "Task Usage" 'so we can clear out Assignment-level New ETC also
   FilterClear
   'GroupClear 'todo: capture group name
   OptionsViewEx DisplaySummaryTasks:=True
@@ -484,6 +477,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   SetField strETC, ""
   myStatusSheetImport_frm.lblStatus.Caption = "Clearing previous values...done."
   'ViewApply "cptStatusSheetImport View"
+  ViewApply strUserView
   
   'set up array of updated  UIDs
   Set oDict = CreateObject("Scripting.Dictionary")
@@ -1076,6 +1070,7 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
   Dim strEVT As String
   Dim strEVP As String
   Dim strSettings As String
+  Dim strUserGroup As String
   'longs
   Dim lngEVT As Long
   Dim lngETC As Long
@@ -1255,12 +1250,13 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     End If
     TableEditEx Name:="cptStatusSheetImportDetails Table", TaskTable:=True, NewFieldName:="Notes", Title:="", Width:=60, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
     ActiveWindow.TopPane.Activate
-    'If ActiveProject.CurrentView <> "Gantt Chart" Then ViewApply Name:="Gantt Chart"
+    If ActiveProject.CurrentGroup <> "No Group" And ActiveProject.CurrentGroup <> "Autofilter Group" Then
+      strUserGroup = ActiveProject.CurrentGroup
+    End If
     ViewApply Name:="Gantt Chart"
-    'If ActiveProject.CurrentTable <> "cptStatusSheetImport Table" Then TableApply Name:="cptStatusSheetImport Table"
     TableApply Name:="cptStatusSheetImport Table"
     SetSplitBar ShowColumns:=ActiveProject.TaskTables(ActiveProject.CurrentTable).TableFields.Count
-    'todo: reapply group?
+    If Len(strUserGroup) > 0 Then GroupApply strUserGroup
     
     On Error Resume Next
     strBottomPaneViewName = ActiveWindow.BottomPane.View.Name
@@ -1271,18 +1267,18 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     End If
     ActiveWindow.BottomPane.Activate
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    'If ActiveProject.CurrentView <> "Task Usage" Then ViewApply "Task Usage"
     ViewApply "Task Usage"
-    'If ActiveProject.CurrentTable <> "cptStatusSheetImportDetails Table" Then TableApply "cptStatusSheetImportDetails Table"
     TableApply "cptStatusSheetImportDetails Table"
     ActiveWindow.TopPane.Activate
     SetSplitBar ShowColumns:=ActiveProject.TaskTables(ActiveProject.CurrentTable).TableFields.Count
   Else
     ActiveWindow.TopPane.Activate
-    'If ActiveProject.CurrentView <> "Task Usage" Then ViewApply "Task Usage"
+    If ActiveProject.CurrentGroup <> "No Group" And ActiveProject.CurrentGroup <> "Autofilter Group" Then
+      strUserGroup = ActiveProject.CurrentGroup
+    End If
     ViewApply "Task Usage"
+    If Len(strUserGroup) > 0 Then GroupApply strUserGroup
     DoEvents
-    'If ActiveProject.CurrentTable <> "cptStatusSheetImport Table" Then TableApply Name:="cptStatusSheetImport Table"
     TableApply Name:="cptStatusSheetImport Table"
     SetSplitBar ShowColumns:=ActiveProject.TaskTables(ActiveProject.CurrentTable).TableFields.Count
     On Error Resume Next
@@ -1291,7 +1287,6 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     If Len(strBottomPaneViewName) > 0 Then
       DetailsPaneToggle
     End If
-    'todo: reapply group?
   End If
   
   'reset the filter
