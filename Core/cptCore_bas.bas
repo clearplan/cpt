@@ -657,7 +657,7 @@ Sub cptResetAll()
   If lngSettings > 0 Then
     'parse and apply
     If lngSettings >= 128 Then 'outline symbols
-      OptionsViewEx displayoutlinesymbols:=True
+      OptionsViewEx DisplayOutlineSymbols:=True
       lngSettings = lngSettings - 128
     End If
     If lngSettings >= 64 Then 'display name indent
@@ -1773,6 +1773,9 @@ Function cptViewExists(strView As String) As Boolean
 
   On Error Resume Next
   Set oView = ActiveProject.Views(strView)
+  If oView Is Nothing Then
+    Set oView = Application.GlobalViews(strView)
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptViewExists = Not oView Is Nothing
   
@@ -1786,12 +1789,22 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptTableExists(strTable As String) As Boolean
+Function cptTableExists(strTable As String, Optional blnResourceTable As Boolean = False) As Boolean
   'objects
   Dim oTable As MSProject.Table
 
   On Error Resume Next
-  Set oTable = ActiveProject.TaskTables(strTable)
+  If blnResourceTable Then
+    Set oTable = ActiveProject.ResourceTables(strTable)
+    If oTable Is Nothing Then
+      Set oTable = Application.GlobalResourceTables(strTable)
+    End If
+  Else
+    Set oTable = ActiveProject.TaskTables(strTable)
+    If oTable Is Nothing Then
+      Set oTable = Application.GlobalTaskTables(strTable)
+    End If
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptTableExists = Not oTable Is Nothing
   
@@ -1805,12 +1818,22 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptFilterExists(strFilter As String) As Boolean
+Function cptFilterExists(strFilter As String, Optional blnResourceFilter As Boolean = False) As Boolean
   'objects
   Dim oFilter As MSProject.Filter
 
   On Error Resume Next
-  Set oFilter = ActiveProject.TaskFilters(strFilter)
+  If blnResourceFilter Then
+    Set oFilter = ActiveProject.ResourceFilters(strFilter)
+    If oFilter Is Nothing Then
+      Set oFilter = Application.GlobalResourceFilters(strFiler)
+    End If
+  Else
+    Set oFilter = ActiveProject.TaskFilters(strFilter)
+    If oFilter Is Nothing Then
+      Set oFilter = Application.GlobalTaskFilters(strFilter)
+    End If
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptFilterExists = Not oFilter Is Nothing
   
@@ -1824,12 +1847,22 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptGroupExists(strGroup As String) As Boolean
+Function cptGroupExists(strGroup As String, Optional blnResourceGroup As Boolean = False) As Boolean
   'objects
   Dim oGroup As MSProject.Group
 
   On Error Resume Next
-  Set oGroup = ActiveProject.TaskGroups(strGroup)
+  If blnResourceGroup Then
+    Set oGroup = ActiveProject.ResourceGroups(strGroup)
+    If oGroup Is Nothing Then
+      Set oGroup = Application.ResourceGroups(strGroup)
+    End If
+  Else
+    Set oGroup = ActiveProject.TaskGroups(strGroup)
+    If oGroup Is Nothing Then
+      Set oGroup = Application.TaskGroups(strGroup)
+    End If
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptGroupExists = Not oGroup Is Nothing
   
@@ -1849,7 +1882,7 @@ Sub cptCreateFilter(strFilter As String)
 
   Select Case strFilter
     Case "Marked"
-      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
+      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
       
   End Select
   
@@ -3250,11 +3283,15 @@ Function cptGetDate(dtDate As Date, Optional strFormat As String)
   End If
 End Function
 
-Function cptCustomFieldExists(strCustomFieldName As String) As Variant
+Function cptCustomFieldExists(strCustomFieldName As String, Optional blnResourceField As Boolean = False) As Variant
   'returns 0 if false; constant if true
   Dim lngCFC As Long
   On Error Resume Next
-  lngCFC = FieldNameToFieldConstant(strCustomFieldName)
+  If blnResourceField Then
+    lngCFC = FieldNameToFieldConstant(strCutomFieldname, pjResource)
+  Else
+    lngCFC = FieldNameToFieldConstant(strCustomFieldName, pjTask)
+  End If
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   cptCustomFieldExists = lngCFC
 err_here:
