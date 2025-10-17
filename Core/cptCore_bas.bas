@@ -1826,7 +1826,7 @@ Function cptFilterExists(strFilter As String, Optional blnResourceFilter As Bool
   If blnResourceFilter Then
     Set oFilter = ActiveProject.ResourceFilters(strFilter)
     If oFilter Is Nothing Then
-      Set oFilter = Application.GlobalResourceFilters(strFiler)
+      Set oFilter = Application.GlobalResourceFilters(strFilter)
     End If
   Else
     Set oFilter = ActiveProject.TaskFilters(strFilter)
