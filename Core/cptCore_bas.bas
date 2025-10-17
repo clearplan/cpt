@@ -3288,7 +3288,7 @@ Function cptCustomFieldExists(strCustomFieldName As String, Optional blnResource
   Dim lngCFC As Long
   On Error Resume Next
   If blnResourceField Then
-    lngCFC = FieldNameToFieldConstant(strCutomFieldname, pjResource)
+    lngCFC = FieldNameToFieldConstant(strCustomFieldName, pjResource)
   Else
     lngCFC = FieldNameToFieldConstant(strCustomFieldName, pjTask)
   End If
