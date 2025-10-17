@@ -3589,3 +3589,41 @@ Function cptGetConstantName(strProperty As String, lngValue As Long) As String
   cptGetConstantName = strConstantName
 End Function
 
+Function cptHasFormula(ByRef oProject As MSProject.Project, lngCFC As Long) As Boolean
+  oProject.Activate
+  cptHasFormula = Len(CustomFieldGetFormula(lngCFC)) > 0
+End Function
+
+Function cptHasLookup(ByRef oProject As MSProject.Project, lngCFC As Long) As Boolean
+  Dim strFN As String
+  Dim strCFN As String
+  Dim blnHasLookup As Boolean
+  Dim blnErrorTrapping As Boolean
+  Dim oOutlineCode As MSProject.OutlineCode
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  oProject.Activate
+  strFN = FieldConstantToFieldName(lngCFC)
+  strCFN = CustomFieldGetName(lngCFC)
+  If InStr(strFN, "Outline Code") > 0 Then
+    On Error Resume Next
+    Set oOutlineCode = oProject.OutlineCodes(strCFN)
+    blnHasLookup = Not oOutlineCode Is Nothing
+  Else
+    On Error Resume Next
+    blnHasLookup = Len(CustomFieldValueListGetItem(lngCFC, pjValueListValue, 1)) > 0
+  End If
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+exit_here:
+  On Error Resume Next
+  cptHasLookup = blnHasLookup
+  Set oOutlineCode = Nothing
+  Exit Function
+err_here:
+  Call cptHandleErr("cptCore_bas", "cptHasLookup()", Err, Erl)
+  Resume exit_here
+End Function
+
