@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.5.1</cpt_version>
+'<cpt_version>v1.5.2</cpt_version>
 Option Explicit
+Private Const MODULE_NAME = "cptResourceDemand_bas"
 
 Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm, Optional lngTaskCount As Long)
   'objects
@@ -10,7 +11,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim oShell As Object
   Dim oSettings As Object
   Dim oListObject As Excel.ListObject 'Object
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -550,7 +551,7 @@ next_task:
     Set oRange = oWorksheet.Range(oWorksheet.[A1].End(xlToRight).Offset(1, 1), oWorksheet.[A1].End(xlToRight).End(xlDown).Offset(0, 1))
     'array formula instead of XLOOKUP, MINIFS, etc for Excel 2016 compatibility
     'oRange.FormulaR1C1 = "=XLOOKUP(RC" & lngWeekCol & ",FISCAL[fisc_end],FISCAL[label],""<na>"",1,1)"
-    oWorksheet.Cells(2, oRange.Column).FormulaArray = "=LOOKUP(MIN(IF(FISCAL[fisc_end]>=" & oWorksheet.Cells(2, lngWeekCol).Address(False, False) & ",FISCAL[fisc_end])),FISCAL[fisc_end],FISCAL[label])"
+    oWorksheet.Cells(2, oRange.Column).FormulaArray = "=LOOKUP(MIN(IF(FISCAL[fisc_end]>=" & oWorksheet.Cells(2, lngDayCol).Address(False, False) & ",FISCAL[fisc_end])),FISCAL[fisc_end],FISCAL[label])"
     oRange.FillDown
     oWorksheet.[A1].End(xlToRight).Offset(0, 1) = "FISCAL_MONTH"
   End If
@@ -758,13 +759,13 @@ next_task:
         Next oCostRateTable
       Next oResource
     ElseIf ActiveProject.Subprojects.Count > 0 Then
-      For Each oSubproject In ActiveProject.Subprojects
-        For Each oResource In oSubproject.SourceProject.Resources
+      For Each oSubProject In ActiveProject.Subprojects
+        For Each oResource In oSubProject.SourceProject.Resources
           oWorksheet.Cells(lngRow, 1) = oResource.Name
           For Each oCostRateTable In oResource.CostRateTables
             If myResourceDemand_frm.Controls(Choose(oCostRateTable.Index, "chkA", "chkB", "chkC", "chkD", "chkE")).Value = True Then
               For Each oPayRate In oCostRateTable.PayRates
-                oWorksheet.Cells(lngRow, 1) = oSubproject.SourceProject.Name
+                oWorksheet.Cells(lngRow, 1) = oSubProject.SourceProject.Name
                 oWorksheet.Cells(lngRow, 2) = oResource.Name
                 oWorksheet.Cells(lngRow, 3) = Choose(oResource.Type + 1, "Work", "Material", "Cost")
                 oWorksheet.Cells(lngRow, 4) = oResource.Enterprise
@@ -778,7 +779,7 @@ next_task:
             End If
           Next oCostRateTable
         Next oResource
-      Next oSubproject
+      Next oSubProject
     End If
   
     'make it a oListObject
@@ -842,7 +843,7 @@ exit_here:
   Set oShell = Nothing
   Set oSettings = Nothing
   Set oListObject = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   If Not oExcel Is Nothing Then oExcel.Visible = True
   Application.StatusBar = ""
   myResourceDemand_frm.lblStatus.Caption = "Ready..."
@@ -870,7 +871,7 @@ exit_here:
   If Not oExcel Is Nothing Then oExcel.Quit
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_bas", "cptExportResourceDemand", Err, Erl)
+  Call cptHandleErr(MODULE_NAME, "cptExportResourceDemand", Err, Erl)
   On Error Resume Next
   Resume exit_here
 
@@ -1161,7 +1162,7 @@ next_saved_field:
         .chkNonLabor = CBool(strNonLabor)
       End If
     End If
-    .Caption = "Export Resource Demand (" & cptGetVersion("cptResourceDemand_frm") & ")"
+    .Caption = "Export Resource Demand (" & cptGetVersion(MODULE_NAME) & ")"
     If Len(strMissing) > 0 Then
       If UBound(Split(strMissing, vbCrLf)) > 10 Then
         lngFile = FreeFile
@@ -1197,10 +1198,8 @@ err_here:
     Err.Clear
     Resume next_field
   Else
-    Call cptHandleErr("cptResourceDemand_bas", "cptShowExportResourceDemand_frm", Err, Erl)
+    Call cptHandleErr(MODULE_NAME, "cptShowExportResourceDemand_frm", Err, Erl)
     Resume exit_here
   End If
 
 End Sub
-
-
