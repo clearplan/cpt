@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.5.2</cpt_version>
+'<cpt_version>v1.5.3</cpt_version>
 Option Explicit
 Private Const MODULE_NAME = "cptResourceDemand_bas"
 
@@ -448,8 +448,8 @@ next_task:
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If oExcel Is Nothing Then
     Set oExcel = CreateObject("Excel.Application")
-    oExcel.Visible = True
   End If
+  oExcel.Visible = True
 
   'is previous run still open?
   On Error Resume Next
@@ -478,6 +478,7 @@ next_task:
   On Error Resume Next
   If Dir(Environ("TEMP") & "\ExportResourceDemand.xlsx") <> vbNullString Then Kill Environ("TEMP") & "\ExportResourceDemand.xlsx"
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  MsgBox "If your company requires security classifications, please make them from within the Excel Window.", vbExclamation + vbOKOnly, "Heads up"
   If Dir(Environ("TEMP") & "\ExportResourceDemand.xlsx") <> vbNullString Then 'kill failed, rename it
     oWorkbook.SaveAs Environ("TEMP") & "\ExportResourceDemand_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".xlsx", 51
   Else
