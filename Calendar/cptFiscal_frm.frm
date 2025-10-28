@@ -109,14 +109,14 @@ End Sub
 
 Private Sub cmdGetQuery_Click()
   Dim strSQL As String
-  Dim strFile As String
+  Dim strFileName As String
   Dim strMsg As String
   Dim strProgramAcronym As String
   Dim lngFile As Long
     
-  strFile = Environ("tmp") & "\cpt-decm-fiscal-query.txt"
+  strFileName = Environ("tmp") & "\cpt-decm-fiscal-query.txt"
   lngFile = FreeFile
-  Open strFile For Output As #lngFile
+  Open strFileName For Output As #lngFile
   Print #lngFile, "Please send the following message to your COBRA Analyst:"
   Print #lngFile, ""
   Print #lngFile, "Hi [Name],"
@@ -164,7 +164,7 @@ Private Sub cmdGetQuery_Click()
   Print #lngFile, String(40, "=")
   Close #lngFile
   
-  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
   strMsg = "The returned results will have all 20 available fiscal period labels." & vbCrLf & vbCrLf
   strMsg = strMsg & "Please pick one (preferably in YYYYMM format), and import only the 'fisc_end' and a single 'label' column." & vbCrLf & vbCrLf
