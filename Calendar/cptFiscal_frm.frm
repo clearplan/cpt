@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.2.1</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 
 Private Sub cboImportField_Change()
@@ -107,6 +107,72 @@ Private Sub cmdExport_Click()
   cptExportFiscalCalendar Me
 End Sub
 
+Private Sub cmdGetQuery_Click()
+  Dim strSQL As String
+  Dim strFile As String
+  Dim strMsg As String
+  Dim strProgramAcronym As String
+  Dim lngFile As Long
+    
+  strFile = Environ("tmp") & "\cpt-decm-fiscal-query.txt"
+  lngFile = FreeFile
+  Open strFile For Output As #lngFile
+  Print #lngFile, "Please send the following message to your COBRA Analyst:"
+  Print #lngFile, ""
+  Print #lngFile, "Hi [Name],"
+  Print #lngFile, ""
+  Print #lngFile, "Could you please run the following query in COBRA so I can import the fiscal calendar into MS Project for metrics purposes?"
+  Print #lngFile, ""
+  strProgramAcronym = cptGetProgramAcronym
+  If Len(strProgramAcronym) > 0 Then
+    Print #lngFile, "This is for the " & cptGetProgramAcronym & " program."
+    Print #lngFile, ""
+  End If
+  Print #lngFile, "You can send me the results in CSV or Excel format."
+  Print #lngFile, ""
+  Print #lngFile, String(40, "=")
+  Print #lngFile, "DECLARE @MyProject VARCHAR(MAX) = ?'Project:' "
+  Print #lngFile, "DECLARE @MyFiscal VARCHAR(MAX) = (SELECT FISC_FILE FROM PROGRAM WHERE PROGRAM = @MyProject) "
+  Print #lngFile, "SELECT"
+  Print #lngFile, "    CONVERT(VARCHAR(10), FSC_DATE, 101) FSC_END,"
+  Print #lngFile, "    FIELD00 LABEL00,"
+  Print #lngFile, "    FIELD01 LABEL01,"
+  Print #lngFile, "    FIELD02 LABEL02,"
+  Print #lngFile, "    FIELD03 LABEL03,"
+  Print #lngFile, "    FIELD04 LABEL04,"
+  Print #lngFile, "    FIELD05 LABEL05,"
+  Print #lngFile, "    FIELD06 LABEL06,"
+  Print #lngFile, "    FIELD07 LABEL07,"
+  Print #lngFile, "    FIELD08 LABEL08,"
+  Print #lngFile, "    FIELD09 LABEL09,"
+  Print #lngFile, "    FIELD10 LABEL10,"
+  Print #lngFile, "    FIELD11 LABEL11,"
+  Print #lngFile, "    FIELD12 LABEL12,"
+  Print #lngFile, "    FIELD13 LABEL13,"
+  Print #lngFile, "    FIELD14 LABEL14,"
+  Print #lngFile, "    FIELD15 LABEL15,"
+  Print #lngFile, "    FIELD16 LABEL16,"
+  Print #lngFile, "    FIELD17 LABEL17,"
+  Print #lngFile, "    FIELD18 LABEL18,"
+  Print #lngFile, "    FIELD19 LABEL19 "
+  Print #lngFile, "FROM "
+  Print #lngFile, "    FISCDETL "
+  Print #lngFile, "WHERE "
+  Print #lngFile, "    FISCFILE = @MyFiscal "
+  Print #lngFile, "ORDER BY "
+  Print #lngFile, "    FSC_DATE "
+  Print #lngFile, String(40, "=")
+  Close #lngFile
+  
+  Shell "notepad.exe """ & strFile & """", vbNormalFocus
+  
+  strMsg = "The returned results will have all 20 available fiscal period labels." & vbCrLf & vbCrLf
+  strMsg = strMsg & "Please pick one (preferably in YYYYMM format), and import only the 'fisc_end' and a single 'label' column." & vbCrLf & vbCrLf
+  strMsg = strMsg & "Note: click the 'Template' button for a preformatted spreadsheet; paste the returned results into the proper columns; then import."
+  MsgBox strMsg, vbInformation + vbOKOnly, "Next Steps"
+  
+End Sub
+
 Private Sub cmdImport_Click()
   cptImportCalendarExceptions Me
 End Sub
@@ -164,13 +230,20 @@ Private Sub txtExceptions_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolea
       End If
     Else 'labels not included, guess them...
       blnLabels = False
+      'todo: determine if fiscal periods = calendar months
       If IsDate(vExceptions(lngItem)) Then
         strExceptions = strExceptions & vExceptions(lngItem)
         Me.lboExceptions.AddItem vExceptions(lngItem)
         If Me.lboExceptions.ListCount = 1 Then
-          strExceptions = strExceptions & vbTab & Format(vExceptions(lngItem), "yyyymm") & vbCrLf
-          Me.lboExceptions.List(Me.lboExceptions.ListCount - 1, 1) = Format(vExceptions(lngItem), "yyyymm")
-          oCalendar.Exceptions.Add pjDaily, CStr(vException(0)), CStr(vException(0)), , Format(vExceptions(lngItem), "yyyymm")
+          If Day(CDate(vExceptions(lngItem))) <= 15 Then 'assume previous month
+            strExceptions = strExceptions & vbTab & Format(DateAdd("m", -1, vExceptions(lngItem)), "yyyymm") & vbCrLf
+            Me.lboExceptions.List(Me.lboExceptions.ListCount - 1, 1) = Format(DateAdd("m", -1, vExceptions(lngItem)), "yyyymm")
+            oCalendar.Exceptions.Add pjDaily, CStr(vException(0)), CStr(vException(0)), , Format(DateAdd("m", -1, vExceptions(lngItem)), "yyyymm")
+          Else
+            strExceptions = strExceptions & vbTab & Format(vExceptions(lngItem), "yyyymm") & vbCrLf
+            Me.lboExceptions.List(Me.lboExceptions.ListCount - 1, 1) = Format(vExceptions(lngItem), "yyyymm")
+            oCalendar.Exceptions.Add pjDaily, CStr(vException(0)), CStr(vException(0)), , Format(vExceptions(lngItem), "yyyymm")
+          End If
         Else
           strLabel = Me.lboExceptions.List(Me.lboExceptions.ListCount - 2, 1)
           If Right(strLabel, 2) = 12 Then

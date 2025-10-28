@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFiscal_bas"
-'<cpt_version>v1.2.1</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 
 Sub cptShowFiscal_frm()
@@ -17,10 +17,10 @@ Sub cptShowFiscal_frm()
   'booleans
   'variants
   'dates
-
+  
   'prevent spawning
   If Not cptGetUserForm("cptFiscal_frm") Is Nothing Then Exit Sub
-
+  
   'get/create fiscal calendar
   On Error Resume Next
   Set oCal = ActiveProject.BaseCalendars("cptFiscalCalendar")
@@ -641,3 +641,35 @@ err_here:
   Call cptHandleErr("cptFiscal", "cptAnalyzeEVT", Err, Erl)
   Resume exit_here
 End Sub
+
+Function cptCalendarMonthsAsFiscalPeriods(vDates As Variant) As Boolean
+  Dim vDate As Variant
+  Dim oExcel As Excel.Application
+  Dim lngTrue As Long
+  Dim lngFalse As Long
+  
+  On Error Resume Next
+  Set oExcel = GetObject(, "Excel.Application")
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If oExcel Is Nothing Then Set oExcel = CreateObject("Excel.Application")
+  
+  For Each vDate In Split(vDates, vbCrLf)
+    If CDate(vDate) = oExcel.WorksheetFunction.EoMonth(vDate, 0) Then
+      lngTrue = lngTrue + 1
+    Else
+      lngFalse = lngFalse + 1
+    End If
+  Next vDate
+  
+  'if 95% of dates are calendar month end, then likely fiscal end = calendar month end, but always confirm
+  cptCalendarMonthsAsFiscalPeriods = (lngTrue / (lngTrue + lngFalse)) > 0.95
+  
+exit_here:
+  On Error Resume Next
+  Set oExcel = Nothing
+  Exit Function
+err_here:
+  On Error Resume Next
+  Call cptHandleErr("cptFiscal_bas", "cptCalendarMonthsAsFiscalperiods", Err, Erl)
+  Resume exit_here
+End Function
