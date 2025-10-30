@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.6.6</cpt_version>
+'<cpt_version>v1.7.0</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -3046,6 +3046,7 @@ Sub cptExportCompletedWork()
   Dim strSQL As String
   Dim strFileName As String
   'longs
+  Dim lngWPMCol as Long
   Dim lngEVPCol As Long
   Dim lngCA As Long
   Dim lngLC As Long
@@ -3071,7 +3072,7 @@ Sub cptExportCompletedWork()
   Dim dtStatus As Date
   Dim dtAF As Date
   
-  If Not cptValidMap("WBS,OBS,CA,CAM,WP,WPM,EVT,EVP", False, False, True) Then 'todo: WPM is not really required...
+  If Not cptValidMap("WBS,OBS,CA,CAM,WP,[WPM],EVT,EVP", False, False, True) Then 'todo: WPM is not really required...
     MsgBox "Settings required. Exiting.", vbExclamation + vbOKOnly, "Invalid Settings"
     GoTo exit_here
   End If
@@ -3182,7 +3183,6 @@ next_task:
   strSQL = strSQL & "GROUP BY WP "
   strSQL = strSQL & "HAVING AVG(PercentComplete)=100 "
   strSQL = strSQL & "ORDER BY MAX(AF) Desc "
-  'strSQL = "SELECT * FROM wp.csv"
   Set oRecordset = CreateObject("ADODB.Recordset")
   oRecordset.Open strSQL, strCon, 1, 1 '1=adOpenKeyset, 1=adLockReadOnly
   If oRecordset.RecordCount > 0 Then
@@ -3230,6 +3230,10 @@ next_task:
     oExcel.ActiveWindow.SplitRow = 1
     oExcel.ActiveWindow.SplitColumn = 0
     oExcel.ActiveWindow.FreezePanes = True
+    lngWPMCol = oWorksheet.Rows(1).Find("WPM", lookat:=xlWhole).Column
+    If Not blnHasWPM Then
+      oWorksheet.Columns(lngWPMCol).Delete
+    End If
     lngEVPCol = oWorksheet.Rows(1).Find("PercentComplete", lookat:=xlWhole).Column
     oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).AutoFilter Field:=lngEVPCol, Criteria1:="100"
     oRecordset.Close
