@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCalendarExceptions_bas"
-'<cpt_version>v1.1.1</cpt_version>
+'<cpt_version>v1.2.0</cpt_version>
 Option Explicit
 
 Sub cptShowCalendarExceptions_frm()
@@ -21,7 +21,7 @@ Sub cptShowCalendarExceptions_frm()
   
   'prevent spawning
   If Not cptGetUserForm("cptCalendarExceptions_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   Set myCalendarExceptions_frm = New cptCalendarExceptions_frm
@@ -73,7 +73,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptShowCalendarExceptions_frm", Err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptShowCalendarExceptions_frm", err, Erl)
   Resume exit_here
 End Sub
 
@@ -235,7 +235,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptionsMain", Err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptionsMain", err, Erl)
   Resume exit_here
 End Sub
 
@@ -761,7 +761,7 @@ exit_here:
   Set oCalendar = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptions", Err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptions", err, Erl)
   Resume exit_here
 End Sub
 
@@ -807,14 +807,14 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptGetShifts", Err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptGetShifts", err, Erl)
   Resume exit_here
 End Function
 
 Sub cptCalendarCompareMain()
   'objects
   Dim oListObject As Excel.ListObject
-  Dim oRecordset As ADODB.Recordset
+  Dim oRecordset As adodb.Recordset
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
   Dim oExcel As Excel.Application
@@ -823,15 +823,16 @@ Sub cptCalendarCompareMain()
   Dim oSubproject As MSProject.SubProject
   Dim oCalendar As MSProject.Calendar
   'strings
-  Dim strSQL As String
-  Dim strCon As String
-  Dim strFileName As String
   'longs
   Dim lngMismatched As Long
   Dim lngLastRow As Long
   Dim lngLastCol As Long
+  Dim lngItems As Long
   Dim lngItem As Long
-  Dim lngFile As Long
+  Dim lngSubproject As Long
+  Dim lngSubprojects As Long
+  Dim lngCalendar As Long
+  Dim lngCalendars As Long
   'integers
   'doubles
   'booleans
@@ -839,21 +840,21 @@ Sub cptCalendarCompareMain()
   'variants
   'dates
   
+  If ActiveProject.Subprojects.Count = 0 Then
+    MsgBox "This feature is meant for Master/Sub scenarios.", vbExclamation + vbOKOnly, "Calendar Compare"
+    GoTo exit_here
+  End If
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  cptSpeed True
   
-  'create Schema.ini
-  strFileName = Environ("tmp") & "\Schema.ini"
-  lngFile = FreeFile
-  Open strFileName For Output As #lngFile
-  Print #lngFile, "[cpt-calendar-compare.csv]"
-  Print #lngFile, "Format=CSVDelimited"
-  Print #lngFile, "ColNameHeaders=True"
-  Print #lngFile, "Col1=PROJECT Text"
-  Print #lngFile, "Col2=CALENDAR Text"
-  Print #lngFile, "Col3=EXCEPTION Text"
-  Print #lngFile, "Col4=DATE Date"
-  Close #lngFile
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  oRecordset.Fields.Append "PROJECT", adVarChar, 255
+  oRecordset.Fields.Append "CALENDAR", adVarChar, 255
+  oRecordset.Fields.Append "EXCEPTION", adVarChar, 255
+  oRecordset.Fields.Append "DATE", adDate
+  oRecordset.Open
   
   On Error Resume Next
   Set oExcel = GetObject(, "Excel.Application")
@@ -861,44 +862,52 @@ Sub cptCalendarCompareMain()
     Set oExcel = CreateObject("Excel.Application")
   End If
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-  If ActiveProject.Subprojects.Count > 0 Then
     
-    'build header
-    strFileName = Environ("tmp") & "\cpt-calendar-compare.csv"
-    lngFile = FreeFile
-    Open strFileName For Output As #lngFile
-    Print #lngFile, "PROJECT,CALENDAR,EXCEPTION,DATE"
-    
-    'first export the master
-    Set oMaster = ActiveProject
-    Set oCalendar = oMaster.Calendar
-    For Each oException In oCalendar.Exceptions
-      If oException.Occurrences > 1 Then
-        cptCalendarCompareDetail oExcel, oException, lngFile
-      Else
-        Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & oException.Name & "," & oException.Start
-      End If
-    Next oException
-    'then export the subs
-    For Each oSubproject In oMaster.Subprojects
-      Set oCalendar = oSubproject.SourceProject.Calendar
+  'first export the master
+  Set oMaster = ActiveProject
+  Application.StatusBar = "Exporting Master project..."
+  oRecordset.AddNew Array(0), Array(oMaster.Name)
+  lngCalendars = oMaster.BaseCalendars.Count
+  lngCalendar = 0
+  For Each oCalendar In oMaster.BaseCalendars
+    If oCalendar.Name <> "cptFiscalCalendar" Then
       For Each oException In oCalendar.Exceptions
         If oException.Occurrences > 1 Then
-          cptCalendarCompareDetail oExcel, oException, lngFile
+          cptCalendarCompareDetail oRecordset, oExcel, oException, oMaster.Name
         Else
-          Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & oException.Name & "," & oException.Start
+          oRecordset.AddNew Array(0, 1, 2, 3), Array(oMaster.Name, oException.Parent.Name, oException.Name, oException.Start)
         End If
       Next oException
-    Next oSubproject
-  End If 'subprojects.count>0
+    End If
+    Application.StatusBar = "Exporting Master project | Calendar " & lngCalendar & " of " & lngCalendars & " (" & Format(lngCalendar / lngCalendars, "0%") & ")"
+    DoEvents
+  Next oCalendar
+  'then export the subs
+  lngSubprojects = oMaster.Subprojects.Count
+  lngSubproject = 0
+  For Each oSubproject In oMaster.Subprojects
+    lngSubproject = lngSubproject + 1
+    Application.StatusBar = "Exporting Subproject " & lngSubproject & " of " & lngSubprojects & ")..."
+    oRecordset.AddNew Array(0), Array(oSubproject.SourceProject.Name)
+    lngCalendars = oSubproject.SourceProject.BaseCalendars.Count
+    lngCalendar = 0
+    For Each oCalendar In oSubproject.SourceProject.BaseCalendars
+      lngCalendar = lngCalendar + 1
+      Application.StatusBar = "Exporting Subproject " & lngSubproject & " of " & lngSubprojects & " | Calendar " & lngCalendar & " of " & lngCalendars & " (" & Format(lngCalendar / lngCalendars, "0%") & ")"
+      If oCalendar.Name <> "cptFiscalCalendar" Then
+        For Each oException In oCalendar.Exceptions
+          If oException.Occurrences > 1 Then
+            cptCalendarCompareDetail oRecordset, oExcel, oException, oSubproject.SourceProject.Name
+          Else
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(oSubproject.SourceProject.Name, oException.Parent.Name, oException.Name, oException.Start)
+          End If
+        Next oException
+      End If
+    Next oCalendar
+  Next oSubproject
   
-  Reset
-  Set oRecordset = CreateObject("ADODB.Recordset")
-  strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("tmp") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
-  strSQL = "SELECT * FROM [cpt-calendar-compare.csv]"
-  oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
   If oRecordset.RecordCount > 0 Then
+    Application.StatusBar = "Creating report..."
     Set oWorkbook = oExcel.Workbooks.Add
     Set oWorksheet = oWorkbook.Sheets(1)
     oWorksheet.Name = "DATA"
@@ -909,6 +918,7 @@ Sub cptCalendarCompareMain()
     
     Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
     oListObject.Name = "DATA"
+    oListObject.TableStyle = ""
     
     oExcel.ActiveWindow.Zoom = 85
     oExcel.ActiveWindow.DisplayGridlines = False
@@ -923,15 +933,14 @@ Sub cptCalendarCompareMain()
     
     Set oWorksheet = oWorkbook.Worksheets.Add(oWorkbook.Sheets("Data"))
     oWorksheet.Name = "Compare"
-    oWorksheet.[A1] = "EXCEPTION"
-    oWorksheet.[B1] = "DATE"
-    oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(DATA,3,4))"
-    oWorksheet.[C1].Formula2 = "=TOROW(SORT(UNIQUE(DATA[PROJECT])))"
+    oWorksheet.[A1:C1] = Split("CALENDAR,EXCEPTION,DATE", ",")
+    oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(FILTER(DATA,LEN(DATA[EXCEPTION])>0),2,3,4))"
+    oWorksheet.[D1].Formula2 = "=TOROW(SORT(UNIQUE(DATA[PROJECT])))"
     lngLastRow = oWorksheet.[A1].End(xlDown).Row
     lngLastCol = oWorksheet.[A1].End(xlToRight).Column
-    oWorksheet.Range(oWorksheet.Cells(2, 2), oWorksheet.Cells(lngLastRow, 2)).NumberFormat = "m/d/yyyy"
-    oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = "=IF(COUNTIFS(DATA[EXCEPTION],RC1,DATA[DATE],RC2,DATA[PROJECT],R1C)>=1,2,0)"
-    With oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol))
+    oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, 3)).NumberFormat = "m/d/yyyy"
+    oWorksheet.Range(oWorksheet.Cells(2, 4), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = "=IF(COUNTIFS(DATA[CALENDAR],RC1,DATA[EXCEPTION],RC2,DATA[DATE],RC3,DATA[PROJECT],R1C)>=1,2,0)"
+    With oWorksheet.Range(oWorksheet.Cells(2, 4), oWorksheet.Cells(lngLastRow, lngLastCol))
       .FormatConditions.AddIconSetCondition
       .FormatConditions(.FormatConditions.Count).SetFirstPriority
       With .FormatConditions(1)
@@ -960,9 +969,9 @@ Sub cptCalendarCompareMain()
       .MergeCells = False
     End With
     
-    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[B2].End(xlDown)).EntireColumn.AutoFit
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[C2].End(xlDown)).EntireColumn.AutoFit
     
-    With oWorksheet.Range(oWorksheet.Cells(1, 3), oWorksheet.Cells(1, lngLastCol))
+    With oWorksheet.Range(oWorksheet.Cells(1, 4), oWorksheet.Cells(1, lngLastCol))
       .HorizontalAlignment = xlCenter
       .VerticalAlignment = xlBottom
       .WrapText = False
@@ -983,18 +992,24 @@ Sub cptCalendarCompareMain()
     cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
     oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
     oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).EntireColumn.AutoFit
-    'cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)), True
+    cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)), True
     
     'count mismatches & notify
-    lngMismatched = oExcel.WorksheetFunction.CountIf(oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, lngLastCol)), 0)
-    MsgBox Format(lngMismatched, "#,##0") & " mismatched exceptions.", vbInformation + vbOKOnly, "Calendar Compare"
+    oWorksheet.Range(oWorksheet.Cells(2, lngLastCol + 2), oWorksheet.Cells(lngLastRow, lngLastCol + 2)).FormulaR1C1 = "=IF(COUNTIF(RC3:RC[-2],0)>0,1,0)"
+    lngMismatched = oExcel.WorksheetFunction.Sum(oWorksheet.Range(oWorksheet.Cells(2, lngLastCol + 2), oWorksheet.Cells(lngLastRow, lngLastCol + 2)))
+    oWorksheet.Range(oWorksheet.Cells(2, lngLastCol + 2), oWorksheet.Cells(lngLastRow, lngLastCol + 2)).ClearContents
+    Application.StatusBar = Format(lngMismatched, "#,##0") & " mismatched exception" & IIf(lngMismatched <> 1, "s", "") & "."
+    MsgBox Format(lngMismatched, "#,##0") & " mismatched exception" & IIf(lngMismatched <> 1, "s", "") & ".", vbInformation + vbOKOnly, "Calendar Compare"
     oExcel.Visible = True
     oExcel.ScreenUpdating = True
   Else
-    MsgBox "No mismatches found.", vbInformation + vbOKOnly, "Calendar Compare"
+    MsgBox "No Calendar Exceptions found.", vbInformation + vbOKOnly, "Calendar Compare"
   End If
+  
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
+  cptSpeed False
   If oRecordset.State Then oRecordset.Close
   Set oRecordset = Nothing
   Set oListObject = Nothing
@@ -1003,21 +1018,16 @@ exit_here:
   Set oExcel = Nothing
   Set oMaster = Nothing
   Set oException = Nothing
-  strFileName = Environ("tmp") & "\Schema.ini"
-  If Dir(strFileName) <> vbNullString Then Kill strFileName
-  Reset
-  strFileName = Environ("tmp") & "\cpt-calendar-compare.csv"
-  If Dir(strFileName) <> vbNullString Then Kill strFileName
   Set oSubproject = Nothing
   Set oCalendar = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareMain", Err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareMain", err, Erl)
   Resume exit_here
 End Sub
 
-Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oException As MSProject.Exception, lngFile As Long)
+Private Sub cptCalendarCompareDetail(ByRef oRecordset As adodb.Recordset, ByRef oExcel As Excel.Application, ByRef oException As MSProject.Exception, strProjectName As String)
   'objects
   'strings
   Dim strExceptionName As String
@@ -1044,7 +1054,7 @@ Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oE
         dtDate = .Start
         Do While dtDate < .Finish
           dtDate = DateAdd("d", 1, dtDate)
-          Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+          oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
         Loop
       Case pjYearlyMonthDay '2
         If .Start <> DateValue(.Month & "/" & .MonthDay & "/" & Year(.Start)) Then
@@ -1055,7 +1065,7 @@ Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oE
         Do While dtDate <= .Finish
           dtDate = DateAdd("yyyy", 1, dtDate)
           If dtDate <= .Finish Then
-            Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
           End If
         Loop
       Case pjYearlyPositional '3
@@ -1086,7 +1096,7 @@ Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oE
             End If
           End If
           If dtDate <= .Finish Then
-            Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
           End If
         Loop
       Case pjMonthlyMonthDay '4
@@ -1094,7 +1104,7 @@ Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oE
         Do While dtDate <= .Finish
           dtDate = oExcel.WorksheetFunction.EoMonth(dtDate, .Period - 1) + .MonthDay
           If dtDate <= .Finish Then
-            Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
           End If
         Loop
       Case pjMonthlyPositional '5
@@ -1126,7 +1136,7 @@ Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oE
             End If
           End If
           If dtDate <= .Finish Then
-            Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
           End If
         Loop
       Case pjWeekly '6
@@ -1166,12 +1176,12 @@ Private Sub cptCalendarCompareDetail(ByRef oExcel As Excel.Application, ByRef oE
               dtDate = .Start
             Else
               dtDate = DateAdd("d", CLng(vDayOfWeek) - Weekday(.Start), .Start)
-              Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+              oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
             End If
             Do While dtDate <= .Finish
               dtDate = DateAdd("d", 7 * .Period, dtDate)
               If dtDate <= .Finish Then
-                Print #lngFile, oException.Parent.Parent.Name & "," & oException.Parent.Name & "," & strExceptionName & "," & dtDate
+                oRecordset.AddNew Array(0, 1, 2, 3), Array(strProjectName, oException.Parent.Name, strExceptionName, dtDate)
               End If
             Loop
           Next vDayOfWeek
@@ -1184,6 +1194,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareDetail", Err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareDetail", err, Erl)
   Resume exit_here
 End Sub
+
