@@ -1423,7 +1423,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   End If
   
   'output top level
-  Print #lngFile, "*" & "," & Chr(34) & ActiveProject.Name & Chr(34) & String(25, ",")
+  Print #lngFile, "*" & "," & Chr(34) & ActiveProject.ProjectSummaryTask.Name & Chr(34) & String(25, ",")
   For lngItem = 1 To oLookupTable.Count
     strCode = oLookupTable(lngItem).FullName
     strDescription = oLookupTable(lngItem).Description
@@ -1445,7 +1445,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   Close #lngFile
   
   'open it in notepad
-  Shell "notepad.exe """ & strDir & strFileName & """", vbNormalFocus 'KEEP THIS - ShellExecute opens csv in Excel
+  ShellExecute 0, "open", "notepad.exe", strDir & strFileName, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -1574,7 +1574,7 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
 
   Close #lngFile
   
-  Shell "notepad.exe """ & strFileName & """", vbNormalFocus 'KEEP THIS - ShellExecute opens csv in Excel
+  ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
 
 exit_here:
   On Error Resume Next
