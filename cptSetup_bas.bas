@@ -661,7 +661,7 @@ Public Function cptBuildRibbonTab()
   If cptModuleExists("cptCheckAssignments_bas") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignments"" label=""Check Assignments"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
   End If
-
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export All Codes"" imageMso=""Export"" onAction=""cptExportAllCodes"" visible=""true"" supertip=""Export all Local Custom Fields with lookups to *.csv"" />"
   If cptModuleExists("cptAdjustment_bas") And cptModuleExists("cptAdjustment_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdjustment"" label=""ETC Adjustments"" imageMso=""SynchronizationStatus"" onAction=""cptShowAdjustment_frm"" visible=""true"" supertip=""Bulk adjust ETCs by resource, to given target, by percentage, or by a given amount."" />"
   End If
@@ -671,8 +671,6 @@ Public Function cptBuildRibbonTab()
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCostRateTables"" label=""Cost Rate Tables"" imageMso=""DataTypeCurrency"" onAction=""cptShowCostRateTables_frm""  size=""large"" visible=""true"" supertip=""Easily Import and Export Cost Rate Tables."" />"
   End If
   
-  'mpm
-  
   'integration settings
   If cptModuleExists("cptIntegration_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:dialogBoxLauncher>"
@@ -681,9 +679,7 @@ Public Function cptBuildRibbonTab()
   End If
   
   ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
-
-  'bcr
-
+  
   'calendars
   If (cptModuleExists("cptFiscal_frm") And cptModuleExists("cptFiscal_bas")) Or (cptModuleExists("cptCalendarExceptions_frm") And cptModuleExists("cptCalendarExceptions_bas")) Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gCalendars"" label=""Calendars"" visible=""true"" >"
@@ -712,7 +708,7 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bECFtoLCF"" imageMso=""CustomFieldDialog"" label=""ECF to LCF"" onAction=""cptShowSaveLocal_frm"" supertip=""Save Enterprise Custom Field (ECF) settings (and, optionally, task-level data) to Local Custom Fields (LCF). Settings are saved (by project) between sessions."" />" 'size=""large""
     End If
     If cptModuleExists("cptCustomFieldUsage_bas") And cptModuleExists("cptCustomFieldUsage_frm") Then
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLCFUsage"" imageMso=""CustomFieldDialog"" label=""LCF Usage"" onAction=""cptShowCustomFieldUsage_frm"" supertip=""Quickly Analyze what Local Custom Fields are in use."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLCFUsage"" imageMso=""CustomFieldDialog"" label=""LCF Usage"" onAction=""cptShowCustomFieldUsage_frm"" supertip=""Quickly Analyze what Local Custom Fields (LCF) are in use."" />" 'size=""large""
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
@@ -996,7 +992,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   strMsg = strMsg & "-> CATEGORY: ClearPlan Toolbar CPT" & vbCrLf
   strMsg = strMsg & "-> CPT Issue Type: (select one: installation; use; other)" & vbCrLf
   strMsg = strMsg & "-> SUBJECT: " & strModule & "-" & strInstalled & IIf(blnBeta, " (beta)", "") & " (Error: " & strErrNumber & ")" & vbCrLf
-  strMsg = strMsg & "-> MESSAGE: (COPY & PASTE EVERYTHING BETWEEN THE TWO LONG DOTTED LINES; SEE FINAL STEPS AT BOTTOM)" & vbCrLf
+  strMsg = strMsg & "-> MESSAGE: (COPY & PASTE EVERYTHING BETWEEN THE TWO LONG DOTTED LINES and DO NOT EDIT; SEE FINAL STEPS AT BOTTOM)" & vbCrLf
   strMsg = strMsg & String(80, "-") & vbCrLf
   strMsg = strMsg & "[Please REPLACE THIS LINE with any notes or comments you'd like to add.]" & vbCrLf
   strMsg = strMsg & "EXAMPLE: I'm trying to run Status Sheets and I keep getting this error..." & vbCrLf
