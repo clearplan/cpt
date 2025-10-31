@@ -1594,3 +1594,135 @@ err_here:
   Resume exit_here
   
 End Sub
+
+Sub cptExportAllCodes()
+  'exports all lookups from all LCFs (Flags have no lookups)
+  'does not interrogate ECFs
+  'objects
+  Dim oFieldCounts As Scripting.Dictionary
+  Dim oCodes As Scripting.Dictionary
+  Dim oOutlineCode As OutlineCode
+  Dim oLookupTable As LookupTable
+  Dim oLookupTableEntry As LookupTableEntry
+  'strings
+  Dim strDescription As String
+  Dim strValue As String
+  Dim strFileName As String
+  Dim strFN As String
+  Dim strCFN As String
+  'longs
+  Dim lngCodes As Long
+  Dim lngFile As Long
+  Dim lngCF As Long
+  Dim lngListItem As Long
+  Dim lngItem As Long
+  Dim lngItems As Long
+  'integers
+  'doubles
+  'booleans
+  'variants
+  Dim vFieldType As Variant
+  'dates
+  
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  cptSpeed True
+  
+  'first do outline codes, because they're different
+  For Each oOutlineCode In ActiveProject.OutlineCodes
+    lngCF = oOutlineCode.FieldID
+    strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
+    Set oLookupTable = oOutlineCode.LookupTable
+    lngItems = oLookupTable.Count
+    If lngItems > 0 Then
+      Application.StatusBar = "Exporting Code file for " & strCFN & "..."
+      lngFile = FreeFile
+      strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
+      Open strFileName For Output As #lngFile
+      Print #lngFile, "CODE,DESCRIPTION,PARENT"
+      For lngItem = 1 To oLookupTable.Count
+        Set oLookupTableEntry = oLookupTable(lngItem)
+        If oLookupTableEntry.Level = 1 Then
+          Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & ",*****"
+        Else
+          Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & "," & oLookupTableEntry.ParentEntry.FullName
+        End If
+      Next lngItem
+      Close #lngFile
+      ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+      Application.StatusBar = "Exporting Code file for " & strCFN & "...done."
+      lngCodes = lngCodes + 1
+    End If
+  Next oOutlineCode
+  
+  Set oFieldCounts = CreateObject("Scripting.Dictionary")
+  oFieldCounts.Add "Text", 30
+  oFieldCounts.Add "Number", 20
+  
+  Set oCodes = CreateObject("Scripting.Dictionary")
+  
+  For Each vFieldType In Array("Cost", "Date", "Duration", "Finish", "Number", "Start", "Text") 'Flag has no picklist
+    If oFieldCounts.Exists(vFieldType) Then
+      lngItems = oFieldCounts(vFieldType)
+    Else
+      lngItems = 10
+    End If
+    For lngItem = 1 To lngItems
+      strFN = vFieldType & lngItem
+      lngCF = FieldNameToFieldConstant(strFN)
+      strCFN = CustomFieldGetName(lngCF)
+      If Len(strCFN) > 0 Then
+        strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
+      Else
+        GoTo next_cf
+      End If
+      On Error Resume Next
+      If Len(CustomFieldValueListGetItem(lngCF, pjValueListValue, 1)) = 0 Then GoTo next_cf
+      For lngListItem = 1 To 1000 'capped at 1000, hopefully that's enough...
+        strValue = CustomFieldValueListGetItem(lngCF, pjValueListValue, lngListItem)
+        strDescription = CustomFieldValueListGetItem(lngCF, pjValueListDescription, lngListItem)
+        If strValue <> "" Then
+          oCodes.Add strValue, strDescription
+        Else
+          Exit For
+        End If
+        strValue = ""
+        strDescription = ""
+      Next lngListItem
+      If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      If oCodes.Count > 0 Then
+        lngFile = FreeFile
+        strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
+        Open strFileName For Output As #lngFile
+        Print #lngFile, "CODE,DESCRIPTION"
+        For lngListItem = 0 To oCodes.Count - 1
+          Print #lngFile, oCodes.Keys(lngListItem) & "," & Chr(34) & oCodes.Items(lngListItem) & Chr(34)
+        Next lngListItem
+        Close #lngFile
+        ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+        lngCodes = lngCodes + 1
+      End If
+      oCodes.RemoveAll
+next_cf:
+    Next lngItem
+  Next vFieldType
+  
+  Application.StatusBar = lngCodes & " codes exported."
+  MsgBox lngCodes & " codes exported.", vbInformation + vbOKOnly, "Code Export"
+
+exit_here:
+  On Error Resume Next
+  Set oFieldCounts = Nothing
+  Reset
+  Application.StatusBar = ""
+  cptSpeed False
+  Set oCodes = Nothing
+  Set oOutlineCode = Nothing
+  Set oLookupTable = Nothing
+  Set oLookupTableEntry = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptBackbone_bas", "cptExportAllCodes", Err, Erl)
+  Resume exit_here
+End Sub
