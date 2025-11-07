@@ -73,7 +73,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptShowCalendarExceptions_frm", err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptShowCalendarExceptions_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -235,7 +235,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptionsMain", err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptionsMain", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -761,7 +761,7 @@ exit_here:
   Set oCalendar = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptions", err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptions", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -807,14 +807,14 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptGetShifts", err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptGetShifts", Err, Erl)
   Resume exit_here
 End Function
 
 Sub cptCalendarCompareMain()
   'objects
   Dim oListObject As Excel.ListObject
-  Dim oRecordset As adodb.Recordset
+  Dim oRecordset As ADODB.Recordset
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
   Dim oExcel As Excel.Application
@@ -934,12 +934,20 @@ Sub cptCalendarCompareMain()
     Set oWorksheet = oWorkbook.Worksheets.Add(oWorkbook.Sheets("Data"))
     oWorksheet.Name = "Compare"
     oWorksheet.[A1:C1] = Split("CALENDAR,EXCEPTION,DATE", ",")
-    oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(FILTER(DATA,LEN(DATA[EXCEPTION])>0),2,3,4))"
+    If [COUNTA(DATA[EXCEPTION])] > 0 Then
+      oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(FILTER(DATA,LEN(DATA[EXCEPTION])>0),2,3,4))"
+    Else
+      oWorksheet.[A2] = "No Exceptions"
+    End If
     oWorksheet.[D1].Formula2 = "=TOROW(SORT(UNIQUE(DATA[PROJECT])))"
     lngLastRow = oWorksheet.[A1].End(xlDown).Row
     lngLastCol = oWorksheet.[A1].End(xlToRight).Column
     oWorksheet.Range(oWorksheet.Cells(2, 3), oWorksheet.Cells(lngLastRow, 3)).NumberFormat = "m/d/yyyy"
-    oWorksheet.Range(oWorksheet.Cells(2, 4), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = "=IF(COUNTIFS(DATA[CALENDAR],RC1,DATA[EXCEPTION],RC2,DATA[DATE],RC3,DATA[PROJECT],R1C)>=1,2,0)"
+    If oWorksheet.[A2] = "No Exceptions" Then
+      oWorksheet.Range(oWorksheet.Cells(2, 4), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = 2
+    Else
+      oWorksheet.Range(oWorksheet.Cells(2, 4), oWorksheet.Cells(lngLastRow, lngLastCol)).FormulaR1C1 = "=IF(COUNTIFS(DATA[CALENDAR],RC1,DATA[EXCEPTION],RC2,DATA[DATE],RC3,DATA[PROJECT],R1C)>=1,2,0)"
+    End If
     With oWorksheet.Range(oWorksheet.Cells(2, 4), oWorksheet.Cells(lngLastRow, lngLastCol))
       .FormatConditions.AddIconSetCondition
       .FormatConditions(.FormatConditions.Count).SetFirstPriority
@@ -1023,11 +1031,11 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareMain", err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareMain", Err, Erl)
   Resume exit_here
 End Sub
 
-Private Sub cptCalendarCompareDetail(ByRef oRecordset As adodb.Recordset, ByRef oExcel As Excel.Application, ByRef oException As MSProject.Exception, strProjectName As String)
+Private Sub cptCalendarCompareDetail(ByRef oRecordset As ADODB.Recordset, ByRef oExcel As Excel.Application, ByRef oException As MSProject.Exception, strProjectName As String)
   'objects
   'strings
   Dim strExceptionName As String
@@ -1194,7 +1202,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareDetail", err, Erl)
+  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareDetail", Err, Erl)
   Resume exit_here
 End Sub
 
