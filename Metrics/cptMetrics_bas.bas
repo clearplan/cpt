@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.3</cpt_version>
+'<cpt_version>v1.5.4</cpt_version>
 Option Explicit
 
 Sub cptGetBAC()
@@ -210,7 +210,7 @@ Sub cptGetCPLI()
       FilterClear
       GroupClear
       Application.Sort "ID", , , , , , , True
-      OptionsViewEx DisplaySummaryTasks:=True, DisplayNameIndent:=True, displayoutlinesymbols:=True
+      OptionsViewEx DisplaySummaryTasks:=True, DisplayNameIndent:=True, DisplayOutlineSymbols:=True
       OutlineShowAllTasks
       EditGoTo oTask.ID
     Else
@@ -442,7 +442,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMerics_Bas", "cptGet", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptGet", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1330,7 +1330,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics", "cptLateStartsFinishes", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptLateStartsFinishes", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2169,7 +2169,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics", "cptGetTrend_CEI", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptGetTrend_CEI", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3035,6 +3035,9 @@ Sub cptShowMetricsData_frm()
   'booleans
   'variants
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptMetricsData_frm") Is Nothing Then Exit Sub
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   

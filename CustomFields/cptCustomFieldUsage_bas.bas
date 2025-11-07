@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCustomFieldUsage_bas"
-'<cpt_version>v0.1.0</cpt_version>
+'<cpt_version>v0.1.1</cpt_version>
 Option Explicit
 Public oCustomFields As Scripting.Dictionary
 Public strCustomFieldUsageStartingView As String
@@ -128,7 +128,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("foo", "bar", Err, Erl)
+  Call cptHandleErr("cptCustomFieldUsage_bas", "cptShowCustomFieldUsage_frm", Err, Erl)
   Resume exit_here
 End Sub
 

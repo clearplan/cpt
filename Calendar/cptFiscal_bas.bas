@@ -689,7 +689,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal", "cptAnalyzeEVT", Err, Erl)
+  Call cptHandleErr("cptFiscal_bas", "cptAnalyzeEVT", Err, Erl)
   Resume exit_here
 End Sub
 

@@ -150,14 +150,14 @@
 	<Module>
 		<Name>cptCustomFieldUsage_bas</Name>
 		<FileName>cptCustomFieldUsage_bas.bas</FileName>
-		<Version>v0.1.0</Version>
+		<Version>v0.1.1</Version>
 		<Type>1</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
 	<Module>
 		<Name>cptCustomFieldUsage_frm</Name>
 		<FileName>cptCustomFieldUsage_frm.frm</FileName>
-		<Version>v0.1.0</Version>
+		<Version>v0.1.1</Version>
 		<Type>3</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
@@ -178,21 +178,21 @@
 	<Module>
 		<Name>cptDECM_bas</Name>
 		<FileName>cptDECM_bas.bas</FileName>
-		<Version>v8.1.0</Version>
+		<Version>v8.1.1</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptDECM_frm</Name>
 		<FileName>cptDECM_frm.frm</FileName>
-		<Version>v8.1.0</Version>
+		<Version>v8.1.1</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptDECMTargetUID_frm</Name>
 		<FileName>cptDECMTargetUID_frm.frm</FileName>
-		<Version>v8.1.0</Version>
+		<Version>v8.1.1</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
@@ -276,7 +276,7 @@
 	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
-		<Version>v1.5.3</Version>
+		<Version>v1.5.4</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>

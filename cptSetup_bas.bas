@@ -1236,7 +1236,8 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSetup_bas", "cptHandleErr", Err, Erl)
+  'DO NOT Call cptHandleErr("cptSetup_bas", "cptHandleErr", Err, Erl) 'NO RECURSION!
+  MsgBox Err.Number & ": " & Err.Description & vbcrlc & "Source: cptSetup_bas.cptHandleErr()", vbExclamation + vbOKOnly, "Error"
   Resume exit_here
 End Sub
 
