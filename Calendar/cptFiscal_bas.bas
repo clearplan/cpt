@@ -156,8 +156,8 @@ Sub cptExportFiscalCalendar(ByRef myFiscal_frm As cptFiscal_frm)
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If oExcel Is Nothing Then
       Set oExcel = CreateObject("Excel.Application")
-      oExcel.Visible = True
     End If
+    oExcel.Visible = True
     Set oWorkbook = oExcel.Workbooks.Add
     Set oWorksheet = oWorkbook.Sheets(1)
     oWorksheet.Name = "Fiscal Calendar"
@@ -502,7 +502,10 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   strEVT = myFiscal_frm.cboUse.List(myFiscal_frm.cboUse.ListIndex, 1)
   lngEVT = CLng(myFiscal_frm.cboUse.List(myFiscal_frm.cboUse.ListIndex, 0))
   strLOE = cptGetSetting("Integration", "LOE")
-  
+  myFiscal_frm.lblStatus.Caption = "Creating Schema.ini..."
+  myFiscal_frm.lblStatus.Visible = True
+  myFiscal_frm.lblProgress.Visible = True
+  DoEvents
   'create the Schema.ini
   lngFile = FreeFile
   strFileName = Environ("tmp") & "\Schema.ini"
@@ -521,6 +524,8 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   Print #lngFile, "Col4=BLF date"
   Print #lngFile, "Col5=" & strEVT & " text"
   Close #lngFile
+  myFiscal_frm.lblStatus.Caption = "Creating Schema.ini...done."
+  DoEvents
   
   'export the calendar
   Set oCalendar = ActiveProject.BaseCalendars("cptFiscalCalendar")
@@ -528,9 +533,20 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   strFileName = Environ("tmp") & "\fiscal.csv"
   Open strFileName For Output As #lngFile
   Print #lngFile, "fisc_end,label,"
+  myFiscal_frm.lblStatus.Caption = "Exporting cptFiscalCalendar..."
+  myFiscal_frm.lblStatus.Visible = True
+  myFiscal_frm.lblProgress.Visible = True
+  lngTasks = oCalendar.Exceptions.Count
+  lngTask = 0
   For Each oException In oCalendar.Exceptions
     Print #lngFile, oException.Finish & "," & oException.Name
+    lngTask = lngTask + 1
+    myFiscal_frm.lblStatus.Caption = "Exporting cptFiscalCalendar...(" & Format(lngTask / lngTasks, "0%") & ")"
+    myFiscal_frm.lblProgress.Width = (lngTask / lngTasks) * myFiscal_frm.lblStatus.Width
+    DoEvents
   Next oException
+  myFiscal_frm.lblStatus.Caption = "Exporting cptFiscalCalendar...done."
+  DoEvents
   Close #lngFile
   
   'export discrete, PMB tasks
@@ -538,9 +554,23 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   strFileName = Environ("tmp") & "\tasks.csv"
   Open strFileName For Output As #lngFile
   Print #lngFile, "UID,WP,BLS,BLF," & strEVT & ","
+  If oProject.Subprojects.Count > 0 Then
+    lngTasks = oProject.Tasks.Count
+    Dim oSubproject As MSProject.SubProject
+    For Each oSubproject In oProject.Subprojects
+      Debug.Print oSubproject.SourceProject.Name & ": " & oSubproject.SourceProject.Tasks.Count
+      lngTasks = lngTasks + oSubproject.SourceProject.Tasks.Count
+    Next oSubproject
+    Set oSubproject = Nothing
+  Else
+    lngTasks = oProject.Tasks.Count
+  End If
+  lngTask = 0
+  
   For Each oTask In oProject.Tasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.Summary Then GoTo next_task
+    If oTask.ExternalTask Then GoTo next_task
     If Not oTask.Active Then GoTo next_task
     If oTask.Assignments.Count = 0 Then GoTo next_task
     If oTask.BaselineWork = 0 And oTask.BaselineCost = 0 Then GoTo next_task
@@ -551,7 +581,13 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
     End If
     Print #lngFile, oTask.UniqueID & "," & oTask.GetField(lngWP) & "," & FormatDateTime(oTask.BaselineStart, vbShortDate) & "," & FormatDateTime(oTask.BaselineFinish, vbShortDate) & "," & oTask.GetField(lngEVT)
 next_task:
+    lngTask = lngTask + 1
+    myFiscal_frm.lblStatus.Caption = "Exporting...(" & Format(lngTask / lngTasks, "0%") & ")"
+    myFiscal_frm.lblProgress.Width = (lngTask / lngTasks) * myFiscal_frm.lblStatus.Width
+    DoEvents
   Next oTask
+  myFiscal_frm.lblProgress.Width = myFiscal_frm.lblStatus.Width 'todo: weird, totals don't line up
+  myFiscal_frm.lblStatus.Caption = "Exporting...done."
   Close #lngFile
   
   If Len(strMissingBaselines) > 0 Then
@@ -559,6 +595,7 @@ next_task:
   End If
   
   On Error Resume Next
+  myFiscal_frm.lblStatus.Caption = "Creating report..."
   Set oExcel = GetObject(, "Excel.Application")
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If oExcel Is Nothing Then
@@ -611,7 +648,7 @@ next_task:
       myFiscal_frm.lblProgress.Width = (lngTask / lngTasks) * myFiscal_frm.lblStatus.Width
       myFiscal_frm.lblStatus.Caption = "Importing...(" & Format(lngTask / lngTasks, "0%") & ")"
     Next oCell
-    myFiscal_frm.lblStatus.Caption = "Complete"
+    myFiscal_frm.lblStatus.Caption = "Importing...done."
     myFiscal_frm.lblProgress.Width = myFiscal_frm.lblStatus.Width
     cptSpeed False
   End If
@@ -657,13 +694,19 @@ next_task:
   oWorksheet.[K1:O1].HorizontalAlignment = xlCenterAcrossSelection
   oWorksheet.[K2].AutoFilter
   oWorksheet.Columns.AutoFit
+  myFiscal_frm.lblStatus.Caption = "Creating report...done."
+  DoEvents
   If lngImportField = 0 Then
     MsgBox "Copy UIDs from Excel to 'Filter By Clipboard' to apply bulk " & strEVT & " changes.", vbInformation + vbOKOnly, "Hint:"
+  Else
+    MsgBox "Complete."
   End If
   Application.ActivateMicrosoftApp (pjMicrosoftExcel)
   
 exit_here:
   On Error Resume Next
+  myFiscal_frm.lblStatus.Visible = False
+  myFiscal_frm.lblProgress.Visible = False
   cptSpeed False
   Set oRange = Nothing
   Set oCell = Nothing
