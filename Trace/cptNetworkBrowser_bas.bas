@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptNetworkBrowser_bas"
-'<cpt_version>v1.2.1</cpt_version>
+'<cpt_version>v1.2.2</cpt_version>
 Option Explicit
 '=====================================
 Public Const GWL_STYLE = -16
@@ -163,9 +163,6 @@ Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
   Dim vControl As Variant
   'dates
   
-  'prevent spawning
-  If Not cptGetUserForm("cptNetworkBrowser_frm") Is Nothing Then Exit Sub
-
   On Error Resume Next
   Set oTask = ActiveSelection.Tasks(1)
   If oTask Is Nothing Then GoTo exit_here
