@@ -629,7 +629,6 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   Dim rSummaryTasks As Excel.Range, rMilestones As Excel.Range, rNormal As Excel.Range, rAssignments As Excel.Range
   Dim rDates As Excel.Range, rWork As Excel.Range, rMedium As Excel.Range, rCentered As Excel.Range, rEntry As Excel.Range
   Dim xlCells As Excel.Range, rngAll As Excel.Range
-  Dim oOutlook As Outlook.Application, oMailItem As MailItem, oDoc As Word.Document, oWord As Word.Application, oSel As Word.Selection, oETemp As Word.Template
   Dim aSummaries As Object, aMilestones As Object, aNormal As Object, aAssignments As Object
   Dim rstEach As ADODB.Recordset, aTaskRow As Object, rstColumns As ADODB.Recordset
   'longs
@@ -715,18 +714,6 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   blnConditionalFormatting = myStatusSheet_frm.chkConditionalFormatting = True
   blnConditionalFormattingLegend = myStatusSheet_frm.chkConditionalFormattingLegend = True
   blnEmail = myStatusSheet_frm.chkSendEmails = True
-  If blnEmail Then
-    If Not cptCheckReference("Outlook") Then
-      MsgBox "Reference to Microsoft Outlook not found.", vbCritical + vbOKOnly, "Is Outlook installed?"
-      blnEmail = False
-    Else
-      On Error Resume Next
-      Set oOutlook = GetObject(, "Outlook.Application")
-      If oOutlook Is Nothing Then
-        Set oOutlook = CreateObject("Outlook.Application")
-      End If
-    End If
-  End If
   blnKeepOpen = myStatusSheet_frm.chkKeepOpen
   'get task count
   If blnPerformanceTest Then t = GetTickCount
@@ -1177,12 +1164,6 @@ exit_here:
   If rstColumns.State Then rstColumns.Close
   Set rstColumns = Nothing
   Set xlCells = Nothing
-  Set oOutlook = Nothing
-  Set oMailItem = Nothing
-  Set oDoc = Nothing
-  Set oWord = Nothing
-  Set oSel = Nothing
-  Set oETemp = Nothing
   Exit Sub
 
 err_here:
@@ -2468,8 +2449,8 @@ End Sub
 
 Sub cptListQuickParts(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optional blnRefreshOutlook As Boolean = False)
   'objects
-  Dim oOutlook As Outlook.Application
-  Dim oMailItem As MailItem
+  Dim oOutlook As Object 'Outlook.Application
+  Dim oMailItem As Object 'Outlook.MailItem
   Dim oDocument As Word.Document
   Dim oWord As Word.Application
   Dim oTemplate As Word.Template
@@ -2501,9 +2482,10 @@ Sub cptListQuickParts(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optional bl
     If oOutlook Is Nothing Then
       Set oOutlook = CreateObject("Outlook.Application")
     End If
+    If oOutlook Is Nothing Then GoTo exit_here
     'create MailItem, insert quickparts, update links, dates
-    Set oMailItem = oOutlook.CreateItem(olMailItem)
-    If oMailItem.BodyFormat <> olFormatHTML Then oMailItem.BodyFormat = olFormatHTML
+    Set oMailItem = oOutlook.CreateItem(0) '0=olMailItem
+    If oMailItem.BodyFormat <> 2 Then oMailItem.BodyFormat = 2 '2=olFormatHTML
     If Err.Number > 0 Then
       MsgBox "Outlook QuickParts are inaccessible.", vbExclamation + vbOKOnly, "Blocked"
       myStatusSheet_frm.cboQuickParts.AddItem "[blocked]"
@@ -2526,10 +2508,10 @@ Sub cptListQuickParts(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optional bl
         myStatusSheet_frm.cboQuickParts.AddItem "[blocked]"
         myStatusSheet_frm.cboQuickParts.Value = "[blocked]"
         myStatusSheet_frm.cboQuickParts.Enabled = False
-        oMailItem.Close olDiscard
+        oMailItem.Close SaveMode:=1 '1=olDiscard
         GoTo exit_here
       Else
-        oMailItem.GetInspector.WindowState = olMinimized
+        oMailItem.GetInspector.WindowState = 1 '1=olMinimized
       End If
     End If
     Set oWord = oDocument.Application
@@ -2551,7 +2533,7 @@ Sub cptListQuickParts(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optional bl
         myStatusSheet_frm.cboQuickParts.AddItem vQuickPart
       Next vQuickPart
     End If
-    oMailItem.Close olDiscard
+    oMailItem.Close SaveMode:=1 '1=olDiscard
   End If
     
 exit_here:
@@ -2650,12 +2632,12 @@ End Function
 
 Sub cptSendStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, strFullName As String, Optional strItem As String)
   'objects
-  Dim oInspector As Outlook.Inspector
-  Dim oBuildingBlock As Word.BuildingBlock
-  Dim oOutlook As Outlook.Application
-  Dim oMailItem As Outlook.MailItem
-  Dim oDocument As Word.Document
+  Dim oOutlook As Object 'Outlook.Application
+  Dim oInspector As Object 'Outlook.Inspector
+  Dim oMailItem As Object 'Outlook.MailItem
   Dim oWord As Word.Application
+  Dim oDocument As Word.Document
+  Dim oBuildingBlock As Word.BuildingBlock
   Dim oSelection As Word.Selection
   Dim oEmailTemplate As Word.Template
   'strings
@@ -2674,10 +2656,11 @@ Sub cptSendStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, strFullNam
   If oOutlook Is Nothing Then
     Set oOutlook = CreateObject("Outlook.Application")
   End If
+  If oOutlook Is Nothing Then GoTo exit_here
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  Set oMailItem = oOutlook.CreateItem(0) '0 = olMailItem
+  Set oMailItem = oOutlook.CreateItem(0) '0=olMailItem
   oMailItem.Display False
   oMailItem.Attachments.Add strFullName
   With myStatusSheet_frm
