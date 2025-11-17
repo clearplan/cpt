@@ -916,9 +916,13 @@ Sub cptExport81334D(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As L
           If oOutlook Is Nothing Then
             Set oOutlook = CreateObject("Outlook.Application")
           End If
+          If oOutlook Is Nothing Then
+            MsgBox "Outlook is not available.", vbCritical + vbOKOnly, "Request 81334D"
+            GoTo exit_here
+          End If
           Set oMailItem = oOutlook.CreateItem(0) '0 = olMailItem
           oMailItem.To = "help@ClearPlanConsulting.com"
-          oMailItem.Importance = 2 'olImportanceHigh
+          oMailItem.Importance = 2 '2=olImportanceHigh
           oMailItem.Subject = "Template Request: " & strTemplate
           oMailItem.HTMLBody = "Please forward the subject-referenced template. Thank you." & oMailItem.HTMLBody
           oMailItem.Display False

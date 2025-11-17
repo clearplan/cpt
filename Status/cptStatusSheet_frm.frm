@@ -398,7 +398,7 @@ Private Sub chkSendEmails_Click()
     End If
     Call cptListQuickParts(Me, True)
     strQuickPart = cptGetSetting("StatusSheet", "cboQuickPart")
-    If Len(strQuickPart) > 0 Then
+    If Len(strQuickPart) > 0 And Me.cboQuickParts.ListCount > 0 Then
       blnExists = False
       For lngItem = 0 To Me.cboQuickParts.ListCount - 1
         If Me.cboQuickParts.List(lngItem, 0) = strQuickPart Then

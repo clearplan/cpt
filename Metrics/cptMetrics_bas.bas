@@ -878,12 +878,6 @@ Sub cptLateStartsFinishes()
   Dim oSeries As Excel.Series
   Dim oChart As Excel.ChartObject
   Dim oShape As Excel.Shape
-  Dim oOutlook As Outlook.Application
-  Dim oMailItem As Outlook.MailItem
-  Dim oDocument As Word.Document
-  Dim oWord As Word.Application
-  Dim oSelection As Word.Selection
-  Dim oEmailTemplate As Word.Template
   Dim oWorksheet As Excel.Worksheet
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
@@ -1311,12 +1305,6 @@ exit_here:
   Set oSeries = Nothing
   Set oChart = Nothing
   Set oShape = Nothing
-  Set oOutlook = Nothing
-  Set oMailItem = Nothing
-  Set oDocument = Nothing
-  Set oWord = Nothing
-  Set oSelection = Nothing
-  Set oEmailTemplate = Nothing
   Set oWorksheet = Nothing
   Set oCell = Nothing
   Set oRange = Nothing
