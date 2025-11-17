@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFiscal_bas"
-'<cpt_version>v1.2.1</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 
 Sub cptShowFiscal_frm()
@@ -17,10 +17,10 @@ Sub cptShowFiscal_frm()
   'booleans
   'variants
   'dates
-
+  
   'prevent spawning
   If Not cptGetUserForm("cptFiscal_frm") Is Nothing Then Exit Sub
-
+  
   'get/create fiscal calendar
   On Error Resume Next
   Set oCal = ActiveProject.BaseCalendars("cptFiscalCalendar")
@@ -156,8 +156,8 @@ Sub cptExportFiscalCalendar(ByRef myFiscal_frm As cptFiscal_frm)
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If oExcel Is Nothing Then
       Set oExcel = CreateObject("Excel.Application")
-      oExcel.Visible = True
     End If
+    oExcel.Visible = True
     Set oWorkbook = oExcel.Workbooks.Add
     Set oWorksheet = oWorkbook.Sheets(1)
     oWorksheet.Name = "Fiscal Calendar"
@@ -431,6 +431,7 @@ End Sub
 
 Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField As Long)
   'objects
+  Dim oCell As Excel.Range
   Dim oRange As Excel.Range
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
@@ -456,6 +457,7 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   Dim lngEVT As Long
   Dim lngTask As Long
   Dim lngTasks As Long
+  Dim lngWP As Long
   'integers
   'doubles
   'booleans
@@ -488,31 +490,42 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
     MsgBox "The Fiscal Calendar (cptFiscalCalendar) is missing! Please reset it and try again.", vbCritical + vbOKOnly, "What happened?"
     GoTo exit_here
   End If
-    
+  
+  'ensure WP,EVT,LOE are mapped
+  If Not cptValidMap("WP,EVT,LOE", True, , True) Then
+    MsgBox "Please update Integration mapping for WP, EVT, and LOE.", vbExclamation + vbOKOnly, "Invalid Map"
+    GoTo exit_here
+  End If
+  
   'either EVT or EVTMS
+  lngWP = Split(cptGetSetting("Integration", "WP"), "|")(0)
   strEVT = myFiscal_frm.cboUse.List(myFiscal_frm.cboUse.ListIndex, 1)
   lngEVT = CLng(myFiscal_frm.cboUse.List(myFiscal_frm.cboUse.ListIndex, 0))
   strLOE = cptGetSetting("Integration", "LOE")
-  
-  'todo: allow user to add other fields?
-  
+  myFiscal_frm.lblStatus.Caption = "Creating Schema.ini..."
+  myFiscal_frm.lblStatus.Visible = True
+  myFiscal_frm.lblProgress.Visible = True
+  DoEvents
   'create the Schema.ini
   lngFile = FreeFile
   strFileName = Environ("tmp") & "\Schema.ini"
   Open strFileName For Output As #lngFile
-  Print #1, "[fiscal.csv]"
-  Print #1, "ColNameHeader=True"
-  Print #1, "Format=CSVDelimited"
-  Print #1, "Col1=FISCAL_END date"
-  Print #1, "Col2=LABEL text"
-  Print #1, "[tasks.csv]"
-  Print #1, "ColNameHeader=True"
-  Print #1, "Format=CSVDelimited"
-  Print #1, "Col1=UID integer"
-  Print #1, "Col2=BLS date"
-  Print #1, "Col3=BLF date"
-  Print #1, "Col4=" & strEVT & " text"
-  Close #1
+  Print #lngFile, "[fiscal.csv]"
+  Print #lngFile, "ColNameHeader=True"
+  Print #lngFile, "Format=CSVDelimited"
+  Print #lngFile, "Col1=FISCAL_END date"
+  Print #lngFile, "Col2=LABEL text"
+  Print #lngFile, "[tasks.csv]"
+  Print #lngFile, "ColNameHeader=True"
+  Print #lngFile, "Format=CSVDelimited"
+  Print #lngFile, "Col1=UID integer"
+  Print #lngFile, "Col2=WP text"
+  Print #lngFile, "Col3=BLS date"
+  Print #lngFile, "Col4=BLF date"
+  Print #lngFile, "Col5=" & strEVT & " text"
+  Close #lngFile
+  myFiscal_frm.lblStatus.Caption = "Creating Schema.ini...done."
+  DoEvents
   
   'export the calendar
   Set oCalendar = ActiveProject.BaseCalendars("cptFiscalCalendar")
@@ -520,19 +533,44 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   strFileName = Environ("tmp") & "\fiscal.csv"
   Open strFileName For Output As #lngFile
   Print #lngFile, "fisc_end,label,"
+  myFiscal_frm.lblStatus.Caption = "Exporting cptFiscalCalendar..."
+  myFiscal_frm.lblStatus.Visible = True
+  myFiscal_frm.lblProgress.Visible = True
+  lngTasks = oCalendar.Exceptions.Count
+  lngTask = 0
   For Each oException In oCalendar.Exceptions
     Print #lngFile, oException.Finish & "," & oException.Name
+    lngTask = lngTask + 1
+    myFiscal_frm.lblStatus.Caption = "Exporting cptFiscalCalendar...(" & Format(lngTask / lngTasks, "0%") & ")"
+    myFiscal_frm.lblProgress.Width = (lngTask / lngTasks) * myFiscal_frm.lblStatus.Width
+    DoEvents
   Next oException
+  myFiscal_frm.lblStatus.Caption = "Exporting cptFiscalCalendar...done."
+  DoEvents
   Close #lngFile
   
   'export discrete, PMB tasks
   lngFile = FreeFile
   strFileName = Environ("tmp") & "\tasks.csv"
   Open strFileName For Output As #lngFile
-  Print #lngFile, "UID,BLS,BLF," & strEVT & ","
+  Print #lngFile, "UID,WP,BLS,BLF," & strEVT & ","
+  If oProject.Subprojects.Count > 0 Then
+    lngTasks = oProject.Tasks.Count
+    Dim oSubproject As MSProject.SubProject
+    For Each oSubproject In oProject.Subprojects
+      Debug.Print oSubproject.SourceProject.Name & ": " & oSubproject.SourceProject.Tasks.Count
+      lngTasks = lngTasks + oSubproject.SourceProject.Tasks.Count
+    Next oSubproject
+    Set oSubproject = Nothing
+  Else
+    lngTasks = oProject.Tasks.Count
+  End If
+  lngTask = 0
+  
   For Each oTask In oProject.Tasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.Summary Then GoTo next_task
+    If oTask.ExternalTask Then GoTo next_task
     If Not oTask.Active Then GoTo next_task
     If oTask.Assignments.Count = 0 Then GoTo next_task
     If oTask.BaselineWork = 0 And oTask.BaselineCost = 0 Then GoTo next_task
@@ -541,9 +579,15 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
     If Not IsDate(oTask.BaselineStart) Or Not IsDate(oTask.BaselineFinish) Then
       strMissingBaselines = strMissingBaselines = oTask.UniqueID & ","
     End If
-    Print #lngFile, oTask.UniqueID & "," & FormatDateTime(oTask.BaselineStart, vbShortDate) & "," & FormatDateTime(oTask.BaselineFinish, vbShortDate) & "," & oTask.GetField(lngEVT)
+    Print #lngFile, oTask.UniqueID & "," & oTask.GetField(lngWP) & "," & FormatDateTime(oTask.BaselineStart, vbShortDate) & "," & FormatDateTime(oTask.BaselineFinish, vbShortDate) & "," & oTask.GetField(lngEVT)
 next_task:
+    lngTask = lngTask + 1
+    myFiscal_frm.lblStatus.Caption = "Exporting...(" & Format(lngTask / lngTasks, "0%") & ")"
+    myFiscal_frm.lblProgress.Width = (lngTask / lngTasks) * myFiscal_frm.lblStatus.Width
+    DoEvents
   Next oTask
+  myFiscal_frm.lblProgress.Width = myFiscal_frm.lblStatus.Width 'todo: weird, totals don't line up
+  myFiscal_frm.lblStatus.Caption = "Exporting...done."
   Close #lngFile
   
   If Len(strMissingBaselines) > 0 Then
@@ -551,6 +595,7 @@ next_task:
   End If
   
   On Error Resume Next
+  myFiscal_frm.lblStatus.Caption = "Creating report..."
   Set oExcel = GetObject(, "Excel.Application")
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If oExcel Is Nothing Then
@@ -560,7 +605,7 @@ next_task:
   Set oWorkbook = oExcel.Workbooks.Add
   Set oWorksheet = oWorkbook.Sheets(1)
   oWorksheet.Name = "EVT Analysis"
-  oWorksheet.[A1:E1] = Split("UID,BLS,BLF," & strEVT & ",FiscalPeriods", ",")
+  oWorksheet.[A1:F1] = Split("UID,WP,BLS,BLF," & strEVT & ",FiscalPeriods", ",")
   
   Set rst = CreateObject("ADODB.Recordset")
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("tmp") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
@@ -571,11 +616,14 @@ next_task:
   
   strSQL = "SELECT * FROM [fiscal.csv]"
   rst.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-  oWorksheet.[G1:H1] = Split("fisc_end,label", ",")
-  oWorksheet.[G2].CopyFromRecordset rst
+  oWorksheet.[H1:I1] = Split("fisc_end,label", ",")
+  oWorksheet.[H2].CopyFromRecordset rst
+  cptAddBorders oWorksheet.Range(oWorksheet.[H1], oWorksheet.[H1].End(xlToRight).End(xlDown))
+  cptAddShading oWorksheet.[H1:I1]
+  oWorksheet.[H1:I1].Font.Bold = True
   rst.Close
   
-  Set oRange = oWorksheet.Range(oWorksheet.[A1].End(xlToRight).Offset(1, 0), oWorksheet.[A1].End(xlDown).Offset(0, 4))
+  Set oRange = oWorksheet.Range(oWorksheet.[A1].End(xlToRight).Offset(1, 0), oWorksheet.[A1].End(xlDown).Offset(0, 5))
   lngFiscalEndCol = oWorksheet.Rows(1).Find(what:="fisc_end").Column
   lngLastRow = oWorksheet.Cells(2, lngFiscalEndCol).End(xlDown).Row
   'Excel 2016 compatibility
@@ -584,15 +632,11 @@ next_task:
   oRange.FormulaR1C1 = "=SUMPRODUCT(--(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & ">=RC[-3])*--(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & "<RC[-2])*1)+1"
   lngFiscalPeriodsCol = oWorksheet.Rows(1).Find(what:="FiscalPeriods").Column
   oWorksheet.Columns(lngFiscalPeriodsCol).NumberFormat = "#0"
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.SplitRow = 1
-  oExcel.ActiveWindow.SplitColumn = 0
-  oExcel.ActiveWindow.FreezePanes = True
-  oWorksheet.[A1].AutoFilter
-  oWorksheet.Columns.AutoFit
+  cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight).End(xlDown))
+  cptAddShading oWorksheet.[A1:F1]
+  oWorksheet.[A1:F1].Font.Bold = True
   If lngImportField > 0 Then
     cptSpeed True
-    Dim oCell As Excel.Range
     lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row
     Set oRange = oWorksheet.Range(oWorksheet.[A2], oWorksheet.Cells(lngLastRow, 1))
     lngTasks = oRange.Cells.Count
@@ -604,18 +648,68 @@ next_task:
       myFiscal_frm.lblProgress.Width = (lngTask / lngTasks) * myFiscal_frm.lblStatus.Width
       myFiscal_frm.lblStatus.Caption = "Importing...(" & Format(lngTask / lngTasks, "0%") & ")"
     Next oCell
-    myFiscal_frm.lblStatus.Caption = "Complete"
+    myFiscal_frm.lblStatus.Caption = "Importing...done."
     myFiscal_frm.lblProgress.Width = myFiscal_frm.lblStatus.Width
     cptSpeed False
-  Else
+  End If
+  'now do it by WP...
+  oWorksheet.[K1:O1] = Split("WP,BLS,BLF,EVT,FiscalPeriods", ",")
+  oWorksheet.[K2].Formula2 = "=SORT(UNIQUE(" & oWorksheet.Range(oWorksheet.[B2], oWorksheet.[B2].End(xlDown)).Address & "))"
+  lngLastRow = oWorksheet.[B2].End(xlDown).Row
+  oWorksheet.[L2].Formula2 = "=BYROW(K2#,LAMBDA(wp,MINIFS(C2:C" & lngLastRow & ",B2:B" & lngLastRow & ",wp)))"
+  oWorksheet.Columns(12).NumberFormat = "m/d/yyyy"
+  oWorksheet.[M2].Formula2 = "=BYROW(K2#,LAMBDA(wp,MAXIFS(D2:D" & lngLastRow & ",B2:B" & lngLastRow & ",wp)))"
+  oWorksheet.Columns(13).NumberFormat = "m/d/yyyy"
+  oWorksheet.Range(oWorksheet.[N2], oWorksheet.[K2].End(xlDown).Offset(0, 3)).Formula2 = "=TEXTJOIN("";"",FALSE,UNIQUE(FILTER($E$2:$E$" & lngLastRow & ",$B$2:$B$" & lngLastRow & "=K2)))"
+  'conditional formatting red if contains ";" (means multiple EVT per WP)
+  With oWorksheet.Range(oWorksheet.[N2], oWorksheet.[N2].End(xlDown))
+    .FormatConditions.Add Type:=xlTextString, String:=";", TextOperator:=xlContains
+    .FormatConditions(1).SetFirstPriority
+    With .FormatConditions(1).Font
+      .Color = -16383844
+      .TintAndShade = 0
+    End With
+    With .FormatConditions(1).Interior
+      .PatternColorIndex = xlAutomatic
+      .Color = 13551615
+      .TintAndShade = 0
+    End With
+    .FormatConditions(1).StopIfTrue = False
+  End With
+  oWorksheet.Range(oWorksheet.[O2], oWorksheet.[K2].End(xlDown).Offset(0, 4)).FormulaR1C1 = "=SUMPRODUCT(--(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & ">=RC[-3])*--(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & "<RC[-2])*1)+1"
+  cptAddBorders oWorksheet.Range(oWorksheet.[K1], oWorksheet.[K1].End(xlToRight).End(xlDown))
+  cptAddShading oWorksheet.[K1:O1]
+  oWorksheet.[K1:O1].Font.Bold = True
+  oExcel.ActiveWindow.Zoom = 85
+  oExcel.ActiveWindow.SplitRow = 1
+  oExcel.ActiveWindow.SplitColumn = 0
+  oExcel.ActiveWindow.FreezePanes = True
+  oExcel.ActiveWindow.DisplayGridlines = False
+  oWorksheet.Rows(1).Insert Shift:=xlDown, CopyOrigin:=xlFormatFromLeftOrAbove
+  oWorksheet.[A1].FormulaR1C1 = "BY TASK"
+  oWorksheet.[A1:F1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[H1].FormulaR1C1 = "FISCAL"
+  oWorksheet.[H1:I1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[K1].FormulaR1C1 = "BY WP"
+  oWorksheet.[K1:O1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[K2].AutoFilter
+  oWorksheet.Columns.AutoFit
+  myFiscal_frm.lblStatus.Caption = "Creating report...done."
+  DoEvents
+  If lngImportField = 0 Then
     MsgBox "Copy UIDs from Excel to 'Filter By Clipboard' to apply bulk " & strEVT & " changes.", vbInformation + vbOKOnly, "Hint:"
+  Else
+    MsgBox "Complete."
   End If
   Application.ActivateMicrosoftApp (pjMicrosoftExcel)
   
 exit_here:
   On Error Resume Next
+  myFiscal_frm.lblStatus.Visible = False
+  myFiscal_frm.lblProgress.Visible = False
   cptSpeed False
   Set oRange = Nothing
+  Set oCell = Nothing
   Set oWorksheet = Nothing
   Set oWorkbook = Nothing
   Set oExcel = Nothing
@@ -638,6 +732,38 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal", "cptAnalyzeEVT", Err, Erl)
+  Call cptHandleErr("cptFiscal_bas", "cptAnalyzeEVT", Err, Erl)
   Resume exit_here
 End Sub
+
+Function cptCalendarMonthsAsFiscalPeriods(vDates As Variant) As Boolean
+  Dim vDate As Variant
+  Dim oExcel As Excel.Application
+  Dim lngTrue As Long
+  Dim lngFalse As Long
+  
+  On Error Resume Next
+  Set oExcel = GetObject(, "Excel.Application")
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If oExcel Is Nothing Then Set oExcel = CreateObject("Excel.Application")
+  
+  For Each vDate In Split(vDates, vbCrLf)
+    If CDate(vDate) = oExcel.WorksheetFunction.EoMonth(vDate, 0) Then
+      lngTrue = lngTrue + 1
+    Else
+      lngFalse = lngFalse + 1
+    End If
+  Next vDate
+  
+  'if 95% of dates are calendar month end, then likely fiscal end = calendar month end, but always confirm
+  cptCalendarMonthsAsFiscalPeriods = (lngTrue / (lngTrue + lngFalse)) > 0.95
+  
+exit_here:
+  On Error Resume Next
+  Set oExcel = Nothing
+  Exit Function
+err_here:
+  On Error Resume Next
+  Call cptHandleErr("cptFiscal_bas", "cptCalendarMonthsAsFiscalperiods", Err, Erl)
+  Resume exit_here
+End Function

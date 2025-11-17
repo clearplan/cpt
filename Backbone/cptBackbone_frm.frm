@@ -14,8 +14,9 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v1.2.6</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
+
 Private Sub cboExport_Change()
 
   Me.chkIncludeThresholds.Enabled = False
@@ -38,43 +39,95 @@ Private Sub cboExport_Change()
       'hide include header
       Me.chkIncludeHeaders = True
       Me.chkIncludeHeaders.Enabled = False
-      'get template
+      'todo: get template
   End Select
   Me.cmdExport.SetFocus
   
 End Sub
 
 Private Sub cboImport_Change()
-
+  'objects
+  Dim oDict As Scripting.Dictionary
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strFileName As String
+  'longs
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
   Me.cmdExportTemplate.Visible = False
   Me.lblNote.Caption = ""
+  Me.cboAppendix.Clear
+  Me.cboAppendix.Enabled = False
+  Me.chkAlsoCreateTasks.Visible = True
+  Me.chkAlsoCreateTasks.Enabled = True
+  Me.chkAlsoCreateTasks.Value = False
   Select Case Me.cboImport
     Case "From Excel Workbook"
       Me.cmdImport.Caption = "Import..."
       Me.cmdExportTemplate.Visible = True
-      Me.chkAlsoCreateTasks.Visible = True
       Me.lblNote.Caption = "Import *.xlsx: Header CODE,LEVEL,DESCRIPTION in [A1:C1]"
     Case "From MSP Server Outline Code Export"
       Me.cmdImport.Caption = "Import..."
-      Me.chkAlsoCreateTasks.Visible = False
       Me.lblNote.Caption = "Import *.xlsx: Header LEVEL,VALUE,DESCRIPTION in [A1:C1]"
-    Case "From MIL-STD-881D Appendix B"
-      Me.cmdImport.Caption = "Load"
-      Me.chkAlsoCreateTasks.Visible = True
-      Me.chkAlsoCreateTasks = True
-      Me.chkAlsoCreateTasks.Enabled = False
-      Me.lblNote.Caption = "Import generic CWBS as starting point."
-    Case "From MIL-STD-881D Appendix E"
-      Me.cmdImport.Caption = "Load"
-      Me.chkAlsoCreateTasks.Visible = True
-      Me.chkAlsoCreateTasks = True
-      Me.chkAlsoCreateTasks.Enabled = False
-      Me.lblNote.Caption = "Import generic CWBS as starting point."
     Case "From Existing Tasks"
       Me.cmdImport.Caption = "Create"
+      Me.chkAlsoCreateTasks.Value = False
+      Me.chkAlsoCreateTasks.Enabled = False 'obviously
       Me.lblNote.Caption = "Replicate current task structure into " & Me.cboOutlineCodes.List(Me.cboOutlineCodes.Value, 1) & "."
+    Case Else
+      Me.chkAlsoCreateTasks.Value = True
+      Me.chkAlsoCreateTasks.Enabled = False 'why?
+      Me.lblNote.Caption = "Import generic CWBS as starting point."
+      Me.cboAppendix.Enabled = True
+      strFileName = cptDir & "\cpt-mil-std-881.adtg"
+      If Dir(strFileName) <> vbNullString Then
+        Set oRecordset = CreateObject("ADODB.Recordset")
+        oRecordset.Open strFileName, , adOpenKeyset, adLockReadOnly
+        oRecordset.Filter = "CODE='1' AND VERSION='" & Right(Me.cboImport, 1) & "'"
+        Set oDict = CreateObject("Scripting.Dictionary")
+        Do While Not oRecordset.EOF
+          If Not oDict.Exists(oRecordset(1).Value) Then
+            oDict.Add oRecordset(1).Value, oRecordset(3).Value
+          End If
+          oRecordset.MoveNext
+        Loop
+        Me.cboAppendix.Clear
+        For lngItem = 0 To oDict.Count - 1
+          Me.cboAppendix.AddItem
+          Me.cboAppendix.List(Me.cboAppendix.ListCount - 1, 0) = oDict.Keys(lngItem)
+          Me.cboAppendix.List(Me.cboAppendix.ListCount - 1, 1) = "Appendix " & oDict.Keys(lngItem) & " - " & oDict.Items(lngItem)
+        Next lngItem
+        Set oDict = Nothing
+        oRecordset.Filter = 0
+        oRecordset.Close
+      End If
   End Select
-  Me.txtNameIt.SetFocus
+  If InStr(Me.cboImport.Value, "MIL-STD") > 0 Then
+    Me.cboAppendix.SetFocus
+    'Me.cboAppendix.DropDown 'don't! MSP exits
+  Else
+    Me.txtNameIt.SetFocus
+  End If
+
+exit_here:
+  On Error Resume Next
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+  Set oDict = Nothing
+  
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptBackbone_frm", "cboImport_Change", Err, Erl)
+  Resume exit_here
   
 End Sub
 
@@ -250,6 +303,13 @@ next_task:
       
     Case "From Existing Tasks"
       Call cptCreateCode(Me, lngOutlineCode)
+    
+    Case Else
+      If IsNull(Me.cboAppendix) Then
+        'discolor it and prompt
+      Else
+        Call cptImportAppendix(Me, lngOutlineCode)
+      End If
   
   End Select
   

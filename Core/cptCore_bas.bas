@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.15.2</cpt_version>
+'<cpt_version>v1.16.0</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
@@ -1401,8 +1401,8 @@ End Sub
 
 Sub cptSendMail(strCategory As String)
   'objects
-  Dim objOutlook As Object 'Outlook.Application
-  Dim MailItem As Object 'MailItem
+  Dim oOutlook As Object 'Outlook.Application
+  Dim oMailItem As Object 'MailItem
   'strings
   Dim strHTML As String
   Dim strURL As String
@@ -1415,22 +1415,26 @@ Sub cptSendMail(strCategory As String)
 
   'get outlook
   On Error Resume Next
-  Set objOutlook = GetObject(, "Outlook.Application")
+  Set oOutlook = GetObject(, "Outlook.Application")
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If objOutlook Is Nothing Then
-    Set objOutlook = CreateObject("Outlook.Application")
+  If oOutlook Is Nothing Then
+    Set oOutlook = CreateObject("Outlook.Application")
+  End If
+  If oOutlook Is Nothing Then
+    MsgBox "Outlook is not available.", vbCritical + vbOKOnly, "SendMail"
+    GoTo exit_here
   End If
 
   'create the email and set generic settings
-  Set MailItem = objOutlook.CreateItem(0) 'olMailItem
-  MailItem.To = "help@ClearPlanConsulting.com"
-  MailItem.Importance = 2 'olImportanceHigh
-  MailItem.Display
+  Set oMailItem = oOutlook.CreateItem(0) '0=olMailItem
+  oMailItem.To = "help@ClearPlanConsulting.com"
+  oMailItem.Importance = 2 '2=olImportanceHigh
+  oMailItem.Display
 
   'get strURL and message body
   Select Case strCategory
     Case "Issue"
-      MailItem.Subject = "Issue: <enter brief summary of the issue>"
+      oMailItem.Subject = "Issue: <enter brief summary of the issue>"
       On Error Resume Next
       Err.Raise 1, "User", "User-submitted Issue"
       cptHandleErr "cptCore_bas", "cptSendMail", Err
@@ -1442,25 +1446,25 @@ Sub cptSendMail(strCategory As String)
       strHTML = strHTML & "<i>Please be as detailed as possible: what were you trying to do, what selections did you make, describe the file you are working on, etc.</i><p>"
       strHTML = strHTML & "<h3>Please Include Screenshot(s):</h3><p>Please include any screenshot(s) of any error messages or anything else that might help us troubleshoot this issue for you.<p><p>"
       strHTML = strHTML & "<i>Thank you for helping us improve the ClearPlan Toolbar!</i>"
-      MailItem.HTMLBody = strHTML & MailItem.HTMLBody
+      oMailItem.HTMLBody = strHTML & oMailItem.HTMLBody
       
     Case "Request"
-      MailItem.Subject = "Feature Request: <enter brief description of the feature>"
+      oMailItem.Subject = "Feature Request: <enter brief description of the feature>"
       strHTML = "<h3>Please Describe the Feature you are Requesting:</h3><p>&nbsp;<p>&nbsp;"
       strHTML = strHTML & "<i>Thank you for contributing to the ClearPlan Toolbar project!</i>"
-      MailItem.HTMLBody = strHTML & MailItem.HTMLBody
+      oMailItem.HTMLBody = strHTML & oMailItem.HTMLBody
       
     Case "Feedback"
-      MailItem.Subject = "Feedback: <enter summary of feedback>"
+      oMailItem.Subject = "Feedback: <enter summary of feedback>"
       strHTML = "<h3>Feedback:</h3><p>&nbsp;<p>&nbsp;<i>We sincerely appreciate any and all constructive feedback. Thank you for contributing!</i>"
-      MailItem.HTMLBody = strHTML & MailItem.HTMLBody
+      oMailItem.HTMLBody = strHTML & oMailItem.HTMLBody
       
   End Select
   
 exit_here:
   On Error Resume Next
-  Set objOutlook = Nothing
-  Set MailItem = Nothing
+  Set oOutlook = Nothing
+  Set oMailItem = Nothing
   Exit Sub
 err_here:
   Call cptHandleErr("cptCore_bas", "cptSendMail", Err, Erl)
@@ -2731,7 +2735,9 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
   oRequiredFields("EVTMS") = False
   oRequiredFields("PP") = False
   For Each vRequired In Split(strRequiredFields, ",")
-    oRequiredFields(vRequired) = True
+    If Left(vRequired, 1) <> "[" And Right(vRequired, 1) <> "]" Then
+      oRequiredFields(vRequired) = True
+    End If
   Next vRequired
   'todo: LOE and PP must have selection, even if it's just '<unused>'
   
@@ -2924,7 +2930,7 @@ next_control:
       If blnUseDefault Then
         oComboBox.Enabled = True
       Else
-        oComboBox.Enabled = oRequiredFields(vControl)
+        oComboBox.Enabled = cptGetPosition(Replace(Replace(strRequiredFields, "[", ""), "]", ""), vControl, ",") > 0
       End If
       If oRequiredFields(vControl) Then
         If vControl = "LOE" Or vControl = "PP" Then
@@ -3231,46 +3237,49 @@ Function cptGetPosition(vList As Variant, vValue As Variant, Optional strDelimit
   'if vList is comma-separated then strDelimiter is required
   'boolean type is not supported
   Dim lngPosition As Long
+  Dim lngTemp As Long
   Dim vPosition As Variant
   
   If IsArray(vList) Then
-    For lngPosition = 0 To UBound(vList)
+    For lngPosition = 1 To UBound(vList) + 1
       Select Case TypeName(vValue)
         Case "Date"
-          If vValue = CDate(vList(lngPosition)) Then
-            cptGetPosition = lngPosition
+          If vValue = CDate(vList(lngPosition - 1)) Then
+            lngTemp = lngPosition
           End If
         Case "Double"
-          If vValue = CDbl(vList(lngPosition)) Then
-            cptGetPosition = lngPosition
+          If vValue = CDbl(vList(lngPosition - 1)) Then
+            lngTemp = lngPosition
           End If
         Case "Integer"
-          If vValue = CInt(vList(lngPosition)) Then
-            cptGetPosition = lngPosition
+          If vValue = CInt(vList(lngPosition - 1)) Then
+            lngTemp = lngPosition
           End If
         Case "Long"
-          If vValue = CLng(vList(lngPosition)) Then
-            cptGetPosition = lngPosition
+          If vValue = CLng(vList(lngPosition - 1)) Then
+            lngTemp = lngPosition
           End If
         Case "String"
-          If vValue = vList(lngPosition) Then
-            cptGetPosition = lngPosition
+          If vValue = vList(lngPosition - 1) Then
+            lngTemp = lngPosition
           End If
         Case "Null"
           If vList(lngPosition) = "" Then
-            cptGetPosition = lngPosition
+            lngTemp = lngPosition
           End If
       End Select
     Next lngPosition
   Else 'delimited string
-    lngPosition = 0
+    lngPosition = 1
     For Each vPosition In Split(vList, strDelimiter)
       If vValue = vPosition Then
-        cptGetPosition = lngPosition
+        lngTemp = lngPosition
+        Exit For
       End If
       lngPosition = lngPosition + 1
     Next vPosition
   End If
+  cptGetPosition = lngTemp
 End Function
 
 Function cptGetDate(dtDate As Date, Optional strFormat As String)

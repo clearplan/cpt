@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.3</cpt_version>
+'<cpt_version>v1.5.4</cpt_version>
 Option Explicit
 
 Sub cptGetBAC()
@@ -210,7 +210,7 @@ Sub cptGetCPLI()
       FilterClear
       GroupClear
       Application.Sort "ID", , , , , , , True
-      OptionsViewEx DisplaySummaryTasks:=True, DisplayNameIndent:=True, displayoutlinesymbols:=True
+      OptionsViewEx DisplaySummaryTasks:=True, DisplayNameIndent:=True, DisplayOutlineSymbols:=True
       OutlineShowAllTasks
       EditGoTo oTask.ID
     Else
@@ -442,7 +442,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMerics_Bas", "cptGet", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptGet", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -878,12 +878,6 @@ Sub cptLateStartsFinishes()
   Dim oSeries As Excel.Series
   Dim oChart As Excel.ChartObject
   Dim oShape As Excel.Shape
-  Dim oOutlook As Outlook.Application
-  Dim oMailItem As Outlook.MailItem
-  Dim oDocument As Word.Document
-  Dim oWord As Word.Application
-  Dim oSelection As Word.Selection
-  Dim oEmailTemplate As Word.Template
   Dim oWorksheet As Excel.Worksheet
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
@@ -1311,12 +1305,6 @@ exit_here:
   Set oSeries = Nothing
   Set oChart = Nothing
   Set oShape = Nothing
-  Set oOutlook = Nothing
-  Set oMailItem = Nothing
-  Set oDocument = Nothing
-  Set oWord = Nothing
-  Set oSelection = Nothing
-  Set oEmailTemplate = Nothing
   Set oWorksheet = Nothing
   Set oCell = Nothing
   Set oRange = Nothing
@@ -1330,7 +1318,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics", "cptLateStartsFinishes", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptLateStartsFinishes", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2169,7 +2157,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics", "cptGetTrend_CEI", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptGetTrend_CEI", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3035,6 +3023,9 @@ Sub cptShowMetricsData_frm()
   'booleans
   'variants
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptMetricsData_frm") Is Nothing Then Exit Sub
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   

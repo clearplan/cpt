@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.6.6</cpt_version>
+'<cpt_version>v1.7.0</cpt_version>
 Option Explicit
 Private Const lngForeColorValid As Long = -2147483630
 Private Const lngBorderColorValid As Long = 8421504 '-2147483642
@@ -398,7 +398,7 @@ Private Sub chkSendEmails_Click()
     End If
     Call cptListQuickParts(Me, True)
     strQuickPart = cptGetSetting("StatusSheet", "cboQuickPart")
-    If Len(strQuickPart) > 0 Then
+    If Len(strQuickPart) > 0 And Me.cboQuickParts.ListCount > 0 Then
       blnExists = False
       For lngItem = 0 To Me.cboQuickParts.ListCount - 1
         If Me.cboQuickParts.List(lngItem, 0) = strQuickPart Then

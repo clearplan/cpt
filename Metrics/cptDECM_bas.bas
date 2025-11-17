@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v8.1.0</cpt_version>
+'<cpt_version>v8.1.1</cpt_version>
 Option Explicit
 Private strWBS As String
 Private strOBS As String
@@ -25,7 +25,7 @@ Private oSubMap As Scripting.Dictionary
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
   'objects
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim myDECM_frm As cptDECM_frm
   Dim oException As MSProject.Exception
   Dim oTasks As MSProject.Tasks
@@ -279,13 +279,13 @@ Sub cptDECM_GET_DATA()
     Else
       oSubMap.RemoveAll
     End If
-    For Each oSubProject In ActiveProject.Subprojects
-      If Left(oSubProject.Path, 2) <> "<>" Then 'offline
-        oSubMap.Add Replace(Dir(oSubProject.Path), ".mpp", ""), 0
-      ElseIf Left(oSubProject.Path, 2) = "<>" Then 'online
-        oSubMap.Add oSubProject.Path, 0
+    For Each oSubproject In ActiveProject.Subprojects
+      If Left(oSubproject.Path, 2) <> "<>" Then 'offline
+        oSubMap.Add Replace(Dir(oSubproject.Path), ".mpp", ""), 0
+      ElseIf Left(oSubproject.Path, 2) = "<>" Then 'online
+        oSubMap.Add oSubproject.Path, 0
       End If
-    Next oSubProject
+    Next oSubproject
     For Each oTask In ActiveProject.Tasks
       If oTask Is Nothing Then GoTo next_mapping_task
       If Not oTask.Active Then GoTo next_mapping_task
@@ -1176,7 +1176,7 @@ exit_here:
   Exit Sub
 err_here:
  On Error Resume Next
- Call cptHandleErr("cptDECM", "cptDECM_GET_DATA", Err, Erl)
+ Call cptHandleErr("cptDECM_bas", "cptDECM_GET_DATA", Err, Erl)
  Resume exit_here
 End Sub
 
@@ -4497,7 +4497,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strList
-        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, Renumber:=False, Outline:=False
+        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", ascending2:=False, Renumber:=False, Outline:=False
         SelectBeginning
         EditGoTo Date:=ActiveSelection.Tasks(1).Finish
       Else
@@ -4612,7 +4612,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   Dim oAssignment As MSProject.Assignment
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   'Dim oSubMap As Scripting.Dictionary
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
@@ -4990,7 +4990,7 @@ exit_here:
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oSubMap = Nothing
   Application.StatusBar = ""
   oExcel.EnableEvents = True

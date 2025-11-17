@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptBackbone_bas"
-'<cpt_version>v1.2.6</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 
 Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
@@ -59,7 +59,7 @@ Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCo
         Set oWorkbook = oExcel.Workbooks.Open(oFileDialog.SelectedItems(1))
         'find the sheet
         For Each oWorksheet In oWorkbook.Sheets
-          If UCase(oWorksheet.[A1].Value) = "CODE" And UCase(oWorksheet.[B1].Value) = "LEVEL" And UCase(oWorksheet.[C1].Value) = "DESCRIPTION" Then
+          If UCase(Trim(oWorksheet.[A1].Value)) = "CODE" And UCase(Trim(oWorksheet.[B1].Value)) = "LEVEL" And UCase(Trim(oWorksheet.[C1].Value)) = "DESCRIPTION" Then
             strOutlineCode = CustomFieldGetName(lngOutlineCode)
             'build the code mask
             lngOutlineLevel = oWorksheet.Evaluate("MAX(B:B)")
@@ -604,6 +604,96 @@ err_here:
   Resume exit_here
 End Sub
 
+Sub cptImportAppendix(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  Dim oTaskTable As Object 'TaskTable
+  Dim oTask As MSProject.Task
+  'strings
+  Dim strAppendix As String
+  Dim strVersion As String
+  Dim strFileName As String
+  Dim strDir As String
+  Dim strMsg As String
+  'longs
+  Dim lngItem As Long
+  Dim lngField As Long
+  Dim lngOutlineLevel As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  strDir = cptDir
+  
+  strVersion = Right(myBackbone_frm.cboImport, 1)
+  strAppendix = myBackbone_frm.cboAppendix.Value
+  
+  Application.OpenUndoTransaction "Import MIL-STD-881" & strVersion & " Appendix " & strAppendix
+  
+  For lngItem = 1 To 10
+    CustomOutlineCodeEditEx FieldID:=lngOutlineCode, Level:=lngItem, Sequence:=pjCustomOutlineCodeCharacters, Length:="Any", Separator:="."
+  Next lngItem
+  CustomOutlineCodeEditEx FieldID:=lngOutlineCode, OnlyLookUpTableCodes:=False, OnlyLeaves:=False, LookupDefault:=False, SortOrder:=0
+    
+  strFileName = strDir & "/cpt-mil-std-881.adtg"
+  
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  oRecordset.Open strFileName, , adOpenKeyset, adLockReadOnly
+  oRecordset.Filter = "VERSION='" & strVersion & "' AND APPENDIX='" & strAppendix & "'"
+  lngItem = 0
+  Do While Not oRecordset.EOF
+    lngItem = lngItem + 1
+    Set oTask = ActiveProject.Tasks.Add(oRecordset.Fields(3).Value)
+    oTask.SetField lngOutlineCode, oRecordset.Fields(2).Value
+    ActiveProject.OutlineCodes(CustomFieldGetName(lngOutlineCode)).LookupTable.Item(lngItem).Description = oRecordset.Fields(3).Value
+
+    lngOutlineLevel = Len(oRecordset.Fields(2).Value) - Len(Replace(oRecordset.Fields(2).Value, ".", ""))
+    If lngOutlineLevel > 0 Then
+      oTask.OutlineLevel = lngOutlineLevel + 1
+    End If
+    
+    oRecordset.MoveNext
+  Loop
+  oRecordset.Close
+  
+  'pretty up the task table
+  If Len(ActiveProject.CurrentTable) > 0 Then
+    SelectBeginning
+    SetRowHeight 1, "all"
+    Set oTaskTable = ActiveProject.TaskTables(ActiveProject.CurrentTable)
+    For lngField = 1 To oTaskTable.TableFields.Count
+      If FieldConstantToFieldName(oTaskTable.TableFields(lngField).Field) = "Name" Then
+        ColumnBestFit lngField
+        Exit For
+      End If
+    Next lngField
+  End If
+  
+  'reset outline code to disallow new entries
+  CustomOutlineCodeEditEx FieldID:=lngOutlineCode, OnlyLookUpTableCodes:=True, OnlyLeaves:=True, LookupDefault:=False, SortOrder:=0
+  Call cptRefreshOutlineCodePreview(myBackbone_frm, CustomFieldGetName(lngOutlineCode))
+
+exit_here:
+  On Error Resume Next
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+  Application.CloseUndoTransaction
+  Set oTaskTable = Nothing
+  Set oTask = Nothing
+  
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptBackbone_bas", "cptImportAppendix", Err, Erl)
+  Resume exit_here
+  
+  
+End Sub
+
 Sub cptExportOutlineCodeToExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
   'objects
   Dim oExcel As Object 'Excel.Application
@@ -826,9 +916,13 @@ Sub cptExport81334D(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As L
           If oOutlook Is Nothing Then
             Set oOutlook = CreateObject("Outlook.Application")
           End If
+          If oOutlook Is Nothing Then
+            MsgBox "Outlook is not available.", vbCritical + vbOKOnly, "Request 81334D"
+            GoTo exit_here
+          End If
           Set oMailItem = oOutlook.CreateItem(0) '0 = olMailItem
           oMailItem.To = "help@ClearPlanConsulting.com"
-          oMailItem.Importance = 2 'olImportanceHigh
+          oMailItem.Importance = 2 '2=olImportanceHigh
           oMailItem.Subject = "Template Request: " & strTemplate
           oMailItem.HTMLBody = "Please forward the subject-referenced template. Thank you." & oMailItem.HTMLBody
           oMailItem.Display False
@@ -980,15 +1074,25 @@ End Sub
 
 Sub cptShowBackbone_frm()
   'objects
+  Dim xmlHttpDoc As Object
+  Dim oStream As Object 'ADODB.Stream
+  Dim oRecordset As ADODB.Recordset
+  Dim oDict As Scripting.Dictionary
   Dim myBackbone_frm As cptBackbone_frm
   'longs
-  Dim lngCode As Long, lngOutlineCode As Long
+  Dim lngCode As Long
+  Dim lngOutlineCode As Long
+  Dim lngItem As Long
   'strings
-  Dim strOutlineCode As String, strOutlineCodeName As String
+  Dim strOutlineCode As String
+  Dim strOutlineCodeName As String
+  Dim strFileName As String
+  Dim strURL As String
+  Dim strMsg As String
 
   'prevent spawning
   If Not cptGetUserForm("cptBackbone_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   Set myBackbone_frm = New cptBackbone_frm
@@ -1008,15 +1112,61 @@ Sub cptShowBackbone_frm()
     Next lngCode
   End With
   
+  'get latest 881 dictionary version (if possible)
+  Set xmlHttpDoc = CreateObject("Microsoft.XMLHTTP")
+  strURL = "https://github.com/clearplan/cpt/blob/master/Backbone/cpt-mil-std-881.adtg"
+  xmlHttpDoc.Open "GET", strURL, False
+  xmlHttpDoc.Send
+  If xmlHttpDoc.Status = 200 And xmlHttpDoc.readyState = 4 Then
+    Set oStream = CreateObject("ADODB.Stream")
+    oStream.Open
+    oStream.Type = 1 'adTypeBinary
+    oStream.Write xmlHttpDoc.responseBody
+    If Dir(strFileName) <> vbNullString Then Kill strFileName
+    oStream.SaveToFile strFileName
+    oStream.Close
+  End If
+    
   'add Import Actions
   With myBackbone_frm.cboImport
     .Clear
     .AddItem "From Excel Workbook"
     .AddItem "From MSP Server Outline Code Export"
-    .AddItem "From MIL-STD-881D Appendix B"
-    .AddItem "From MIL-STD-881D Appendix E"
     .AddItem "From Existing Tasks"
+    'add options for mil-std-881
+    strFileName = cptDir & "/cpt-mil-std-881.adtg"
+    If Dir(strFileName) <> vbNullString Then
+      Set oDict = CreateObject("Scripting.Dictionary")
+      Set oRecordset = CreateObject("ADODB.Recordset")
+      oRecordset.Open strFileName, , adOpenKeyset, adLockReadOnly
+      oRecordset.Filter = "CODE='1'"
+      oRecordset.MoveFirst
+      Do While Not oRecordset.EOF
+        If Not oDict.Exists(oRecordset(0).Value) Then
+          oDict.Add oRecordset(0).Value, oRecordset(0).Value
+        End If
+        oRecordset.MoveNext
+      Loop
+      oRecordset.Close
+      Set oRecordset = Nothing
+      For lngItem = oDict.Count - 1 To 0 Step -1 'in reverse so that latest versions are at top
+        .AddItem "From MIL-STD-881" & oDict.Keys(lngItem)
+      Next lngItem
+      Set oDict = Nothing
+    Else
+      'not sure if we can send an *.adtg file via email?
+      strMsg = "Could not download the MIL-STD-881 dictionary." & vbCrLf & vbCrLf
+      strMsg = strMsg & "If you would like to import from the MIL-STD-881 dictionary, please:" & vbCrLf
+      strMsg = strMsg & "1. download the MIL-STD-881 dictionary" & vbCrLf
+      strMsg = strMsg & "2. install to: " & cptDir & "\" & vbCrLf & vbCrLf
+      strMsg = strMsg & "Alternatively, request it from help@ClearPlanConsulting.com" & vbCrLf & vbCrLf
+      strMsg = strMsg & "Download from URL:"
+      InputBox strMsg, "File Not Found!", strURL
+    End If
+    
   End With
+  
+  myBackbone_frm.cboAppendix.Enabled = False
   
   'add Export Actions
   With myBackbone_frm.cboExport
@@ -1039,6 +1189,11 @@ Sub cptShowBackbone_frm()
 
 exit_here:
   On Error Resume Next
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+  Set xmlHttpDoc = Nothing
+  Set oStream = Nothing
+  Set oDict = Nothing
   Unload myBackbone_frm
   Set myBackbone_frm = Nothing
   Exit Sub
@@ -1272,7 +1427,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   End If
   
   'output top level
-  Print #lngFile, "*" & "," & Chr(34) & ActiveProject.Name & Chr(34) & String(25, ",")
+  Print #lngFile, "*" & "," & Chr(34) & ActiveProject.ProjectSummaryTask.Name & Chr(34) & String(25, ",")
   For lngItem = 1 To oLookupTable.Count
     strCode = oLookupTable(lngItem).FullName
     strDescription = oLookupTable(lngItem).Description
@@ -1294,7 +1449,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   Close #lngFile
   
   'open it in notepad
-  ShellExecute 0, "open", strDir & strFilename, vbNullString, vbNullString, 1
+  ShellExecute 0, "open", "notepad.exe", strDir & strFileName, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -1422,8 +1577,8 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
   Next lngItem
 
   Close #lngFile
-
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  
+  ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
 
 exit_here:
   On Error Resume Next
@@ -1442,4 +1597,136 @@ err_here:
   Call cptHandleErr("cptBackbone_bas", "cptExportOutlineCodeForCOBRA", Err, Erl)
   Resume exit_here
   
+End Sub
+
+Sub cptExportAllCodes()
+  'exports all lookups from all LCFs (Flags have no lookups)
+  'does not interrogate ECFs
+  'objects
+  Dim oFieldCounts As Scripting.Dictionary
+  Dim oCodes As Scripting.Dictionary
+  Dim oOutlineCode As OutlineCode
+  Dim oLookupTable As LookupTable
+  Dim oLookupTableEntry As LookupTableEntry
+  'strings
+  Dim strDescription As String
+  Dim strValue As String
+  Dim strFileName As String
+  Dim strFN As String
+  Dim strCFN As String
+  'longs
+  Dim lngCodes As Long
+  Dim lngFile As Long
+  Dim lngCF As Long
+  Dim lngListItem As Long
+  Dim lngItem As Long
+  Dim lngItems As Long
+  'integers
+  'doubles
+  'booleans
+  'variants
+  Dim vFieldType As Variant
+  'dates
+  
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  cptSpeed True
+  
+  'first do outline codes, because they're different
+  For Each oOutlineCode In ActiveProject.OutlineCodes
+    lngCF = oOutlineCode.FieldID
+    strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
+    Set oLookupTable = oOutlineCode.LookupTable
+    lngItems = oLookupTable.Count
+    If lngItems > 0 Then
+      Application.StatusBar = "Exporting Code file for " & strCFN & "..."
+      lngFile = FreeFile
+      strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
+      Open strFileName For Output As #lngFile
+      Print #lngFile, "CODE,DESCRIPTION,PARENT"
+      For lngItem = 1 To oLookupTable.Count
+        Set oLookupTableEntry = oLookupTable(lngItem)
+        If oLookupTableEntry.Level = 1 Then
+          Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & ",*****"
+        Else
+          Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & "," & oLookupTableEntry.ParentEntry.FullName
+        End If
+      Next lngItem
+      Close #lngFile
+      ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+      Application.StatusBar = "Exporting Code file for " & strCFN & "...done."
+      lngCodes = lngCodes + 1
+    End If
+  Next oOutlineCode
+  
+  Set oFieldCounts = CreateObject("Scripting.Dictionary")
+  oFieldCounts.Add "Text", 30
+  oFieldCounts.Add "Number", 20
+  
+  Set oCodes = CreateObject("Scripting.Dictionary")
+  
+  For Each vFieldType In Array("Cost", "Date", "Duration", "Finish", "Number", "Start", "Text") 'Flag has no picklist
+    If oFieldCounts.Exists(vFieldType) Then
+      lngItems = oFieldCounts(vFieldType)
+    Else
+      lngItems = 10
+    End If
+    For lngItem = 1 To lngItems
+      strFN = vFieldType & lngItem
+      lngCF = FieldNameToFieldConstant(strFN)
+      strCFN = CustomFieldGetName(lngCF)
+      If Len(strCFN) > 0 Then
+        strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
+      Else
+        GoTo next_cf
+      End If
+      On Error Resume Next
+      If Len(CustomFieldValueListGetItem(lngCF, pjValueListValue, 1)) = 0 Then GoTo next_cf
+      For lngListItem = 1 To 1000 'capped at 1000, hopefully that's enough...
+        strValue = CustomFieldValueListGetItem(lngCF, pjValueListValue, lngListItem)
+        strDescription = CustomFieldValueListGetItem(lngCF, pjValueListDescription, lngListItem)
+        If strValue <> "" Then
+          oCodes.Add strValue, strDescription
+        Else
+          Exit For
+        End If
+        strValue = ""
+        strDescription = ""
+      Next lngListItem
+      If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      If oCodes.Count > 0 Then
+        lngFile = FreeFile
+        strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
+        Open strFileName For Output As #lngFile
+        Print #lngFile, "CODE,DESCRIPTION"
+        For lngListItem = 0 To oCodes.Count - 1
+          Print #lngFile, oCodes.Keys(lngListItem) & "," & Chr(34) & oCodes.Items(lngListItem) & Chr(34)
+        Next lngListItem
+        Close #lngFile
+        ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+        lngCodes = lngCodes + 1
+      End If
+      oCodes.RemoveAll
+next_cf:
+    Next lngItem
+  Next vFieldType
+  
+  Application.StatusBar = lngCodes & " codes exported."
+  MsgBox lngCodes & " codes exported.", vbInformation + vbOKOnly, "Code Export"
+
+exit_here:
+  On Error Resume Next
+  Set oFieldCounts = Nothing
+  Reset
+  Application.StatusBar = ""
+  cptSpeed False
+  Set oCodes = Nothing
+  Set oOutlineCode = Nothing
+  Set oLookupTable = Nothing
+  Set oLookupTableEntry = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptBackbone_bas", "cptExportAllCodes", Err, Erl)
+  Resume exit_here
 End Sub

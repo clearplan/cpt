@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.5.1</cpt_version>
+'<cpt_version>v1.5.3</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 
@@ -56,8 +56,8 @@ Private Sub chkCosts_AfterUpdate()
 End Sub
 
 Private Sub cmdAdd_Click()
-Dim lngField As Long, lngExport As Long, lngExists As Long
-Dim blnExists As Boolean
+  Dim lngField As Long, lngExport As Long, lngExists As Long
+  Dim blnExists As Boolean
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
@@ -89,7 +89,7 @@ err_here:
 End Sub
 
 Private Sub cmdCancel_Click()
-Dim strFileName As String
+  Dim strFileName As String
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
@@ -123,15 +123,15 @@ err_here:
 End Sub
 
 Private Sub cmdRemove_Click()
-Dim lgExport As Long
+  Dim lngExport As Long
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  For lgExport = Me.lboExport.ListCount - 1 To 0 Step -1
-    If Me.lboExport.Selected(lgExport) Then
-      Me.lboExport.RemoveItem lgExport
+  For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
+    If Me.lboExport.Selected(lngExport) Then
+      Me.lboExport.RemoveItem lngExport
     End If
-  Next lgExport
+  Next lngExport
 
 exit_here:
   On Error Resume Next
@@ -159,15 +159,15 @@ err_here:
 End Sub
 
 Private Sub stxtSearch_Change()
-'objects
-'strings
-Dim strFileName As String
-'longs
-Dim lngItem As Long
-'integers
-'booleans
-'variants
-'dates
+  'objects
+  'strings
+  Dim strFileName As String
+  'longs
+  Dim lngItem As Long
+  'integers
+  'booleans
+  'variants
+  'dates
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 

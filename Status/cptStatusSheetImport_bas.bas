@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.3.4</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -262,9 +262,9 @@ End Sub
 
 Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_frm)
   'objects
-  Dim oInspector As Outlook.Inspector
-  Dim oOutlook As Outlook.Application
-  Dim oMailItem As Outlook.MailItem
+  Dim oInspector As Object 'Outlook.Inspector
+  Dim oOutlook As Object 'Outlook.Application
+  Dim oMailItem As Object 'Outlook.MailItem
   Dim oDocument As Word.Document
   Dim oWord As Word.Application
   Dim oSelection As Word.Selection
@@ -272,7 +272,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim oDict As Scripting.Dictionary
   Dim oShell As Object
   Dim oRecordset As ADODB.Recordset
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -431,7 +431,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   dtStart = Now
   Print #lngFile, "START: " & FormatDateTime(dtStart, vbGeneralDate)
   'set up deconfliction db
-  strSchema = Environ("temp") & "\Schema.ini"
+  strSchema = Environ("TEMP") & "\Schema.ini"
   lngDeconflictionFile = FreeFile
   Open strSchema For Output As lngDeconflictionFile
   Print #lngDeconflictionFile, "[imported.csv]"
@@ -444,7 +444,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Print #lngDeconflictionFile, "Col5=WAS Text Width 50"
   Print #lngDeconflictionFile, "Col6=IS Text Width 50"
   Close #lngDeconflictionFile
-  strDeconflictionFile = Environ("temp") & "\imported.csv"
+  strDeconflictionFile = Environ("TEMP") & "\imported.csv"
   lngDeconflictionFile = FreeFile
   Open strDeconflictionFile For Output As #lngDeconflictionFile
   Print #lngDeconflictionFile, "FILE,TASK_UID,FIELD,RESOURCE_NAME,WAS,IS"
@@ -893,12 +893,16 @@ next_file:
         If oOutlook Is Nothing Then
           Set oOutlook = CreateObject("Outlook.Application")
         End If
+        If oOutlook Is Nothing Then
+          MsgBox "Outlook is not available.", vbCritical + vbOKOnly, "Status Sheet Import"
+          GoTo no_outlook
+        End If
         'create email
         Set oMailItem = oOutlook.CreateItem(0) '0=olMailItem
         oMailItem.Display
         'add subject
         oMailItem.Subject = "ACTION REQUIRED: " & cptGetProgramAcronym & " - Invalid Status - " & Format(ActiveProject.StatusDate, "yyyy-mm-dd")
-        If oMailItem.BodyFormat <> olFormatHTML Then oMailItem.BodyFormat = olFormatHTML
+        If oMailItem.BodyFormat <> 2 Then oMailItem.BodyFormat = 2 '2=olFormatHTML
         'add some words
         On Error Resume Next
         Set oInspector = oMailItem.GetInspector
@@ -952,9 +956,9 @@ next_worksheet1:
         'attach it
         oMailItem.Attachments.Add strFileName
         'show it
-        oInspector.WindowState = 2 'olNormalWindow
+        oInspector.WindowState = 2 '2=olNormalWindow
       End If
-      
+no_outlook:
       .lblStatus.Caption = "Importing...(" & lngItem + 1 & " of " & .lboStatusSheets.ListCount & ")"
       .lblProgress.Width = ((lngItem + 1) / .lboStatusSheets.ListCount) * .lblStatus.Width
       .lboStatusSheets.Selected(lngItem) = False
@@ -966,7 +970,7 @@ next_worksheet1:
   'were there any conflicts?
   Application.StatusBar = "Checking for conflicting updates..."
   Close #lngDeconflictionFile
-  strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("temp") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
+  strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("TEMP") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   
   strSQL = "SELECT T1.TASK_UID,T1.RESOURCE_NAME,T1.FIELD,T2.WAS,T2.[IS],T2.FILE "
   strSQL = strSQL & "FROM ((SELECT TASK_UID,RESOURCE_NAME,FIELD,COUNT(FILE) FROM [imported.csv] GROUP BY TASK_UID,RESOURCE_NAME,FIELD HAVING COUNT(FILE)>1) AS T1) "
@@ -1018,7 +1022,7 @@ exit_here:
   Set oShell = Nothing
   If oRecordset.State = 1 Then oRecordset.Close
   Set oRecordset = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   myStatusSheetImport_frm.lblStatus.Caption = "Import Complete."
   myStatusSheetImport_frm.lblProgress.Width = myStatusSheetImport_frm.lblStatus.Width
   DoEvents
@@ -1041,8 +1045,8 @@ exit_here:
   If Dir(strImportLog) <> vbNullString And blnImportLog Then 'open log in notepad
     ShellExecute 0, "open", strImportLog, vbNullString, vbNullString, 1
   End If
-  If Dir(Environ("tmp") & "\Schema.ini") <> vbNullString Then Kill Environ("tmp") & "\Schema.ini"
-  If Dir(Environ("tmp") & "\imported.csv") <> vbNullString Then Kill Environ("tmp") & "\imported.csv"
+  If Dir(Environ("TEMP") & "\Schema.ini") <> vbNullString Then Kill Environ("TEMP") & "\Schema.ini"
+  If Dir(Environ("TEMP") & "\imported.csv") <> vbNullString Then Kill Environ("TEMP") & "\imported.csv"
   Set oRange = Nothing
   Set oListObject = Nothing
   Set oWorksheet = Nothing
