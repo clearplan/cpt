@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.2.5</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 
 Private Sub chkFilter_Click()
@@ -80,7 +80,7 @@ Private Sub lboFilter_Click()
     strField = "Unique ID"
   ElseIf Me.optID Then
     lngUID = CLng(Me.lboFilter.Value)
-    Set oTask = ActiveProject.Tasks.item(lngUID)
+    Set oTask = ActiveProject.Tasks.Item(lngUID)
     strField = "ID"
   End If
   blnErrorTrapping = cptErrorTrapping
