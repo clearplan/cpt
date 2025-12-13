@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.0</cpt_version>
+'<cpt_version>v1.7.1</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -2508,7 +2508,7 @@ Sub cptListQuickParts(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optional bl
         myStatusSheet_frm.cboQuickParts.AddItem "[blocked]"
         myStatusSheet_frm.cboQuickParts.Value = "[blocked]"
         myStatusSheet_frm.cboQuickParts.Enabled = False
-        oMailItem.Close SaveMode:=1 '1=olDiscard
+        oMailItem.Close 1 'SaveMode:=1 (olDiscard)
         GoTo exit_here
       Else
         oMailItem.GetInspector.WindowState = 1 '1=olMinimized
@@ -2533,7 +2533,7 @@ Sub cptListQuickParts(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optional bl
         myStatusSheet_frm.cboQuickParts.AddItem vQuickPart
       Next vQuickPart
     End If
-    oMailItem.Close SaveMode:=1 '1=olDiscard
+    oMailItem.Close 1 'SaveMode:=1 (olDiscard)
   End If
     
 exit_here:

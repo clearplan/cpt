@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.2.5</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 
 Sub cptShowFilterByClipboard_frm()
@@ -16,10 +16,10 @@ Sub cptShowFilterByClipboard_frm()
   Dim blnMaster As Boolean
   'variants
   'dates
-
+  
   'prevent spawning
   If Not cptGetUserForm("cptFilterByClipboard_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If ActiveProject.Tasks.Count = 0 Then GoTo exit_here
   blnMaster = ActiveProject.Subprojects.Count > 0
@@ -57,10 +57,10 @@ Sub cptShowFilterByClipboard_frm()
       lngFreeField = CLng(strFreeField)
     Else 'remove it
       cptDeleteSetting "FilterByClipboard", "cboFreeField"
-      lngFreeField = cptGetFreeField(myFilterByClipboard_frm, "Number")
+      lngFreeField = cptGetFreeField("Number")
     End If
   Else
-    lngFreeField = cptGetFreeField(myFilterByClipboard_frm, "Number")
+    lngFreeField = cptGetFreeField("Number")
   End If
 
   If lngFreeField > 0 Then
@@ -174,14 +174,14 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
   If Not IsNull(myFilterByClipboard_frm.cboFreeField.Value) Then
     lngFreeField = myFilterByClipboard_frm.cboFreeField
     For Each oTask In ActiveProject.Tasks
-      If oTask Is Nothing Then GoTo next_task
-      If oTask.ExternalTask Then GoTo next_task
+      If oTask Is Nothing Then GoTo Next_Task
+      If oTask.ExternalTask Then GoTo Next_Task
       If lngFreeField > 0 Then
         If CLng(oTask.GetField(lngFreeField)) > 0 Then
           oTask.SetField lngFreeField, 0
         End If
       End If
-next_task:
+Next_Task:
       lngTask = lngTask + 1
       Application.StatusBar = "Resetting number field...(" & Format(lngTask / IIf(lngTasks = 0, 1, lngTasks), "0%") & ")"
       DoEvents
@@ -301,8 +301,8 @@ Function cptGuessDelimiter(ByRef vData As Variant, strRegEx As String) As Long
       lngMatch = Asc(Right(REMatch, 1))
       If dScores.Exists(lngMatch) Then
         'add a point
-        dScores.item(lngMatch) = dScores.item(lngMatch) + 1
-        If dScores.item(lngMatch) > lngMax Then lngMax = dScores.item(lngMatch)
+        dScores.Item(lngMatch) = dScores.Item(lngMatch) + 1
+        If dScores.Item(lngMatch) > lngMax Then lngMax = dScores.Item(lngMatch)
       Else
         dScores.Add lngMatch, 1
       End If
@@ -318,8 +318,8 @@ Function cptGuessDelimiter(ByRef vData As Variant, strRegEx As String) As Long
       lngMatch = Asc(Right(REMatch, 1))
       If dScores.Exists(lngMatch) Then
         'add a point
-        dScores.item(lngMatch) = dScores.item(lngMatch) + 1
-        If dScores.item(lngMatch) > lngMax Then lngMax = dScores.item(lngMatch)
+        dScores.Item(lngMatch) = dScores.Item(lngMatch) + 1
+        If dScores.Item(lngMatch) > lngMax Then lngMax = dScores.Item(lngMatch)
       Else
         dScores.Add lngMatch, 1
       End If
@@ -332,7 +332,7 @@ skip_it:
   'which delimiter got the most points?
   'todo: this doesn't work if there is a tie
   For lngItem = 0 To dScores.Count - 1
-    If dScores.items(lngItem) = lngMax Then
+    If dScores.Items(lngItem) = lngMax Then
       lngMatch = dScores.Keys(lngItem)
       Exit For
     End If
@@ -359,7 +359,7 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptGetFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm, strDataType As String, Optional lngType As Long) As Long
+Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Long
   'objects
   Dim dTypes As Object 'Scripting.Dictionary
   Dim rstFree As Object 'ADODB.Recordset
@@ -438,7 +438,7 @@ next_field:
   'next ensure there is no data in that field on the tasks
   'note: use of ActiveProject.Tasks ensures all subprojects included
   For Each oTask In ActiveProject.Tasks
-    If oTask Is Nothing Then GoTo next_task
+    If oTask Is Nothing Then GoTo Next_Task
     rstFree.MoveFirst
     Do While Not rstFree.EOF
       blnFree = True
@@ -449,13 +449,13 @@ next_field:
       End If
       rstFree.MoveNext
     Loop
-next_task:
+Next_Task:
   Next oTask
 
   rstFree.MoveFirst
   Do While Not rstFree.EOF
     If rstFree(1) = True Then
-      lngResponse = MsgBox("Looks like " & FieldConstantToFieldName(rstFree(0)) & " isn't in use." & vbCrLf & vbCrLf & "OK to temporarily borrow it for this?", vbQuestion + vbYesNoCancel, "Wanted: Custom Number Field")
+      lngResponse = MsgBox("Looks like " & FieldConstantToFieldName(rstFree(0)) & " isn't in use." & vbCrLf & vbCrLf & "OK to temporarily borrow it for this?", vbQuestion + vbYesNoCancel, "Wanted: Custom " & StrConv(strDataType, vbProperCase) & " Field")
       If lngResponse = vbYes Then
         lngFreeField = rstFree(0)
         Exit Do

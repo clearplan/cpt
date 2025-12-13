@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.12.0</Version>
+		<Version>v1.12.1</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -220,14 +220,14 @@
 	<Module>
 		<Name>cptFilterByClipboard_bas</Name>
 		<FileName>cptFilterByClipboard_bas.bas</FileName>
-		<Version>v1.2.5</Version>
+		<Version>v1.3.0</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptFilterByClipboard_frm</Name>
 		<FileName>cptFilterByClipboard_frm.frm</FileName>
-		<Version>v1.2.5</Version>
+		<Version>v1.3.0</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
@@ -367,7 +367,7 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.12.0</Version>
+		<Version>v1.12.1</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
@@ -388,14 +388,14 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.7.0</Version>
+		<Version>v1.7.1</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.7.0</Version>
+		<Version>v1.7.1</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
