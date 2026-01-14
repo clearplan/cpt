@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
 
 Sub cptShowFilterByClipboard_frm()
@@ -139,6 +139,7 @@ End Sub
 
 Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm)
   Dim oTask As MSProject.Task
+  Dim oAssignment As MSProject.Assignment
   'strings
   Dim strFilter As String
   'longs
@@ -148,51 +149,47 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
   Dim lngItems As Long
   Dim lngItem As Long
   Dim lngUID As Long
+  Dim lngFactor As Long
+  Dim lngAssignmentUID As Long
   'integers
   'doubles
   'booleans
-  Dim blnMaster As Boolean
+  Dim blnAssignments As Boolean
+  Dim blnErrorTrapping As Boolean
   'variants
   Dim vUID As Variant
   'dates
 
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-  blnMaster = ActiveProject.Subprojects.Count > 0
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   cptSpeed True
   
   myFilterByClipboard_frm.lboFilter.Clear
   strFilter = myFilterByClipboard_frm.txtFilter.Text
+  ActiveWindow.TopPane.Activate
+  FilterClear
+  ScreenUpdating = False
+  OptionsViewEx DisplaySummaryTasks:=True
+  On Error Resume Next
+  If Not OutlineShowAllTasks Then
+    Sort "ID", , , , , , False, True
+    OutlineShowAllTasks
+  End If
+  SelectAll
+  If Not IsNull(myFilterByClipboard_frm.cboFreeField.Value) Then
+    lngFreeField = myFilterByClipboard_frm.cboFreeField
+    SetField FieldConstantToFieldName(lngFreeField), 0
+  End If
   If Len(strFilter) = 0 Then
-    ActiveWindow.TopPane.Activate
-    FilterClear
     GoTo exit_here
   End If
   
-  lngTasks = ActiveProject.Tasks.Count
-  If Not IsNull(myFilterByClipboard_frm.cboFreeField.Value) Then
-    lngFreeField = myFilterByClipboard_frm.cboFreeField
-    For Each oTask In ActiveProject.Tasks
-      If oTask Is Nothing Then GoTo Next_Task
-      If oTask.ExternalTask Then GoTo Next_Task
-      If lngFreeField > 0 Then
-        If CLng(oTask.GetField(lngFreeField)) > 0 Then
-          oTask.SetField lngFreeField, 0
-        End If
-      End If
-Next_Task:
-      lngTask = lngTask + 1
-      Application.StatusBar = "Resetting number field...(" & Format(lngTask / IIf(lngTasks = 0, 1, lngTasks), "0%") & ")"
-      DoEvents
-    Next oTask
-  Else
-    lngFreeField = 0
-  End If
   Application.StatusBar = ""
   
   vUID = Split(strFilter, ",")
   strFilter = ""
+  blnAssignments = False
   If IsEmpty(vUID) Then GoTo exit_here
   For lngItem = 0 To UBound(vUID)
     If vUID(lngItem) = "" Then GoTo next_item
@@ -201,20 +198,33 @@ Next_Task:
     lngUID = vUID(lngItem)
     myFilterByClipboard_frm.lboFilter.AddItem lngUID
     
-    'validate task exists
+    'validate task (or assignment) exists
     On Error Resume Next
+    Set oTask = Nothing
+    Set oAssignment = Nothing
     If myFilterByClipboard_frm.optUID Then
       Set oTask = ActiveProject.Tasks.UniqueID(lngUID)
+      If oTask Is Nothing Then
+        Set oAssignment = ActiveProject.Tasks(1).Assignments.UniqueID(lngUID)
+      End If
     Else
       Set oTask = ActiveProject.Tasks(lngUID)
+      If oTask Is Nothing Then
+        Set oAssignment = ActiveProject.Tasks(1).Assignments.UniqueID(lngUID)
+      End If
     End If
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    If Not oTask Is Nothing Then
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If Not oAssignment Is Nothing Then blnAssignments = True
+    If Not oTask Is Nothing Or Not oAssignment Is Nothing Then
       'add to autofilter
       strFilter = strFilter & lngUID & vbTab
-      myFilterByClipboard_frm.lboFilter.List(myFilterByClipboard_frm.lboFilter.ListCount - 1, 1) = oTask.Name
-      If lngFreeField > 0 Then oTask.SetField lngFreeField, CStr(lngItem + 1)
-      Set oTask = Nothing
+      If Not oTask Is Nothing Then
+        myFilterByClipboard_frm.lboFilter.List(myFilterByClipboard_frm.lboFilter.ListCount - 1, 1) = oTask.Name
+        If lngFreeField > 0 Then oTask.SetField lngFreeField, CStr(lngItem + 1)
+      ElseIf Not oAssignment Is Nothing Then
+        myFilterByClipboard_frm.lboFilter.List(myFilterByClipboard_frm.lboFilter.ListCount - 1, 1) = oAssignment.Task.Name & " | " & oAssignment.ResourceName
+        If lngFreeField > 0 Then SetMatchingField FieldConstantToFieldName(lngFreeField), CStr(lngItem + 1), "Unique ID", lngUID ' oTask.SetField lngFreeField, CStr(lngItem + 1)
+      End If
     Else
       myFilterByClipboard_frm.lboFilter.List(lngItem, 1) = "< not found >"
     End If
@@ -228,16 +238,41 @@ next_item:
     myFilterByClipboard_frm.txtFilter.Visible = False
   End If
   
+  If blnAssignments Then
+    myFilterByClipboard_frm.lboHeader.List(0, 1) = "Task Name | Resource Name"
+    If MsgBox("Filter criteria includes Assignments!" & vbCrLf & vbCrLf & "Switch to Task Usage View?", vbQuestion + vbYesNo, "Switch View?") = vbYes Then
+      strMatchingTable = ActiveProject.CurrentTable
+      ActiveWindow.TopPane.Activate
+      ScreenUpdating = False
+      ViewApplyEx "Task Usage"
+      FilterClear
+      GroupClear
+      OptionsViewEx DisplaySummaryTasks:=True
+      On Error Resume Next
+      If Not OutlineShowAllTasks Then
+        Sort "ID", , , , , , False, True
+        OutlineShowAllTasks
+      End If
+      If ActiveProject.CurrentTable <> strMatchingTable Then
+        If MsgBox("Task Usage Table is '" & ActiveProject.CurrentTable & "'" & vbCrLf & vbCrLf & "Switch to Table '" & strMatchingTable & "' to match previous view?", vbQuestion + vbYesNo, "Switch Table?") = vbYes Then
+          TableApply strMatchingTable
+        End If
+      End If
+    End If
+  Else
+    myFilterByClipboard_frm.lboHeader.List(0, 1) = "Task Name"
+  End If
+  
   If Len(strFilter) > 0 And myFilterByClipboard_frm.chkFilter Then
     ActiveWindow.TopPane.Activate
     ScreenUpdating = False
     OptionsViewEx DisplaySummaryTasks:=True
-    SelectAll
     On Error Resume Next
     If Not OutlineShowAllTasks Then
       Sort "ID", , , , , , False, True
       OutlineShowAllTasks
     End If
+    SelectAll
     If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     SelectBeginning
     strFilter = Left(strFilter, Len(strFilter) - 1)
@@ -256,6 +291,7 @@ exit_here:
   On Error Resume Next
   cptSpeed False
   Set oTask = Nothing
+  Set oAssignment = Nothing
 
   Exit Sub
 err_here:
@@ -364,6 +400,7 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
   Dim dTypes As Object 'Scripting.Dictionary
   Dim rstFree As Object 'ADODB.Recordset
   Dim oTask As MSProject.Task
+  Dim oAssignment As MSProject.Assignment
   'strings
   Dim strFreeField As String
   Dim strNum As String
@@ -373,14 +410,19 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
   Dim lngField As Long
   Dim lngItems As Long
   Dim lngItem As Long
+  Dim lngAssignmentUID As Long
+  Dim lngFactor As Long
   'integers
   'doubles
   'booleans
   Dim blnFree As Boolean
+  Dim blnMaster As Boolean
+  Dim blnErrorTrapping As Boolean
   'variants
   'dates
 
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   lngFreeField = cptCustomFieldExists("cptFilterByClipboard")
   If lngFreeField > 0 Then
@@ -392,7 +434,17 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
   Calculation = pjManual
   
   'field type
-  If lngType = 0 Then lngType = pjTask
+  If lngType = 0 Then lngType = pjTask      'for reference
+  If lngType = 1 Then lngType = pjResource  'for reference
+  If lngType = 2 Then lngType = pjProject   'for refernce
+  If lngType > 2 Then
+    Err.Raise 9999, Description:="Invalid lngType: must be <=2"
+  End If
+  'data type
+  'todo: Outline Code not acceptable?
+  If InStr("Cost|Date|Duration|Finish|Flag|Number|OutlineCode|Outline Code|Start|Text", strDataType) = 0 Then
+    Err.Raise 9999, Description:="Invalid strDataType: must be 'Cost' or 'Date' or 'Number' or 'Text' etc."
+  End If
   
   'hash of local custom field counts
   Set dTypes = CreateObject("Scripting.Dictionary")
@@ -412,19 +464,26 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
     lngField = FieldNameToFieldConstant(strDataType & lngItem, lngType)
     If CustomFieldGetName(lngField) = "" Then
       'then ensure no formula
-      If CustomFieldGetFormula(lngField) <> "" Then GoTo next_field
+      If CustomFieldGetFormula(lngField) <> "" Then GoTo next_field 'skip it
       'then ensure no pick list (brute force)
-      strNum = ActiveProject.Tasks(1).GetField(lngField)
-      On Error Resume Next
-      ActiveProject.Tasks(1).SetField lngField, 3.14285714285714 'what are the odds?
-      If Err.Number > 0 Then
-        Err.Clear
-        If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-        GoTo next_field
-      Else
-        If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-        ActiveProject.Tasks(1).SetField lngField, strNum
+      If strDataType <> "Flag" Then
+        strNum = ActiveProject.Tasks(1).GetField(lngField)
+        On Error Resume Next
+        If InStr("Date|Start|Finish", strDataType) > 0 Then
+          ActiveProject.Tasks(1).SetField lngField, #1/1/1984# 'what are the odds
+        Else
+          ActiveProject.Tasks(1).SetField lngField, 3.14285714285714 'what are the odds?
+        End If
+        If Err.Number > 0 Then
+          Err.Clear
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo next_field
+          GoTo next_field 'skip it
+        Else
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo next_field
+          ActiveProject.Tasks(1).SetField lngField, strNum
+        End If
       End If
+      'if we made it this far, then it's a candidate
       rstFree.AddNew Array(0, 1), Array(lngField, True)
     End If
 next_field:
@@ -437,38 +496,61 @@ next_field:
   
   'next ensure there is no data in that field on the tasks
   'note: use of ActiveProject.Tasks ensures all subprojects included
-  For Each oTask In ActiveProject.Tasks
-    If oTask Is Nothing Then GoTo Next_Task
-    rstFree.MoveFirst
-    Do While Not rstFree.EOF
-      blnFree = True
-      If Val(oTask.GetField(rstFree(0))) > 0 Then
-        blnFree = False
-        rstFree.Update Array(1), Array(blnFree)
-        Exit For
-      End If
-      rstFree.MoveNext
-    Loop
-Next_Task:
-  Next oTask
-
+  'todo: does not catch when assignment field has a value
+  'todo: would have to select each one to 'get' its data with CheckField
+  If cptTableExists("cpt-temp-table") Then ActiveProject.TaskTables("cpt-temp-table").Delete
+  TableEdit "cpt-temp-table", True, True, True, , "Unique ID"
+  If cptViewExists("cpt-temp-view") Then ActiveProject.Views("cpt-temp-view").Delete
+  ViewEditSingle "cpt-temp-view", True, , pjTaskUsage, False, False, "cpt-temp-table", "All Tasks", "No Group"
+  Application.WindowNewWindow ActiveProject, "cpt-temp-view"
+  FilterClear
+  GroupClear
+  SelectAll
+  Sort "ID", , , , , , , True
+  OptionsViewEx DisplaySummaryTasks:=True 'won't work without Sort first
+  OutlineShowAllTasks 'this won't work unless summary tasks are showing
   rstFree.MoveFirst
   Do While Not rstFree.EOF
-    If rstFree(1) = True Then
-      lngResponse = MsgBox("Looks like " & FieldConstantToFieldName(rstFree(0)) & " isn't in use." & vbCrLf & vbCrLf & "OK to temporarily borrow it for this?", vbQuestion + vbYesNoCancel, "Wanted: Custom " & StrConv(strDataType, vbProperCase) & " Field")
-      If lngResponse = vbYes Then
-        lngFreeField = rstFree(0)
-        Exit Do
-      ElseIf lngResponse = vbCancel Then
-        lngFreeField = -1
-        Exit Do
-      Else
-        lngFreeField = 0
+    If rstFree(1) Then
+      Select Case strDataType
+        Case "Cost"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", 0)
+        Case "Date"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", "NA")
+        Case "Duration"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", 0)
+        Case "Finish"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", "NA")
+        Case "Flag"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", False)
+        Case "Number"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", 0)
+        Case "Outline Code"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", "")
+        Case "Start"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", "NA")
+        Case "Text"
+          blnFree = Not Find(FieldConstantToFieldName(rstFree(0)), "does not equal", "")
+      End Select
+      If blnFree Then
+        rstFree(1) = blnFree
+        lngResponse = MsgBox("Looks like " & FieldConstantToFieldName(rstFree(0)) & " isn't in use." & vbCrLf & vbCrLf & "OK to temporarily borrow it for this?", vbQuestion + vbYesNoCancel, "Wanted: Custom " & StrConv(strDataType, vbProperCase) & " Field")
+        If lngResponse = vbYes Then
+          lngFreeField = rstFree(0)
+          Exit Do
+        ElseIf lngResponse = vbCancel Then
+          lngFreeField = -1
+          Exit Do
+        Else
+          lngFreeField = 0
+        End If
       End If
     End If
     rstFree.MoveNext
   Loop
-  rstFree.Close
+  Application.ActiveWindow.Close
+  ActiveProject.Views("cpt-temp-view").Delete
+  ActiveProject.TaskTables("cpt-temp-table").Delete
   
 return_value:
   If lngFreeField <> 0 Then
@@ -480,10 +562,11 @@ return_value:
 exit_here:
   On Error Resume Next
   Set dTypes = Nothing
-  Calculation = pjAutomatic
+  cptSpeed False
   If rstFree.State Then rstFree.Close
   Set rstFree = Nothing
   Set oTask = Nothing
+  Set oAssignment = Nothing
 
   Exit Function
 err_here:
@@ -494,21 +577,22 @@ End Function
 Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm, Optional blnPromptToSave As Boolean = False)
   'objects
   Dim oTask As MSProject.Task
+  Dim oAssignment As MSProject.Assignment
   'strings
   Dim strMsg As String
   'longs
   Dim lngFreeField As Long
   Dim lngTasks As Long
   Dim lngTask As Long
+  Dim lngFactor As Long
+  Dim lngAssignmentUID As Long
   'integers
   'doubles
   'booleans
-  Dim blnMaster As Boolean
   'variants
   'dates
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  blnMaster = ActiveProject.Subprojects.Count > 0
   Calculation = pjManual
   ScreenUpdating = False
   If IsNull(myFilterByClipboard_frm.cboFreeField) Then GoTo exit_here
@@ -527,16 +611,9 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
     Else
       cptDeleteSetting "FilterByClipboard", "cboFreeField"
     End If
-    lngTasks = ActiveProject.Tasks.Count
-    For Each oTask In ActiveProject.Tasks
-      If Not oTask Is Nothing Then
-        If CLng(oTask.GetField(lngFreeField)) > 0 Then
-          oTask.SetField lngFreeField, 0
-        End If
-      End If
-      lngTask = lngTask + 1
-      Application.StatusBar = "Clearing " & FieldConstantToFieldName(lngFreeField) & "...(" & Format(lngTask / lngTasks, "0%") & ")"
-    Next oTask
+    SelectAll
+    SetField FieldConstantToFieldName(lngFreeField), 0
+    SelectBeginning
   End If
   
 exit_here:

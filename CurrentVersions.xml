@@ -220,14 +220,14 @@
 	<Module>
 		<Name>cptFilterByClipboard_bas</Name>
 		<FileName>cptFilterByClipboard_bas.bas</FileName>
-		<Version>v1.3.0</Version>
+		<Version>v1.4.0</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptFilterByClipboard_frm</Name>
 		<FileName>cptFilterByClipboard_frm.frm</FileName>
-		<Version>v1.3.0</Version>
+		<Version>v1.4.0</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>
