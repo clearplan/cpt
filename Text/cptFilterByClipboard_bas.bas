@@ -141,6 +141,7 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
   Dim oTask As MSProject.Task
   Dim oAssignment As MSProject.Assignment
   'strings
+  Dim strMatchingTable As String
   Dim strFilter As String
   'longs
   Dim lngTask As Long
