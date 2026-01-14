@@ -388,14 +388,14 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.7.1</Version>
+		<Version>v1.7.2</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.7.1</Version>
+		<Version>v1.7.2</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>

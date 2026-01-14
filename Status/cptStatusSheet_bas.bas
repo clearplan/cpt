@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.1</cpt_version>
+'<cpt_version>v1.7.2</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -756,6 +756,24 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   'copy/paste the data
   lngHeaderRow = 8
   With myStatusSheet_frm
+
+    'ensure proper task-assignment rolldown
+    'only matters if we're applying a filter before export
+    'so it only matters if 'worksheet for each' or 'workbook for each'
+    If .cboCreate.Value > 0 And .chkAssignments Then
+      If Not cptValidateAssignmentRolldown(.cboEach.Value) Then
+        If MsgBox("Ignore Assignment roll-down error(s) and proceed anyway (not recommended)?", vbQuestion + vbYesNo, "Danger, Will Robinson!") = vbNo Then
+          GoTo exit_here
+        Else
+          Msgbox "...good choice.", vbInformation + vbOKOnly, ""
+        End If
+      End if
+      Dim strStartingGroup as String
+      strStartingGroup = ActiveProject.CurrentGroup
+      cptRefreshStatusTable myStatusSheet_frm, blnFilterOnly:=True
+      If strStartingGroup <> "No Group" Then GroupApply strStartingGroup
+    End If
+
     If .cboCreate.Value = "0" Then 'single workbook
       
       SelectAll
@@ -4303,4 +4321,824 @@ err_here:
   Call cptHandleErr("cptStatusSheet_bas", "cptMarkOnTrackRetainETC", Err, Erl)
   Resume exit_here
 End Sub
+
+Function cptValidateAssignmentRolldown(strCFN As String) As Boolean
+  'objects
+  Dim oTask As MSProject.Task
+  Dim oAssignment As MSProject.Assignment
+  Dim oToFix As Scripting.Dictionary
+  'strings
+  Dim strNotFixed As String
+  Dim strValue As String  'task-level field value
+  Dim strKey As String    'field name (native)
+  Dim strMsg As String
+  'longs
+  Dim lngNotFixed As Long
+  Dim lngFieldID As Long  'field constant
+  Dim lngMismatched As Long
+  Dim lngFactor As Long   'for deriving Unique IDs
+  Dim lngAssignmentUID As Long
+  Dim lngItem As Long
+  Dim lngTasks As Long
+  Dim lngAssignments As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  Dim blnValid As Boolean
+  Dim blnLCF As Boolean
+  Dim blnMaster As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  
+  blnMaster = ActiveProject.Subprojects.Count > 0
+  'todo: assumes LCF sync (oof)
+  
+  lngFieldID = FieldNameToFieldConstant(strCFN)
+  blnLCF = lngFieldID < 188776000
+  strKey = FieldConstantToFieldName(lngFieldID)
+  
+  cptSpeed True
+  
+  'capture mismatches
+  Set oToFix = CreateObject("Scripting.Dictionary")
+  SelectAll
+  For Each oTask In ActiveSelection.Tasks
+    If oTask Is Nothing Then GoTo next_task
+    If oTask.ExternalTask Then GoTo next_task
+    If Not oTask.Active Then GoTo next_task
+    strValue = oTask.GetField(lngFieldID)
+    For Each oAssignment In oTask.Assignments
+      lngAssignmentUID = oAssignment.UniqueID - (2 ^ 20)
+      If blnMaster Then
+        lngFactor = (oTask.UniqueID - (oTask.UniqueID Mod 4194304)) / 4194304
+        lngAssignmentUID = lngAssignmentUID + (lngFactor * 4194304)
+      End If
+      If blnLCF Then
+        Select Case strKey
+          Case "Cost1"
+            If oAssignment.Cost1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost2"
+            If oAssignment.Cost2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost3"
+            If oAssignment.Cost3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost4"
+            If oAssignment.Cost4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost5"
+            If oAssignment.Cost5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost6"
+            If oAssignment.Cost6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost7"
+            If oAssignment.Cost7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost8"
+            If oAssignment.Cost8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost9"
+            If oAssignment.Cost9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Cost10"
+            If oAssignment.Cost10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date1"
+            If oAssignment.Date1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date2"
+            If oAssignment.Date2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date3"
+            If oAssignment.Date3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date4"
+            If oAssignment.Date4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date5"
+            If oAssignment.Date5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date6"
+            If oAssignment.Date6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date7"
+            If oAssignment.Date7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date8"
+            If oAssignment.Date8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date9"
+            If oAssignment.Date9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Date10"
+            If oAssignment.Date10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration1"
+            If oAssignment.Duration1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration2"
+            If oAssignment.Duration2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration3"
+            If oAssignment.Duration3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration4"
+            If oAssignment.Duration4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration5"
+            If oAssignment.Duration5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration6"
+            If oAssignment.Duration6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration7"
+            If oAssignment.Duration7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration8"
+            If oAssignment.Duration8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration9"
+            If oAssignment.Duration9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Duration10"
+            If oAssignment.Duration10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish1"
+            If oAssignment.Finish1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish2"
+            If oAssignment.Finish2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish3"
+            If oAssignment.Finish3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish4"
+            If oAssignment.Finish4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish5"
+            If oAssignment.Finish5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish6"
+            If oAssignment.Finish6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish7"
+            If oAssignment.Finish7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish8"
+            If oAssignment.Finish8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish9"
+            If oAssignment.Finish9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Finish10"
+            If oAssignment.Finish10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag1"
+            If oAssignment.Flag1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag2"
+            If oAssignment.Flag2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag3"
+            If oAssignment.Flag3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag4"
+            If oAssignment.Flag4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag5"
+            If oAssignment.Flag5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag6"
+            If oAssignment.Flag6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag7"
+            If oAssignment.Flag7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag8"
+            If oAssignment.Flag8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag9"
+            If oAssignment.Flag9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag10"
+            If oAssignment.Flag10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag11"
+            If oAssignment.Flag11 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag12"
+            If oAssignment.Flag12 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag13"
+            If oAssignment.Flag13 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag14"
+            If oAssignment.Flag14 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag15"
+            If oAssignment.Flag15 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag16"
+            If oAssignment.Flag16 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag17"
+            If oAssignment.Flag17 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag18"
+            If oAssignment.Flag18 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag19"
+            If oAssignment.Flag19 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Flag20"
+            If oAssignment.Flag20 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number1"
+            If oAssignment.Number1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number2"
+            If oAssignment.Number2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number3"
+            If oAssignment.Number3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number4"
+            If oAssignment.Number4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number5"
+            If oAssignment.Number5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number6"
+            If oAssignment.Number6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number7"
+            If oAssignment.Number7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number8"
+            If oAssignment.Number8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number9"
+            If oAssignment.Number9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number10"
+            If oAssignment.Number10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number11"
+            If oAssignment.Number11 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number12"
+            If oAssignment.Number12 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number13"
+            If oAssignment.Number13 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number14"
+            If oAssignment.Number14 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number15"
+            If oAssignment.Number15 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number16"
+            If oAssignment.Number16 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number17"
+            If oAssignment.Number17 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number18"
+            If oAssignment.Number18 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number19"
+            If oAssignment.Number19 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Number20"
+            If oAssignment.Number20 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode1"
+            If oAssignment.OutlineCode1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode2"
+            If oAssignment.OutlineCode2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode3"
+            If oAssignment.OutlineCode3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode4"
+            If oAssignment.OutlineCode4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode5"
+            If oAssignment.OutlineCode5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode6"
+            If oAssignment.OutlineCode6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode7"
+            If oAssignment.OutlineCode7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode8"
+            If oAssignment.OutlineCode8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode9"
+            If oAssignment.OutlineCode9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "OutlineCode10"
+            If oAssignment.OutlineCode10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start1"
+            If oAssignment.Start1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start2"
+            If oAssignment.Start2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start3"
+            If oAssignment.Start3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start4"
+            If oAssignment.Start4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start5"
+            If oAssignment.Start5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start6"
+            If oAssignment.Start6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start7"
+            If oAssignment.Start7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start8"
+            If oAssignment.Start8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start9"
+            If oAssignment.Start9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Start10"
+            If oAssignment.Start10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text1"
+            If oAssignment.Text1 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text2"
+            If oAssignment.Text2 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text3"
+            If oAssignment.Text3 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text4"
+            If oAssignment.Text4 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text5"
+            If oAssignment.Text5 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text6"
+            If oAssignment.Text6 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text7"
+            If oAssignment.Text7 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text8"
+            If oAssignment.Text8 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text9"
+            If oAssignment.Text9 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text10"
+            If oAssignment.Text10 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text11"
+            If oAssignment.Text11 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text12"
+            If oAssignment.Text12 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text13"
+            If oAssignment.Text13 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text14"
+            If oAssignment.Text14 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text15"
+            If oAssignment.Text15 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text16"
+            If oAssignment.Text16 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text17"
+            If oAssignment.Text17 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text18"
+            If oAssignment.Text18 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text19"
+            If oAssignment.Text19 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text20"
+            If oAssignment.Text20 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text21"
+            If oAssignment.Text21 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text22"
+            If oAssignment.Text22 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text23"
+            If oAssignment.Text23 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text24"
+            If oAssignment.Text24 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text25"
+            If oAssignment.Text25 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text26"
+            If oAssignment.Text26 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text27"
+            If oAssignment.Text27 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text28"
+            If oAssignment.Text28 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text29"
+            If oAssignment.Text29 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+          Case "Text30"
+            If oAssignment.Text30 <> strValue Then
+              oToFix.Add lngAssignmentUID, strValue
+              lngMismatched = lngMismatched + 1
+            End If
+        End Select
+      Else 'ECF
+        'ViewApply "Task Usage" 'status sheet already applies this
+        FilterClear 'status sheet already runs this
+        'GroupClear 'status sheet already runs this and the next line (I think)
+        Application.OptionsViewEx DisplaySummaryTasks:=True, DisplayExternalSuccessors:=False, DisplayExternalPredecessors:=False
+        Sort "ID", , , , , , False, True 'OutlineShowAllTasks won't work without this
+        SelectAll 'is this necessary?
+        OutlineShowAllTasks 'doesn't status sheet already do this?
+        'todo: revert view/table/ 'might not be necessary
+        'Assignment.GetField() doesn't exist, so we have to use this...
+        If Find("Unique ID", "equals", lngAssignmentUID) Then
+          'need to select it to use CheckField: must be expanded
+          If Not CheckField(strKey, strValue, "equals") Then
+            lngMismatched = lngMismatched + 1
+            oToFix.Add lngAssignmentUID, strValue
+          End If
+        End If
+      End If
+      lngAssignments = lngAssignments + 1
+    Next oAssignment
+next_task:
+    lngTasks = lngTasks + 1
+    'todo: if userform is showing then update the status/progress
+    'todo: running tally of mismatches in status bar, with percent progress
+    Application.StatusBar = "Analyzing: " & Format(lngTasks, "#,##0") & " task(s); " & Format(lngAssignments, "#,##0") & " assignment(s) (" & Format(lngMismatched, "#,##0") & " mismatched)"
+  Next oTask
+  Application.StatusBar = "Complete: " & Format(lngMismatched, "#,##0") & " mismatch(es)."
+  If lngMismatched > 0 Then
+    strMsg = "The selected For Each field '" & strCFN & " (" & strKey & ")' has not properly been rolled down from Tasks to Assignments." & vbCrLf & vbCrLf
+    If lngMismatched = 1 Then
+      strMsg = strMsg & Format(lngMismatched, "#,##0") & " assignment does not match its parent task--this will cause issues in the export." & vbCrLf & vbCrLf
+    Else
+      strMsg = strMsg & Format(lngMismatched, "#,##0") & " assignments do not match their parent tasks--this will cause issues in the export." & vbCrLf & vbCrLf
+    End If
+    strMsg = strMsg & "Would you like to roll-down '" & strCFN & " (" & strKey & ")' from Tasks to Assignments now?"
+    If MsgBox(strMsg, vbQuestion + vbYesNo, "ForEach Rolldown Error") = vbYes Then
+      If blnLCF Then
+        If MsgBox("Set Custom Field '" & strCFN & "' to automatically roll-down values in the future?", vbQuestion + vbYesNo, "Recommendation: Yes") = vbYes Then
+          Application.CustomFieldPropertiesEx FieldID:=lngFieldID, AutomaticallyRolldownToAssn:=True
+        End If
+      Else 'ECF
+        MsgBox "Consider asking your PWA administrator to set '" & strCFN & "' to automatically roll-down values in the future.", vbInformation + vbOKOnly, "Recommendation:"
+      End If
+      For lngItem = 0 To oToFix.Count - 1
+        If Not SetMatchingField(strKey, oToFix.Items(lngItem), "Unique ID", oToFix.Keys(lngItem)) Then
+          lngNotFixed = lngNotFixed + 1
+          strNotFixed = strNotFixed & oToFix.Keys(lngItem) & ","
+        Else
+          Application.StatusBar = "Fixing Assignments: " & Format((lngItem + 1 - lngNotFixed) / oToFix.Count, "0%")
+        End If
+      Next lngItem
+      If lngNotFixed > 0 Then
+        strMsg = "Error(s) encountered attempting to roll-down Task-Level values to Assignment-Level values in the field '" & strCFN & "'!" & vbCrLf & vbCrLf
+        If lngNotFixed <= 6 Then 'just show an Input box (hijacked to be an export box)
+          strMsg = strMsg & "Review the following ASSIGNMENT UNIQUE IDs:"
+          InputBox strMsg, "ForEach Rolldown", Left(strNotFixed, Len(strNotFixed) - 1)
+        Else
+          strMsg = strMsg & "Review the ASSIGNMENT UNIQUE IDs in the error log that will appear next."
+          MsgBox strMsg, vbExclamation + vbOKOnly, "ForEach Rolldown"
+          Dim lngFile As Long
+          Dim strFileName As String
+          lngFile = FreeFile
+          strFileName = Environ("tmp") & "\cpt-rolldown-errors.txt"
+          Open strFileName For Output As #lngFile
+          Print #lngFile, "ASSIGNMENT UNIQUE IDs: " & Left(strNotFixed, Len(strNotFixed) - 1)
+          Print #lngFile, vbCrLf & "HINT: Use FilterByClipboard to find and fix (try it with the 'Filter' option unchecked)"
+          Close #lngFile
+          ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+        End If
+        blnValid = False
+      Else
+        Application.StatusBar = "Complete: " & Format(oToFix.Count, "#,##0") & " assignment(s) fixed."
+        'capture alert settings
+        Dim blnDisplayAlerts As Boolean
+        Dim blnDisplayScheduleMessages As Boolean
+        blnDisplayAlerts = Application.DisplayAlerts
+        blnDisplayScheduleMessages = Application.DisplayScheduleMessages
+        'turn off alerts
+        Application.DisplayAlerts = False
+        Application.DisplayScheduleMessages = False
+        Application.CalculateProject 'triggers refresh so fixes can be seen
+        'restore alert settings
+        Application.DisplayAlerts = blnDisplayAlerts
+        Application.DisplayScheduleMessages = blnDisplayScheduleMessages
+        MsgBox "The selected For Each field '" & strCFN & " (" & strKey & ")' has been successfully rolled down from Tasks to Assignments.", vbInformation + vbOKOnly, "ForEach Rolldown"
+        blnValid = True
+      End If
+    Else
+      blnValid = False
+    End If
+  Else
+    blnValid = True
+  End If
+  
+  cptValidateAssignmentRolldown = blnValid
+  
+exit_here:
+  On Error Resume Next
+  Application.StatusBar = ""
+  Set oToFix = Nothing
+  cptSpeed False
+  Set oAssignment = Nothing
+  Set oTask = Nothing
+  Reset
+  Exit Function
+  
+err_here:
+  On Error Resume Next
+  cptValidateAssignmentRolldown = False
+  Call cptHandleErr("cptStatusSheet_bas", "cptValidateAssignmentRolldown", Err, Erl)
+  Resume exit_here
+End Function
 
