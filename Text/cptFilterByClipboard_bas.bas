@@ -241,22 +241,24 @@ next_item:
   
   If blnAssignments Then
     myFilterByClipboard_frm.lboHeader.List(0, 1) = "Task Name | Resource Name"
-    If MsgBox("Filter criteria includes Assignments!" & vbCrLf & vbCrLf & "Switch to Task Usage View?", vbQuestion + vbYesNo, "Switch View?") = vbYes Then
-      strMatchingTable = ActiveProject.CurrentTable
-      ActiveWindow.TopPane.Activate
-      ScreenUpdating = False
-      ViewApplyEx "Task Usage"
-      FilterClear
-      GroupClear
-      OptionsViewEx DisplaySummaryTasks:=True
-      On Error Resume Next
-      If Not OutlineShowAllTasks Then
-        Sort "ID", , , , , , False, True
-        OutlineShowAllTasks
-      End If
-      If ActiveProject.CurrentTable <> strMatchingTable Then
-        If MsgBox("Task Usage Table is '" & ActiveProject.CurrentTable & "'" & vbCrLf & vbCrLf & "Switch to Table '" & strMatchingTable & "' to match previous view?", vbQuestion + vbYesNo, "Switch Table?") = vbYes Then
-          TableApply strMatchingTable
+    If ActiveWindow.ActivePane.View.Screen <> pjTaskUsage Then
+      If MsgBox("Filter criteria includes Assignments!" & vbCrLf & vbCrLf & "Switch to Task Usage View?", vbQuestion + vbYesNo, "Switch View?") = vbYes Then
+        strMatchingTable = ActiveProject.CurrentTable
+        ActiveWindow.TopPane.Activate
+        ScreenUpdating = False
+        ViewApplyEx "Task Usage"
+        FilterClear
+        GroupClear
+        OptionsViewEx DisplaySummaryTasks:=True
+        On Error Resume Next
+        If Not OutlineShowAllTasks Then
+          Sort "ID", , , , , , False, True
+          OutlineShowAllTasks
+        End If
+        If ActiveProject.CurrentTable <> strMatchingTable Then
+          If MsgBox("Task Usage Table is '" & ActiveProject.CurrentTable & "'" & vbCrLf & vbCrLf & "Switch to Table '" & strMatchingTable & "' to match previous view?", vbQuestion + vbYesNo, "Switch Table?") = vbYes Then
+            TableApply strMatchingTable
+          End If
         End If
       End If
     End If

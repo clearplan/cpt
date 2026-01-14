@@ -117,22 +117,24 @@ Private Sub lboFilter_Click()
 try_again:
     If Not FindEx(strField, "equals", lngUID) Then
       If Not oAssignment Is Nothing Then
-        If MsgBox("Switch to Task Usage View?", vbExclamation + vbYesNo, "That's an Assignment!") = vbYes Then
-          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          ActiveWindow.TopPane.Activate
-          strMatchTable = ActiveProject.CurrentTable
-          ViewApplyEx "Task Usage"
-          'reset the filter
-          SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
-          SelectBeginning
-          If ActiveProject.CurrentTable <> strMatchTable Then
-            If MsgBox("Task Usage Table is '" & ActiveProject.CurrentTable & "'" & vbCrLf & vbCrLf & "Switch to Table '" & strMatchTable & "' to match previous view?", vbQuestion + vbYesNo, "Filter By Clipboard") = vbYes Then
-              TableApply strMatchTable
+        If ActiveWindow.ActivePane.View.Screen <> pjTaskUsage Then
+          If MsgBox("Switch to Task Usage View?", vbExclamation + vbYesNo, "That's an Assignment!") = vbYes Then
+            If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+            ActiveWindow.TopPane.Activate
+            strMatchTable = ActiveProject.CurrentTable
+            ViewApplyEx "Task Usage"
+            'reset the filter
+            SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+            SelectBeginning
+            If ActiveProject.CurrentTable <> strMatchTable Then
+              If MsgBox("Task Usage Table is '" & ActiveProject.CurrentTable & "'" & vbCrLf & vbCrLf & "Switch to Table '" & strMatchTable & "' to match previous view?", vbQuestion + vbYesNo, "Filter By Clipboard") = vbYes Then
+                TableApply strMatchTable
+              End If
             End If
+            GoTo try_again
+          Else
+            GoTo exit_here
           End If
-          GoTo try_again
-        Else
-          GoTo exit_here
         End If
       End If
       If MsgBox("UID " & lngUID & " must be currently hidden. Remove all filters, show summary tasks, and show all tasks in order to find it?", vbQuestion + vbYesNo, "Reset View?") = vbYes Then
