@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
 
 Private Sub chkFilter_Click()
@@ -61,8 +61,11 @@ Private Sub lboFilter_Click()
   'objects
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
+  Dim oAssignment As MSProject.Assignment
   'strings
+  Dim strMatchTable As String
   Dim strField As String
+  Dim strFilter As String
   'longs
   Dim lngUID As Long
   'integers
@@ -77,68 +80,88 @@ Private Sub lboFilter_Click()
   If Me.optUID Then
     lngUID = CLng(Me.lboFilter.Value)
     Set oTask = ActiveProject.Tasks.UniqueID(lngUID)
+    If oTask Is Nothing Then Set oAssignment = ActiveProject.Tasks(1).Assignments.UniqueID(lngUID)
     strField = "Unique ID"
   ElseIf Me.optID Then
     lngUID = CLng(Me.lboFilter.Value)
     Set oTask = ActiveProject.Tasks.Item(lngUID)
+    'todo: ASSIGNMENTS DON'T HAVE AN ID
+    If oTask Is Nothing Then Set oAssignment = ActiveProject.Tasks(1).Assignments.UniqueID(lngUID)
     strField = "ID"
   End If
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If Not oTask Is Nothing Then
+  If Not oTask Is Nothing Or Not oAssignment Is Nothing Then
     
-    If IsDate(oTask.Stop) Then
-      dtGoTo = oTask.Stop
-    Else
-      dtGoTo = oTask.Start
+    If Not oTask Is Nothing Then
+      If IsDate(oTask.Stop) Then
+        dtGoTo = oTask.Stop
+      Else
+        dtGoTo = oTask.Start
+      End If
+    ElseIf Not oAssignment Is Nothing Then
+      If IsDate(oAssignment.Task.Stop) Then
+        dtGoTo = oAssignment.Task.Stop
+      Else
+        dtGoTo = oAssignment.Task.Start
+      End If
     End If
-    If ActiveWindow.ActivePane <> ActiveWindow.TopPane Then ActiveWindow.TopPane.Activate
-  
-    If ActiveProject.Subprojects.Count = 0 Then 'use EditGoto
-      On Error Resume Next
-      If Not EditGoTo(oTask.ID, dtGoTo) Then
-        If MsgBox("Task " & strField & " " & lngUID & " is currently hidden. Would you like to remove all filters, show summary tasks, and show all tasks in order to find it?", vbQuestion + vbYesNo, "Reset View?") = vbYes Then
-          ScreenUpdating = False
-          FilterClear
-          OptionsViewEx DisplaySummaryTasks:=True
-          SelectAll
-          On Error Resume Next
-          If Not OutlineShowAllTasks Then
-            Sort "ID", , , , , , False, True
-            OutlineShowAllTasks
-          End If
-          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          ScreenUpdating = True
-          If Not EditGoTo(oTask.ID, dtGoTo) Then
-            MsgBox "An unknown error has occured--can't find it!", vbCritical + vbOKOnly, "Still can't find it"
-          End If
-        End If
-      End If
     
-    ElseIf ActiveProject.Subprojects.Count > 0 Then 'use Find
-      On Error Resume Next
-      If Not FindEx(strField, "equals", lngUID) Then
-        If MsgBox("Task " & strField & " " & lngUID & " is currently hidden. Would you like to remove all filters, show summary tasks, and show all tasks in order to find it?", vbQuestion + vbYesNo, "Reset View?") = vbYes Then
-          ScreenUpdating = False
-          FilterClear
-          OptionsViewEx DisplaySummaryTasks:=True
-          SelectAll
-          On Error Resume Next
-          If Not OutlineShowAllTasks Then
-            Sort "ID", , , , , , False, True
-            OutlineShowAllTasks
-          End If
+    If ActiveWindow.ActivePane <> ActiveWindow.TopPane Then ActiveWindow.TopPane.Activate
+    
+    strFilter = Me.txtFilter.Value
+    If Right(strFilter, 1) = "," Then strFilter = Left(strFilter, Len(strFilter) - 1)
+    strFilter = Replace(strFilter, ",", vbTab)
+    
+    On Error Resume Next
+try_again:
+    If Not FindEx(strField, "equals", lngUID) Then
+      If Not oAssignment Is Nothing Then
+        If MsgBox("Switch to Task Usage View?", vbExclamation + vbYesNo, "That's an Assignment!") = vbYes Then
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          ScreenUpdating = True
-          If Not FindEx(strField, "equals", lngUID) Then
-            MsgBox "An unknown error has occured--can't find it!", vbCritical + vbOKOnly, "Still can't find it"
+          ActiveWindow.TopPane.Activate
+          strMatchTable = ActiveProject.CurrentTable
+          ViewApplyEx "Task Usage"
+          'reset the filter
+          SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+          SelectBeginning
+          If ActiveProject.CurrentTable <> strMatchTable Then
+            If MsgBox("Task Usage Table is '" & ActiveProject.CurrentTable & "'" & vbCrLf & vbCrLf & "Switch to Table '" & strMatchTable & "' to match previous view?", vbQuestion + vbYesNo, "Filter By Clipboard") = vbYes Then
+              TableApply strMatchTable
+            End If
           End If
+          GoTo try_again
+        Else
+          GoTo exit_here
         End If
       End If
-      
-    End If 'ActiveProject.Subprojects.Count = 0
-  Else
-    MsgBox "Task " & strField & " " & lngUID & " not found in this project.", vbExclamation + vbOKOnly, strField & " not found"
+      If MsgBox("UID " & lngUID & " must be currently hidden. Remove all filters, show summary tasks, and show all tasks in order to find it?", vbQuestion + vbYesNo, "Reset View?") = vbYes Then
+        ScreenUpdating = False
+        FilterClear
+        OptionsViewEx DisplaySummaryTasks:=True
+        SelectAll
+        On Error Resume Next
+        If Not OutlineShowAllTasks Then
+          Sort "ID", , , , , , False, True
+          OutlineShowAllTasks
+        End If
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        ScreenUpdating = True
+        If Not FindEx(strField, "equals", lngUID) Then
+          MsgBox "An unknown error has occured--can't find it!", vbCritical + vbOKOnly, "Still can't find it"
+        Else
+          EditGoTo Date:=dtGoTo
+        End If
+        'reset the filter
+        SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+        SelectBeginning
+        DoEvents
+      End If
+    Else
+      EditGoTo Date:=dtGoTo
+    End If
+  Else 'Task Is Nothing and Assignment Is Nothing
+    MsgBox "UID " & lngUID & " not found in this project.", vbExclamation + vbOKOnly, strField & " not found"
   End If 'Not oTask Is Nothing
   
 exit_here:
@@ -146,6 +169,7 @@ exit_here:
   ScreenUpdating = True
   Set oTasks = Nothing
   Set oTask = Nothing
+  Set oAssignment = Nothing
 
   Exit Sub
 err_here:
