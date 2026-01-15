@@ -3523,6 +3523,14 @@ Sub cptAddConditionalFormattingLegend(ByRef oWorkbook As Excel.Workbook)
     .PatternTintAndShade = 0
   End With
   
+  'remove duplicate breadcrumbs
+  Dim vRemove As Variant
+  Dim vRow As Variant
+  vRemove = oWorksheet.Evaluate("=FILTER(Table1[COLUMN],ISNUMBER(SEARCH(""="",Table1[COLUMN])))")
+  For Each vRow In vRemove
+    oWorksheet.Rows(oWorksheet.[Table1[COLUMN]].Find(vRow).Row).Delete
+  Next vRow
+
   'conditional formatting
   With oListObject.ListColumns("FORMAT").DataBodyRange
     .FormatConditions.Delete
