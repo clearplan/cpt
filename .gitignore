@@ -13,6 +13,7 @@
 *.xlsm
 *.xlsx
 exe/*.*
+!version-checker.sh
 CurrentVersions.txt
 cpt-macro-map.txt
 cpt-ribbon.xml
