@@ -150,8 +150,6 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
   Dim lngItems As Long
   Dim lngItem As Long
   Dim lngUID As Long
-  Dim lngFactor As Long
-  Dim lngAssignmentUID As Long
   'integers
   'doubles
   'booleans
@@ -413,8 +411,6 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
   Dim lngField As Long
   Dim lngItems As Long
   Dim lngItem As Long
-  Dim lngAssignmentUID As Long
-  Dim lngFactor As Long
   'integers
   'doubles
   'booleans
@@ -587,8 +583,6 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
   Dim lngFreeField As Long
   Dim lngTasks As Long
   Dim lngTask As Long
-  Dim lngFactor As Long
-  Dim lngAssignmentUID As Long
   'integers
   'doubles
   'booleans
