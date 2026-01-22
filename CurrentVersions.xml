@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.12.1</Version>
+		<Version>v1.13.0</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -101,7 +101,7 @@
 	<Module>
 		<Name>cptCore_bas</Name>
 		<FileName>cptCore_bas.bas</FileName>
-		<Version>v1.16.0</Version>
+		<Version>v1.17.0</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -367,7 +367,7 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.12.1</Version>
+		<Version>v1.13.0</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>

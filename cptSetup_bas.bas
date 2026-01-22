@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.12.1</cpt_version>
+'<cpt_version>v1.13.0</cpt_version>
 Option Explicit
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
 Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() lives in cptCore_bas
@@ -371,7 +371,6 @@ Public Function cptBuildRibbonTab()
 
   'common tools
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""custom_view"" label=""View"" visible=""true"">"
-
   ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:OutlineSymbolsShow"" visible=""true""/>"
   ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:SummaryTasks"" visible=""true""/>"
   ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:NameIndent"" visible=""true""/>"
@@ -1022,6 +1021,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
     strMsg = strMsg & "Resources: " & Format(ActiveProject.ResourceCount, "#,##0") & vbCrLf
   End If
   strMsg = strMsg & "Baselined: " & IsDate(ActiveProject.BaselineSavedDate(pjBaseline)) & vbCrLf
+  strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)"
   blnResourceLoaded = False
   If blnMaster Then
     For Each oSubproject In ActiveProject.Subprojects

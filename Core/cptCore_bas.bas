@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.16.0</cpt_version>
+'<cpt_version>v1.17.0</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
@@ -3636,3 +3636,94 @@ err_here:
   Resume exit_here
 End Function
 
+Function cptGetCustomFieldInfo(Optional strQuery As String = "count", Optional strSeparator As String = vbCrLf, Optional blnIncludeResources As Boolean = False) As Variant
+  'built mainly for cptErrHandler but has other purposes
+  'returns information about LCFs as raw count, count-by-cateogry, or list (default: count)
+  'accepts string separator (default: vbCrLf)
+  'defaults to only task LCFs, resource LCFs optional
+  'does NOT consider subprojects (i.e., assumes LCF sync)
+  'objects
+  Dim oDict As Scripting.Dictionary
+  Dim oReturn As Scripting.Dictionary
+  'strings
+  Dim strCustomFieldInfo As String
+  Dim strCFN As String
+  Dim strList As String
+  Dim strType As String
+  'longs
+  Dim lngItems As Long
+  Dim lngItem As Long
+  Dim lngLCF As Long
+  Dim lngCount As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  Dim vFieldScope As Variant
+  Dim vFieldType As Variant
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  Set oDict = CreateObject("Scripting.Dictionary")
+  Set oReturn = CreateObject("Scripting.Dictionary")
+  oDict.Add "Text", 30
+  oDict.Add "Flag", 20
+  oDict.Add "Number", 20
+  
+  For Each vFieldScope In Array(pjTask, pjResource) '0=pjTask,1=pjResource,2=pjProject
+    If blnIncludeResources Then
+      strType = Choose(vFieldScope + 1, "Task ", "Resource ")
+    Else
+      strType = ""
+      If vFieldScope = pjResource Then Exit For
+    End If
+    If vFieldScope = 1 And Not blnIncludeResources Then Exit For
+    For Each vFieldType In Split("Cost,Date,Duration,Finish,Flag,Number,OutlineCode,Start,Text", ",")
+      If oDict.Exists(vFieldType) Then lngItems = oDict(vFieldType) Else lngItems = 10
+      If Not oReturn.Exists(strType & vFieldType) Then oReturn.Add strType & vFieldType, 0
+      For lngItem = 1 To lngItems
+        lngLCF = FieldNameToFieldConstant(vFieldType & lngItem, vFieldScope)
+        strCFN = CustomFieldGetName(lngLCF)
+        If Len(strCFN) > 0 Then
+          lngCount = lngCount + 1
+          If Len(strList) = 0 Then
+            strList = strCFN & " (" & strType & vFieldType & lngItem & ")"
+          Else
+            strList = strList & strSeparator & strCFN & " (" & strType & vFieldType & lngItem & ")"
+          End If
+          oReturn(vFieldType) = oReturn(vFieldType) + 1
+        End If
+      Next lngItem
+    Next vFieldType
+  Next vFieldScope
+  
+  Select Case strQuery
+    Case "count"
+      cptGetCustomFieldInfo = lngCount
+    Case "count-by-category"
+      For lngItem = 0 To oReturn.Count - 1
+        If lngItem = 0 Then
+          strList = oReturn.Keys(lngItem) & ":" & oReturn.Items(lngItem)
+        Else
+          strList = strList & strSeparator & oReturn.Keys(lngItem) & ":" & oReturn.Items(lngItem)
+        End If
+      Next lngItem
+      cptGetCustomFieldInfo = strList & strSeparator & "Total:" & lngCount
+    Case "list"
+      cptGetCustomFieldInfo = strList
+    Case Else
+      cptGetCustomFieldInfo = "invalid strQuery parameter: " & strQuery & " not recognized"
+  End Select
+
+exit_here:
+  On Error Resume Next
+  Set oDict = Nothing
+  Set oReturn = Nothing
+  Exit Function
+err_here:
+  Call cptHandleErr("cptCore_bas", "cptGetCustomFieldInfo", Err, Erl)
+  Resume exit_here
+End Function
