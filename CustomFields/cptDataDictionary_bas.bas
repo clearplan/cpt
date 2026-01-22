@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDataDictionary_bas"
-'<cpt_version>v1.5.1</cpt_version>
+'<cpt_version>v1.5.2</cpt_version>
 Option Explicit
 
 Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
@@ -995,43 +995,3 @@ err_here:
   Resume exit_here
 End Sub
 
-Function WhatTheActual() As String
-  Dim dFieldCounts As Scripting.Dictionary
-  Dim strResult As String
-  Dim blnHasFormula As Boolean
-  Dim blnHasPickList As Boolean
-  Dim lngItem As Long
-  Dim lngItems As Long
-  Dim lngField As Long
-  Dim vType As Variant
-  
-  Set dFieldCounts = CreateObject("Scripting.Dictionary")
-  dFieldCounts.Add "Text", 30
-  dFieldCounts.Add "Number", 20
-  dFieldCounts.Add "Flag", 20
-  
-  For Each vType In Split("Cost,Date,Duration,Flag,Finish,Number,Outline Code,Start,Text", ",")
-    If dFieldCounts.Exists(vType) Then
-      lngItems = dFieldCounts(vType)
-    Else
-      lngItems = 10
-    End If
-    For lngItem = 1 To lngItems
-      lngField = FieldNameToFieldConstant(vType & lngItem)
-      blnHasFormula = False
-      blnHasPickList = False
-      On Error Resume Next
-      blnHasFormula = Len(CustomFieldGetFormula(lngField)) > 0
-      'If Not blnHasFormula Then
-        blnHasPickList = Len(CustomFieldValueListGetItem(lngField, pjValueListValue, 1)) > 0
-      'End If
-      On Error GoTo 0
-      strResult = strResult & lngField & "," & FieldConstantToFieldName(lngField) & "," & CustomFieldGetName(lngField) & "," & blnHasFormula & "," & blnHasPickList & vbCrLf
-    Next lngItem
-  Next vType
-  
-  WhatTheActual = strResult
-  
-  Set dFieldCounts = Nothing
-  
-End Function

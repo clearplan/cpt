@@ -164,14 +164,14 @@
 	<Module>
 		<Name>cptDataDictionary_bas</Name>
 		<FileName>cptDataDictionary_bas.bas</FileName>
-		<Version>v1.5.1</Version>
+		<Version>v1.5.2</Version>
 		<Type>1</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
 	<Module>
 		<Name>cptDataDictionary_frm</Name>
 		<FileName>cptDataDictionary_frm.frm</FileName>
-		<Version>v1.5.1</Version>
+		<Version>v1.5.2</Version>
 		<Type>3</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
