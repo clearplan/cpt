@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDataDictionary_bas"
-'<cpt_version>v1.5.1</cpt_version>
+'<cpt_version>v1.5.2</cpt_version>
 Option Explicit
 
 Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
@@ -32,6 +32,7 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   Dim lngField As Long
   'integers
   Dim intField As Integer
+  Dim intFields As Integer
   'doubles
   'booleans
   Dim blnHasFormula As Boolean
@@ -46,9 +47,6 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   Dim vFieldScope As Variant
   'dates
   
-  'prevent spawning
-  If Not cptGetUserForm("cptDataDictionary_frm") Is Nothing Then Exit Sub
-
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
@@ -69,7 +67,7 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
     Set wsLookups = oWorkbook.Sheets.Add(After:=oWorkbook.Sheets(1))
     wsLookups.Name = "LOOKUPS"
     wsLookups.Activate
-    oExcel.ActiveWindow.Zoom = 83
+    oExcel.ActiveWindow.Zoom = 85
     oWorksheet.Activate
   End If
   
@@ -109,22 +107,17 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   lngItems = 260 + (188778000 - 188776000)
   
   Set dFields = CreateObject("Scripting.Dictionary")
-  dFields.Add "Cost", 10
-  dFields.Add "Date", 10
-  dFields.Add "Duration", 10
   dFields.Add "Flag", 20
-  dFields.Add "Finish", 10
-  dFields.Add "Outline Code", 10
   dFields.Add "Number", 20
-  dFields.Add "Start", 10
   dFields.Add "Text", 30
   
   'prep for data dump
   lngRow = lngHeaderRow
   'export local custom fields
   For Each vFieldScope In Array(0, 1) '0 = pjTask; 1 = pjResource; 2 = pjProject
-    For Each vFieldType In Array("Cost", "Date", "Duration", "Flag", "Finish", "Outline Code", "Number", "Start", "Text")
-      For intField = 1 To dFields.Item(vFieldType)
+    For Each vFieldType In Array("Cost", "Date", "Duration", "Flag", "Finish", "Number", "Outline Code", "Start", "Text")
+      If dFields.Exists(vFieldType) Then intFields = dFields(vFieldType) Else intFields = 10
+      For intField = 1 To intFields
         lngField = FieldNameToFieldConstant(vFieldType & intField, vFieldScope)
         If blnExists Then 'check if field is ignored
           rstDictionary.Filter = "PROJECT_NAME='" & strProject & "' AND FIELD_ID=" & lngField
@@ -136,7 +129,6 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
           End If
         End If
         strFieldName = CustomFieldGetName(lngField)
-        
         blnHasFormula = Len(CustomFieldGetFormula(lngField)) > 0
         blnHasPickList = False 'default/reset
         If Not blnHasFormula Then 'does it have a picklist?
@@ -260,6 +252,7 @@ next_field:
         myDataDictionary_frm.lboCustomFields.Value = Null
         myDataDictionary_frm.lblStatus.Caption = "Exporting Local Custom Fields..." & lngItem & "/" & lngItems & " (" & Format(lngItem / lngItems, "0%") & ")"
         myDataDictionary_frm.lblProgress.Width = (lngItem / lngItems) * myDataDictionary_frm.lblStatus.Width
+        DoEvents
       Next intField
     Next vFieldType
   Next vFieldScope
@@ -342,6 +335,7 @@ next_field:
     lngItem = lngItem + 1
     myDataDictionary_frm.lblStatus.Caption = "Exporting Enterprise Custom Fields..." & lngItem & "/" & lngItems & " (" & Format(lngItem / lngItems, "0%") & ")"
     myDataDictionary_frm.lblProgress.Width = (lngItem / lngItems) * myDataDictionary_frm.lblStatus.Width
+    DoEvents
   Next lngField
     
   myDataDictionary_frm.lblStatus.Caption = "Formatting..."
@@ -380,6 +374,7 @@ exit_here:
   Set wsLookups = Nothing
   If rstDictionary.State Then rstDictionary.Close
   Set rstDictionary = Nothing
+  Set dFields = Nothing
   Set oLookupTable = Nothing
   myDataDictionary_frm.lblStatus.Caption = "Ready..."
   If Not oExcel Is Nothing Then oExcel.Visible = True
@@ -421,6 +416,9 @@ Sub cptShowDataDictionary_frm()
   Dim blnErrorTrapping As Boolean
   'variants
   'dates
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptDataDictionary_frm") Is Nothing Then Exit Sub
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -994,44 +992,3 @@ err_here:
   Call cptHandleErr("cptDataDictionary_bas", "cptImportDataDictionary", Err, Erl)
   Resume exit_here
 End Sub
-
-Function WhatTheActual() As String
-  Dim dFieldCounts As Scripting.Dictionary
-  Dim strResult As String
-  Dim blnHasFormula As Boolean
-  Dim blnHasPickList As Boolean
-  Dim lngItem As Long
-  Dim lngItems As Long
-  Dim lngField As Long
-  Dim vType As Variant
-  
-  Set dFieldCounts = CreateObject("Scripting.Dictionary")
-  dFieldCounts.Add "Text", 30
-  dFieldCounts.Add "Number", 20
-  dFieldCounts.Add "Flag", 20
-  
-  For Each vType In Split("Cost,Date,Duration,Flag,Finish,Number,Outline Code,Start,Text", ",")
-    If dFieldCounts.Exists(vType) Then
-      lngItems = dFieldCounts(vType)
-    Else
-      lngItems = 10
-    End If
-    For lngItem = 1 To lngItems
-      lngField = FieldNameToFieldConstant(vType & lngItem)
-      blnHasFormula = False
-      blnHasPickList = False
-      On Error Resume Next
-      blnHasFormula = Len(CustomFieldGetFormula(lngField)) > 0
-      'If Not blnHasFormula Then
-        blnHasPickList = Len(CustomFieldValueListGetItem(lngField, pjValueListValue, 1)) > 0
-      'End If
-      On Error GoTo 0
-      strResult = strResult & lngField & "," & FieldConstantToFieldName(lngField) & "," & CustomFieldGetName(lngField) & "," & blnHasFormula & "," & blnHasPickList & vbCrLf
-    Next lngItem
-  Next vType
-  
-  WhatTheActual = strResult
-  
-  Set dFieldCounts = Nothing
-  
-End Function
