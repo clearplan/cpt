@@ -50,13 +50,14 @@ Sub cptShowFilterByClipboard_frm()
     .chkFilter = True
   End With
   
-  strFreeField = cptGetSetting("FilterByClipboard", "cboFreeField")
+  strFreeField = cptGetSetting("FilterByClipboard", "lboFreeField")
   If Len(strFreeField) > 0 Then
     'is it named cptFilterByClipboard?
     If CustomFieldGetName(CLng(strFreeField)) = "cptFilterByClipboard" Then
       lngFreeField = CLng(strFreeField)
     Else 'remove it
-      cptDeleteSetting "FilterByClipboard", "cboFreeField"
+      cptDeleteSetting "FilterByClipboard", "lboFreeField"
+      cptDeleteSetting "FilterByClipboard", "cboFreeField" 'legacy
       lngFreeField = cptGetFreeField("Number")
     End If
   Else
@@ -64,12 +65,13 @@ Sub cptShowFilterByClipboard_frm()
   End If
 
   If lngFreeField > 0 Then
-    With myFilterByClipboard_frm.cboFreeField
+    With myFilterByClipboard_frm.lboFreeField
       .Clear
       .AddItem
       .List(0, 0) = lngFreeField
       .List(0, 1) = FieldConstantToFieldName(lngFreeField)
-      .Value = lngFreeField
+      '.Value = lngFreeField
+      .Enabled = False
       .Locked = True
     End With
   ElseIf lngFreeField = 0 Then
@@ -81,11 +83,12 @@ Sub cptShowFilterByClipboard_frm()
     strMsg = strMsg & "> no pick list" & vbCrLf
     strMsg = strMsg & "> no data on any task"
     If MsgBox(strMsg, vbInformation + vbOKCancel, "No Room at the Inn") = vbCancel Then GoTo exit_here
-    With myFilterByClipboard_frm.cboFreeField
+    With myFilterByClipboard_frm.lboFreeField
       .Clear
       .AddItem 0
       .List(.ListCount - 1, 1) = "Not Available"
-      .Value = 0
+      '.Value = 0
+      .Enabled = False
       .Locked = True
     End With
   ElseIf lngFreeField = -1 Then 'user hit cancel
@@ -164,8 +167,10 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
   
   cptSpeed True
   
-  myFilterByClipboard_frm.lboFilter.Clear
-  strFilter = myFilterByClipboard_frm.txtFilter.Text
+  With myFilterByClipboard_frm
+    .lboFilter.Clear
+    strFilter = .txtFilter.Text
+  End With
   ActiveWindow.TopPane.Activate
   FilterClear
   ScreenUpdating = False
@@ -176,10 +181,12 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
     OutlineShowAllTasks
   End If
   SelectAll
-  If Not IsNull(myFilterByClipboard_frm.cboFreeField.Value) Then
-    lngFreeField = myFilterByClipboard_frm.cboFreeField
-    SetField FieldConstantToFieldName(lngFreeField), 0
-  End If
+  With myFilterByClipboard_frm
+    If Not IsNull(.lboFreeField.List(0, 0)) Then
+      lngFreeField = .lboFreeField.List(0, 0)
+      SetField FieldConstantToFieldName(lngFreeField), 0
+    End If
+  End With
   If Len(strFilter) = 0 Then
     GoTo exit_here
   End If
@@ -217,13 +224,15 @@ Sub cptUpdateClipboard(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm
     If Not oTask Is Nothing Or Not oAssignment Is Nothing Then
       'add to autofilter
       strFilter = strFilter & lngUID & vbTab
-      If Not oTask Is Nothing Then
-        myFilterByClipboard_frm.lboFilter.List(myFilterByClipboard_frm.lboFilter.ListCount - 1, 1) = oTask.Name
-        If lngFreeField > 0 Then oTask.SetField lngFreeField, CStr(lngItem + 1)
-      ElseIf Not oAssignment Is Nothing Then
-        myFilterByClipboard_frm.lboFilter.List(myFilterByClipboard_frm.lboFilter.ListCount - 1, 1) = oAssignment.Task.Name & " | " & oAssignment.ResourceName
-        If lngFreeField > 0 Then SetMatchingField FieldConstantToFieldName(lngFreeField), CStr(lngItem + 1), "Unique ID", lngUID ' oTask.SetField lngFreeField, CStr(lngItem + 1)
-      End If
+      With myFilterByClipboard_frm.lboFilter
+        If Not oTask Is Nothing Then
+          .List(.ListCount - 1, 1) = oTask.Name
+          If lngFreeField > 0 Then oTask.SetField lngFreeField, CStr(lngItem + 1)
+        ElseIf Not oAssignment Is Nothing Then
+          .List(.ListCount - 1, 1) = oAssignment.Task.Name & " | " & oAssignment.ResourceName
+          If lngFreeField > 0 Then SetMatchingField FieldConstantToFieldName(lngFreeField), CStr(lngItem + 1), "Unique ID", lngUID ' oTask.SetField lngFreeField, CStr(lngItem + 1)
+        End If
+      End With
     Else
       myFilterByClipboard_frm.lboFilter.List(lngItem, 1) = "< not found >"
     End If
@@ -232,10 +241,12 @@ next_item:
     DoEvents
   Next lngItem
   
-  If Not myFilterByClipboard_frm.tglEdit Then
-    myFilterByClipboard_frm.lboFilter.Visible = True
-    myFilterByClipboard_frm.txtFilter.Visible = False
-  End If
+  With myFilterByClipboard_frm
+    If Not .tglEdit Then
+      .lboFilter.Visible = True
+      .txtFilter.Visible = False
+    End If
+  End With
   
   If blnAssignments Then
     myFilterByClipboard_frm.lboHeader.List(0, 1) = "Task Name | Resource Name"
@@ -277,13 +288,15 @@ next_item:
     If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     SelectBeginning
     strFilter = Left(strFilter, Len(strFilter) - 1)
-    If myFilterByClipboard_frm.optUID Then
-      myFilterByClipboard_frm.lboHeader.List(0, 0) = "UID"
-      SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
-    ElseIf myFilterByClipboard_frm.optID Then
-      myFilterByClipboard_frm.lboHeader.List(0, 0) = "ID"
-      SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
-    End If
+    With myFilterByClipboard_frm
+      If .optUID Then
+        .lboHeader.List(0, 0) = "UID"
+        SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+      ElseIf .optID Then
+        .lboHeader.List(0, 0) = "ID"
+        SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+      End If
+    End With
     OptionsViewEx ProjectSummary:=False, DisplayOutlineNumber:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False
     If lngFreeField > 0 Then Sort FieldConstantToFieldName(lngFreeField)
   End If
@@ -425,7 +438,7 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
 
   lngFreeField = cptCustomFieldExists("cptFilterByClipboard")
   If lngFreeField > 0 Then
-    cptSaveSetting "FilterByClipboard", "cboFreeField", lngFreeField
+    cptSaveSetting "FilterByClipboard", "lboFreeField", lngFreeField
     cptGetFreeField = lngFreeField
     GoTo exit_here
   End If
@@ -458,7 +471,7 @@ Function cptGetFreeField(strDataType As String, Optional lngType As Long) As Lon
   rstFree.Fields.Append "Available", adBoolean
   rstFree.Open
   
-  'start with custom fields witout custom field names, examine last to first
+  'start with local custom fields without custom field names, examine last to first
   For lngItem = lngItems To 1 Step -1
     lngField = FieldNameToFieldConstant(strDataType & lngItem, lngType)
     If CustomFieldGetName(lngField) = "" Then
@@ -592,9 +605,9 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   Calculation = pjManual
   ScreenUpdating = False
-  If IsNull(myFilterByClipboard_frm.cboFreeField) Then GoTo exit_here
-  If myFilterByClipboard_frm.cboFreeField = "" Then GoTo exit_here
-  lngFreeField = myFilterByClipboard_frm.cboFreeField.Value
+  If IsNull(myFilterByClipboard_frm.lboFreeField.List(0, 0)) Then GoTo exit_here
+  If myFilterByClipboard_frm.lboFreeField.List(0, 0) = "" Then GoTo exit_here
+  lngFreeField = myFilterByClipboard_frm.lboFreeField.List(0, 0)
   If lngFreeField > 0 And blnPromptToSave Then
     strMsg = "Save '" & FieldConstantToFieldName(lngFreeField) & "' for next time?" & vbCrLf & vbCrLf
     If ActiveProject.Subprojects.Count > 0 Then
@@ -604,9 +617,10 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
     End If
     If MsgBox(strMsg, vbQuestion + vbYesNo, "Save Local Custom Number Field?") = vbYes Then
       CustomFieldRename lngFreeField, "cptFilterByClipboard"
-      cptSaveSetting "FilterByClipboard", "cboFreeField", lngFreeField
+      cptSaveSetting "FilterByClipboard", "lboFreeField", lngFreeField
     Else
-      cptDeleteSetting "FilterByClipboard", "cboFreeField"
+      cptDeleteSetting "FilterByClipboard", "lboFreeField"
+      cptDeleteSetting "FilterByClipboard", "cboFreeField" 'legacy
     End If
     SelectAll
     SetField FieldConstantToFieldName(lngFreeField), 0
