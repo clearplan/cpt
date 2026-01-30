@@ -48,21 +48,17 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim strView As String
   Dim strFileName As String
   Dim strRange As String
-  Dim strTitle As String
   Dim strHeader As String
-  Dim strCost As String
   'longs
+  Dim lngLastCol As Long
   Dim lngItem As Long
   Dim lngCols As Long
   Dim lngLastRow As Long
-  Dim lngDayCol As Long
   Dim lngFiscalMonthCol As Long
   Dim lngHoursCol As Long
-  Dim lngOffset As Long
   Dim lngRateSets As Long
   Dim lngCol As Long
   Dim lngOriginalRateSet As Long
-  Dim lngFile As Long
   Dim lngTasks As Long
   Dim lngTask As Long
   Dim lngWeekCol As Long
@@ -75,7 +71,6 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim aResult() As Variant
   Dim vKey As Variant
   Dim vData As Variant
-  Dim vRecord As Variant
   Dim vChk As Variant
   Dim vRateSet As Variant
   Dim aUserFields() As Variant
@@ -85,7 +80,6 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim blnFiscal As Boolean
   Dim blnExportAssociatedBaseline As Boolean
   Dim blnExportFullBaseline As Boolean
-  Dim blnExportExceptions As Boolean
   Dim blnIncludeCosts As Boolean
   
   blnErrorTrapping = cptErrorTrapping
@@ -152,8 +146,6 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
     blnExportFullBaseline = .chkFullBaseline = True
     cptSaveSetting "ResourceDemand", "chkFullBaseline", IIf(blnExportFullBaseline, 1, 0)
     cptDeleteSetting "ResourceDemand", "chkNonLabor"
-    blnExportExceptions = .chkExportExceptions.Value
-    cptSaveSetting "ResourceDemand", "chkExportExceptions", IIf(blnExportExceptions, 1, 0)
   End With
   
   strFileName = cptDir & "\settings\cpt-export-resource-userfields.adtg."
@@ -217,9 +209,6 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
     Next oException
   End If
   
-  'get all headers as key; hours is value
-  'issue is the exporting the entire baseline is a huge dataset, too many rows (by day!)
-  'CostSet needs to be a column, but NA for Baseline
   'Key=PROJECT|{USER_FIELD}|[UID] TASK|RESOURCE_NAME|CLASS|COST_SET|ACTIVE|MONTH
   'Value=HOURS|COST
   
@@ -267,6 +256,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
       'skip completed tasks for ETC
       If IsDate(oTask.ActualFinish) Then GoTo export_baseline 'NOT Exit For
       
+      
       'capture remaining work (ETC)
       If IsDate(oTask.Stop) Then 'capture the unstatused / remaining portion
         dtStart = oTask.Resume
@@ -285,7 +275,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
       For Each oTSV In oTSVS_WORK
         If Val(oTSV.Value) = 0 Then GoTo next_tsv_etc
         'capture common oAssignment data
-        strKey = strTask & "|" & oAssignment.ResourceName & "|ETC"
+        strKey = strTask & "|" & oAssignment.ResourceName & "|ETC" 'keep this here
         'capture (and subtract) actual work, leaving ETC/Remaining Work
         If blnFiscal Then
           'Set oTSVS_AW = oAssignment.TimeScaleData(oTSV.StartDate, oTSV.EndDate, pjAssignmentTimescaledActualWork, pjTimescaleDays, 1)
@@ -324,8 +314,8 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
         'add work without cost yet
         If oEstimates.Exists(strKey) Then
           If blnIncludeCosts Then
-            dblWork = dblWork + Split(oEstimates(strKey), "|")(0)
-            dblCost = dblCost + Split(oEstimates(strKey), "|")(1)
+            dblWork = dblWork + Split(oEstimates(strKey), "|")(0) 'add
+            dblCost = Split(oEstimates(strKey), "|")(1) 'keep
             oEstimates(strKey) = dblWork & "|" & dblCost
           Else
             oEstimates(strKey) = oEstimates(strKey) + dblWork
@@ -374,7 +364,6 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
           End If
         End If
           
-        'todo: export exceptions even if not fiscal month?
 next_tsv_etc:
       Next oTSV
       
@@ -384,10 +373,10 @@ next_tsv_etc:
         'than to do it once per rate table, per assignment, per timescalevalue
         For Each vRateSet In Split(strRateSets, ",")
           If CLng(vRateSet) = lngOriginalRateSet Then GoTo next_rate_set
-
+          
           For Each oTSV In oTSVS_WORK
             'capture common oAssignment data
-            strKey = strTask & "|" & oAssignment.ResourceName & "|ETC"
+            strKey = strTask & "|" & oAssignment.ResourceName & "|ETC" 'keep this here
             'capture (and subtract) actual work, leaving ETC/Remaining Work
             If blnFiscal Then
               'Set oTSVS_AW = oAssignment.TimeScaleData(oTSV.StartDate, oTSV.EndDate, pjAssignmentTimescaledActualWork, pjTimescaleDays, 1)
@@ -426,8 +415,8 @@ next_tsv_etc:
             'add work without cost yet
             If oEstimates.Exists(strKey) Then
               If blnIncludeCosts Then
-                dblWork = dblWork + Split(oEstimates(strKey), "|")(0)
-                dblCost = dblCost + Split(oEstimates(strKey), "|")(1)
+                dblWork = dblWork + Split(oEstimates(strKey), "|")(0) 'add
+                dblCost = Split(oEstimates(strKey), "|")(1) 'keep
                 oEstimates(strKey) = dblWork & "|" & dblCost
               Else
                 oEstimates(strKey) = oEstimates(strKey) + dblWork
@@ -462,16 +451,9 @@ next_tsv_etc:
                 dblWork = Split(oEstimates(strKey), "|")(0) 'keep
                 dblCost = dblCost + Split(oEstimates(strKey), "|")(1) 'add
                 oEstimates(strKey) = dblWork & "|" & dblCost
-              'Else
-                'oEstimates(strKey) = oEstimates(strKey) + dblWork
               End If
             Else
-              If blnIncludeCosts Then
-                'Stop 'uh oh
-                oEstimates.Add strKey, 0 & "|" & dblCost 'this should never happen
-              'Else
-                'oEstimates.Add strKey, dblWork
-              End If
+              'this should never happen
             End If
         
 next_tsv_rs:
@@ -489,7 +471,7 @@ export_baseline:
         Set oTSVS_BCWS = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledBaselineWork, pjTimescaleWeeks, 1)
         For Each oTSV In oTSVS_BCWS
           If Val(oTSV.Value) = 0 Then GoTo next_tsv_bcws
-          strKey = strTask & "|" & oAssignment.ResourceName & "|BCWS"
+          strKey = strTask & "|" & oAssignment.ResourceName & "|BCWS" 'keep this here
           dblWork = Val(oTSV.Value) / 60
           If blnIncludeCosts Then
             strKey = strKey & "|BASELINED|TRUE"
@@ -608,53 +590,65 @@ next_task:
     oWorkbook.SaveAs Environ("TEMP") & "\ExportResourceDemand.xlsx", 51
   End If
   oExcel.Visible = False
-  
+    
   If blnFiscal Then
     Application.StatusBar = "Extracting Fiscal Periods..."
     myResourceDemand_frm.lblStatus.Caption = "Extracting Fiscal Periods..."
     Set oWorksheet = oWorkbook.Sheets.Add(After:=oWorkbook.Sheets(oWorkbook.Sheets.Count))
-    oWorksheet.Name = "FiscalPeriods"
-    oWorksheet.[A1:B1] = Array("fisc_end", "label")
-    oWorksheet.[A2].Resize(UBound(vFiscalCalendar, 2), UBound(vFiscalCalendar, 1) + 1).Value = oExcel.WorksheetFunction.Transpose(vFiscalCalendar)
-    Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
-    oListObject.Name = "FISCAL"
-    'add Holidays table
-    oWorksheet.[E1] = "EXCEPTIONS"
+    With oWorksheet
+      .Name = "FiscalPeriods"
+      .[A1:B1] = Array("fisc_end", "label")
+      .[A2].Resize(UBound(vFiscalCalendar, 2), UBound(vFiscalCalendar, 1) + 1).Value = oExcel.WorksheetFunction.Transpose(vFiscalCalendar)
+      Set oListObject = .ListObjects.Add(xlSrcRange, .Range(.[A1].End(xlToRight), .[A1].End(xlDown)), , xlYes)
+      oListObject.Name = "FISCAL"
+      'add Holidays table
+      .[E1] = "EXCEPTIONS"
+    End With
     'just...go get the exceptions
     Set oCalendar = ActiveProject.Calendar
-    If oCalendar.Exceptions.Count > 0 And blnExportExceptions Then
+    If oCalendar.Exceptions.Count > 0 Then
       Set oWorksheet = oWorkbook.Worksheets.Add(After:=oWorkbook.Worksheets(oWorkbook.Worksheets.Count))
       oWorksheet.Name = "Exceptions"
       Set oWorksheet = oWorkbook.Worksheets.Add(After:=oWorkbook.Worksheets(oWorkbook.Worksheets.Count))
       oWorksheet.Name = "WorkWeeks"
-      oWorksheet.Activate
-      oExcel.ActiveWindow.Zoom = 85
-      oWorksheet.Columns.AutoFit
       cptExportCalendarExceptions oWorkbook, oCalendar, True
+      With oWorksheet
+        .Activate
+        oExcel.ActiveWindow.Zoom = 85
+        .Columns.AutoFit
+      End With
       Set oWorksheet = oWorkbook.Worksheets("Exceptions")
-      oWorksheet.Activate
-      oExcel.ActiveWindow.Zoom = 85
-      oWorksheet.Columns.AutoFit
-      oWorksheet.Outline.ShowLevels Rowlevels:=1
+      With oWorksheet
+        .Activate
+        oExcel.ActiveWindow.Zoom = 85
+        .Columns.AutoFit
+        .Outline.ShowLevels Rowlevels:=1
+      End With
       Set oWorksheet = oWorkbook.Worksheets("FiscalPeriods")
-      oWorksheet.Activate
-      oWorksheet.[E2].Formula2 = "=UNIQUE(Exceptions!" & oWorkbook.Sheets("Exceptions").Range(oWorkbook.Sheets("Exceptions").[C2], oWorkbook.Sheets("Exceptions").[C2].End(xlDown)).Address & ")"
-      oWorksheet.Range(oWorksheet.[E2], oWorksheet.[E2].End(xlDown)).NumberFormat = "m/d/YYYY"
-      vData = oWorksheet.Range(oWorksheet.[E2], oWorksheet.[E2].End(xlDown))
-      oWorksheet.Range(oWorksheet.[E2], oWorksheet.[E2].End(xlDown)) = vData
-      'convert to a table
-      Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[E1], oWorksheet.[E2].End(xlDown)), , xlYes)
-      'reset oCalendar
-      Set oCalendar = ActiveProject.Calendar
-      oWorksheet.Columns(6).ColumnWidth = 1
-      oWorksheet.[G3] = "Fiscal periods imported from 'cptFiscalCalendar'"
-      oWorksheet.[G3:L3].Merge
-      oWorksheet.[G3:L3].HorizontalAlignment = xlCenter
-      oWorksheet.[G3:L3].Style = "Note"
-      oWorksheet.[G4] = "Exceptions imported from '" & oCalendar.Name & "'"
-      oWorksheet.[G4:L4].Merge
-      oWorksheet.[G4:L4].HorizontalAlignment = xlCenter
-      oWorksheet.[G4:L4].Style = "Note"
+      With oWorksheet
+        .Activate
+        .[E2].Formula2 = "=UNIQUE(Exceptions!" & oWorkbook.Sheets("Exceptions").Range(oWorkbook.Sheets("Exceptions").[C2], oWorkbook.Sheets("Exceptions").[C2].End(xlDown)).Address & ")"
+        .Range(.[E2], .[E2].End(xlDown)).NumberFormat = "m/d/YYYY"
+        vData = .Range(.[E2], .[E2].End(xlDown))
+        .Range(.[E2], .[E2].End(xlDown)) = vData
+        'convert to a table
+        Set oListObject = .ListObjects.Add(xlSrcRange, .Range(.[E1], .[E2].End(xlDown)), , xlYes)
+        'reset oCalendar
+        Set oCalendar = ActiveProject.Calendar
+        .Columns(6).ColumnWidth = 1
+        .[G3] = "Fiscal periods imported from 'cptFiscalCalendar'"
+        With .[G3:L3]
+          .Merge
+          .HorizontalAlignment = xlCenter
+          .Style = "Note"
+        End With
+        .[G4] = "Exceptions imported from '" & oCalendar.Name & "'"
+        With .[G4:L4]
+          .Merge
+          .HorizontalAlignment = xlCenter
+          .Style = "Note"
+        End With
+      End With
     Else
       'convert to a table
       Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[E1], oWorksheet.[E2]), , xlYes)
@@ -663,12 +657,18 @@ next_task:
     oExcel.ActiveWindow.Zoom = 85
     oListObject.Name = "EXCEPTIONS"
     'add efficiency factor entry
-    oWorksheet.[G1].Value = "Efficiency:"
-    oWorksheet.[G1].EntireColumn.AutoFit
-    oWorksheet.[H1].Value = 1
-    oWorksheet.[H1].Style = "Percent"
-    oWorksheet.[H1].Style = "Input"
-    oWorksheet.Names.Add "efficiency_factor", oWorksheet.[H1]
+    With oWorksheet.[G1]
+      .Value = "Efficiency:"
+      .EntireColumn.AutoFit
+    End With
+    With oWorksheet
+      With .[H1]
+        .Value = 1
+        .Style = "Percent"
+        .Style = "Input"
+      End With
+      .Names.Add "efficiency_factor", .[H1]
+    End With
     'add HPM formula
     Application.StatusBar = "Calculating HPM..."
     myResourceDemand_frm.lblStatus.Caption = "Calculating HPM..."
@@ -677,56 +677,56 @@ next_task:
   End If
   
   Set oWorksheet = oWorkbook.Sheets(1)
-  oWorksheet.Name = "SourceData"
-  
-  lngHoursCol = oWorksheet.Rows(1).Find("HOURS", lookat:=1).Column '1=xlWhole
-  If Not blnFiscal Then
-    lngWeekCol = oWorksheet.Rows(1).Find("WEEK", lookat:=1).Column '1=xlWhole
-  End If
-  
-  'format currencies
-  For lngCol = 1 To lngWeekCol
-    If InStr(oWorksheet.Cells(1, lngCol), "COST") > 0 Then oWorksheet.Columns(lngCol).Style = "Currency"
-  Next lngCol
-  
-  'add note on CostRateTable column
-  If blnIncludeCosts Then
-    lngCol = oWorksheet.Rows(1).Find("RATE_TABLE", lookat:=1).Column
-    oWorksheet.Cells(1, lngCol).AddComment "Rate Table Applied in the Project"
-  End If
-    
-  'add fte for non-fiscal
-  If Not blnFiscal Then
-    'create FTE_WEEK column
-    Set oRange = oWorksheet.[A1].End(xlToRight).End(xlDown).Offset(0, 1)
-    Set oRange = oWorksheet.Range(oRange, oWorksheet.[A1].End(xlToRight).Offset(1, 1))
-    If blnFiscal Then 'fiscal
-      'get fiscal_month column
-      lngFiscalMonthCol = oWorksheet.Rows(1).Find(what:="FISCAL_MONTH", lookat:=xlWhole).Column
-      oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/NETWORKDAYS(RC" & lngWeekCol & "-7,RC" & lngWeekCol & ",EXCEPTIONS)"
-    Else
-      oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/40"
+  With oWorksheet
+    .Name = "SourceData"
+    lngHoursCol = .Rows(1).Find("HOURS", lookat:=1).Column '1=xlWhole
+    If Not blnFiscal Then
+      lngWeekCol = oWorksheet.Rows(1).Find("WEEK", lookat:=1).Column '1=xlWhole
     End If
-    oWorksheet.[A1].End(xlToRight).Offset(0, 1).Value = "FTE_WEEK"
-  End If
-      
-  'create FTE_MONTH column
-  Set oRange = oWorksheet.[A1].End(xlToRight).Offset(1, 1)
-  Set oRange = oWorksheet.Range(oRange, oWorksheet.Cells(oWorksheet.UsedRange.Rows.Count, oRange.Column))
-  lngHoursCol = oWorksheet.Rows(1).Find("HOURS", lookat:=1).Column '1=xlWhole
-  If blnFiscal Then
-    lngFiscalMonthCol = oWorksheet.Rows(1).Find("FISCAL_MONTH", lookat:=1).Column '1=xlWhole
-    oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/LOOKUP(RC" & lngFiscalMonthCol & ",FISCAL[label],FISCAL[hpm])"
-    oWorksheet.[A1].End(xlToRight).Offset(0, 1).Value = "FTE"
-  Else
-    lngWeekCol = oWorksheet.Rows(1).Find("WEEK", lookat:=1).Column
-    oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/160" 'todo: can we do something smarter?
-    oWorksheet.[A1].End(xlToRight).Offset(0, 1).Value = "FTE_MONTH"
-  End If
+    lngLastCol = .[A2].End(xlToRight).Column
+    'number formats
+    For lngCol = 1 To lngLastCol
+      If cptRxTest(.Columns(lngCol), "(HOURS|COST|FTE)") Then
+        .Columns(lngCol).NumberFormat = "_(* #,##0.00000000_);_(* (#,##0.00000000);_(* ""-""??_);_(@_)"
+      End If
+    Next lngCol
+    'add note on CostRateTable column
+    If blnIncludeCosts Then
+      lngCol = .Rows(1).Find("RATE_TABLE", lookat:=1).Column
+      .Cells(1, lngCol).AddComment "Rate Table Applied in the Project"
+    End If
+    'add fte for non-fiscal
+    If Not blnFiscal Then
+      'create FTE_WEEK column
+      Set oRange = .[A1].End(xlToRight).End(xlDown).Offset(0, 1)
+      Set oRange = .Range(oRange, .[A1].End(xlToRight).Offset(1, 1))
+      If blnFiscal Then 'fiscal
+        'get fiscal_month column
+        lngFiscalMonthCol = .Rows(1).Find(what:="FISCAL_MONTH", lookat:=xlWhole).Column
+        oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/NETWORKDAYS(RC" & lngWeekCol & "-7,RC" & lngWeekCol & ",EXCEPTIONS)"
+      Else
+        oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/40"
+      End If
+      .[A1].End(xlToRight).Offset(0, 1).Value = "FTE_WEEK"
+    End If
+    'create FTE/FTE_MONTH column
+    Set oRange = .[A1].End(xlToRight).Offset(1, 1)
+    Set oRange = .Range(oRange, .Cells(.UsedRange.Rows.Count, oRange.Column))
+    lngHoursCol = .Rows(1).Find("HOURS", lookat:=1).Column '1=xlWhole
+    If blnFiscal Then
+      lngFiscalMonthCol = .Rows(1).Find("FISCAL_MONTH", lookat:=1).Column '1=xlWhole
+      oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/LOOKUP(RC" & lngFiscalMonthCol & ",FISCAL[label],FISCAL[hpm])"
+      .[A1].End(xlToRight).Offset(0, 1).Value = "FTE"
+    Else
+      lngWeekCol = .Rows(1).Find("WEEK", lookat:=1).Column
+      oRange.FormulaR1C1 = "=RC" & lngHoursCol & "/160" 'todo: can we do something smarter?
+      .[A1].End(xlToRight).Offset(0, 1).Value = "FTE_MONTH"
+    End If
+    'capture the range of data to feed as variable to PivotTable
+    Set oRange = .Range(.[A1].End(xlDown), .[A1].End(xlToRight))
+    strRange = .Name & "!" & Replace(oRange.Address, "$", "")
+  End With 'SourceData Worksheet
   
-  'capture the range of data to feed as variable to PivotTable
-  Set oRange = oWorksheet.Range(oWorksheet.[A1].End(xlDown), oWorksheet.[A1].End(xlToRight))
-  strRange = oWorksheet.Name & "!" & Replace(oRange.Address, "$", "")
   'add a new Worksheet for the oPivotTable
   Set oWorksheet = oWorkbook.Sheets.Add(Before:=oWorkbook.Sheets("SourceData"))
   'rename the new Worksheet
@@ -773,72 +773,89 @@ next_task:
   End If
   
   'format the oPivotTable
-  oPivotTable.ShowDrillIndicators = True
-  oPivotTable.EnableDrilldown = True
-  oPivotTable.PivotCache.MissingItemsLimit = xlMissingItemsNone
-  oPivotTable.PivotFields("RESOURCE_NAME").ShowDetail = False
-  oPivotTable.TableStyle2 = "PivotStyleLight16"
-  oPivotTable.PivotSelect "", 2, True
+  With oPivotTable
+    .ShowDrillIndicators = True
+    .EnableDrilldown = True
+    .PivotCache.MissingItemsLimit = xlMissingItemsNone
+    .PivotFields("RESOURCE_NAME").ShowDetail = False
+    .TableStyle2 = "PivotStyleLight16"
+    .PivotSelect "", 2, True
+  End With
   oExcel.Selection.Style = "Comma"
   With oExcel.Selection
-    .FormatConditions.Delete
-    .FormatConditions.AddColorScale ColorScaleType:=2
-    .FormatConditions(1).SetFirstPriority
-    .FormatConditions(1).ColorScaleCriteria(1).Type = 1 '1=xlConditionValueLowestValue
-    .FormatConditions(1).ColorScaleCriteria(1).FormatColor.Color = 10285055
-    .FormatConditions(1).ColorScaleCriteria(1).FormatColor.TintAndShade = 0
-    .FormatConditions(1).ColorScaleCriteria(2).Type = 2 '2=xlConditionValueHighestValue
-    .FormatConditions(1).ColorScaleCriteria(2).FormatColor.Color = 2650623
-    .FormatConditions(1).ColorScaleCriteria(2).FormatColor.TintAndShade = 0
-    .FormatConditions(1).ScopeType = 1 '1=xlFieldsScope
+    With .FormatConditions
+      .Delete
+      .AddColorScale ColorScaleType:=2
+    End With
+    With .FormatConditions(1)
+      .SetFirstPriority
+      With .ColorScaleCriteria(1)
+        .Type = 1 '1=xlConditionValueLowestValue
+        .FormatColor.Color = 10285055
+        .FormatColor.TintAndShade = 0
+      End With
+      With .ColorScaleCriteria(2)
+        .Type = 2 '2=xlConditionValueHighestValue
+        .FormatColor.Color = 2650623
+        .FormatColor.TintAndShade = 0
+      End With
+      .ScopeType = 1 '1=xlFieldsScope
+    End With
   End With
   
   Application.StatusBar = "Building header..."
   myResourceDemand_frm.lblStatus = Application.StatusBar
 
   'add a title
-  oWorksheet.Rows("1:3").EntireRow.Insert
-  oWorksheet.[A2] = "Status Date: " & FormatDateTime(ActiveProject.StatusDate, vbShortDate)
-  oWorksheet.[A2].EntireColumn.AutoFit
-  oWorksheet.[A1] = "REMAINING WORK IN IMS: " & cptRegEx(ActiveProject.Name, "[^\\/]{1,}$")
-  oWorksheet.[A1].Font.Bold = True
-  oWorksheet.[A1].Font.Italic = True
-  oWorksheet.[A1].Font.Size = 14
-  oWorksheet.[A1:F1].Merge
-  'revise according to user options
-  If blnFiscal Then
-    oWorksheet.[B2] = "FTE by Fiscal Month"
-  Else
-    oWorksheet.[B2] = "FTE by Weeks " & myResourceDemand_frm.cboWeeks.Value & " " & myResourceDemand_frm.cboWeekday.Value
-  End If
-  oPivotTable.DataBodyRange.Select
-  oExcel.ActiveWindow.FreezePanes = True
-  oWorksheet.[A2].Select
-  'make it nice
-  oExcel.ActiveWindow.Zoom = 85
+  With oWorksheet
+    .Rows("1:3").EntireRow.Insert
+    .[A2] = "Status Date: " & FormatDateTime(ActiveProject.StatusDate, vbShortDate)
+    .[A2].EntireColumn.AutoFit
+    With .[A1]
+      .Value = "REMAINING WORK IN IMS: " & cptRegEx(ActiveProject.Name, "[^\\/]{1,}$")
+      With .Font
+        .Bold = True
+        .Italic = True
+        .Size = 14
+      End With
+    End With
+    .[A1:F1].Merge
+    'revise according to user options
+    If blnFiscal Then
+      .[B2] = "FTE by Fiscal Month"
+    Else
+      .[B2] = "FTE by Weeks " & myResourceDemand_frm.cboWeeks.Value & " " & myResourceDemand_frm.cboWeekday.Value
+    End If
+    oPivotTable.DataBodyRange.Select
+    oExcel.ActiveWindow.FreezePanes = True
+    .[A2].Select
+    'make it nice
+    oExcel.ActiveWindow.Zoom = 85
+  End With
 
   Application.StatusBar = "Creating PivotChart..."
   myResourceDemand_frm.lblStatus.Caption = Application.StatusBar
 
   'create a PivotChart
   Set oWorksheet = oWorkbook.Sheets("SourceData")
-  oWorksheet.Activate
-  oWorksheet.[A2].Select
-  oWorksheet.[A2].EntireColumn.AutoFit
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.FreezePanes = True
-  oWorksheet.Cells.EntireColumn.AutoFit
+  With oWorksheet
+    .Activate
+    .[A2].Select
+    .[A2].EntireColumn.AutoFit
+    oExcel.ActiveWindow.Zoom = 85
+    oExcel.ActiveWindow.FreezePanes = True
+    .Cells.EntireColumn.AutoFit
+  End With
   Set oWorksheet = oWorkbook.Sheets.Add
-  oWorksheet.Name = "PivotChart_Source"
-  oWorkbook.Worksheets("ResourceDemand").PivotTables("RESOURCE_DEMAND"). _
-        PivotCache.CreatePivotTable TableDestination:="PivotChart_Source!R1C1", TableName:= _
-        "PivotTable1", DefaultVersion:=3
-  Set oPivotTable = oWorkbook.Worksheets("ResourceDemand").PivotTables(1)
-  Set oWorksheet = oWorkbook.Sheets("PivotChart_Source")
-  oWorksheet.Activate
-  oWorksheet.[A1].Select
-  Set oChart = oWorksheet.Shapes.AddChart2.Chart
-  Set oRange = oWorksheet.Range(oWorksheet.[A1].End(-4161), oWorksheet.[A1].End(-4121))
+  With oWorksheet
+    .Name = "PivotChart_Source"
+    Set oPivotTable = oWorkbook.Worksheets("ResourceDemand").PivotTables("RESOURCE_DEMAND")
+    oPivotTable.PivotCache.CreatePivotTable TableDestination:="PivotChart_Source!R1C1", TableName:="PivotTable1", DefaultVersion:=3
+    .Activate
+    .[A1].Select
+    Set oChart = .Shapes.AddChart2.Chart
+    Set oRange = .Range(.[A1].End(-4161), .[A1].End(-4121))
+  End With
   oChart.SetSourceData Source:=oRange
   oWorkbook.ShowPivotChartActiveFields = True
   oChart.ChartType = 76 'xlAreaStacked
@@ -898,44 +915,48 @@ next_task:
     'make compatible with master/sub projects
     If ActiveProject.ResourceCount > 0 Then
       For Each oResource In ActiveProject.Resources
-        oWorksheet.Cells(lngRow, 1) = oResource.Name
-        For Each oCostRateTable In oResource.CostRateTables
-          If myResourceDemand_frm.Controls(Choose(oCostRateTable.Index, "chkA", "chkB", "chkC", "chkD", "chkE")).Value = True Then
-            For Each oPayRate In oCostRateTable.PayRates
-              oWorksheet.Cells(lngRow, 1) = cptRegEx(ActiveProject.Name, "[^\\/]{1,}$")
-              oWorksheet.Cells(lngRow, 2) = oResource.Name
-              oWorksheet.Cells(lngRow, 3) = Choose(oResource.Type + 1, "Work", "Material", "Cost")
-              oWorksheet.Cells(lngRow, 4) = oResource.Enterprise
-              oWorksheet.Cells(lngRow, 5) = oCostRateTable.Name
-              oWorksheet.Cells(lngRow, 6) = FormatDateTime(oPayRate.EffectiveDate, vbShortDate)
-              oWorksheet.Cells(lngRow, 7) = Replace(oPayRate.StandardRate, "/h", "")
-              oWorksheet.Cells(lngRow, 8) = Replace(oPayRate.OvertimeRate, "/h", "")
-              oWorksheet.Cells(lngRow, 9) = oPayRate.CostPerUse
-              lngRow = oWorksheet.Cells(oWorksheet.Rows.Count, 1).End(-4162).Row + 1
-            Next oPayRate
-          End If
-        Next oCostRateTable
+        With oWorksheet
+          .Cells(lngRow, 1) = oResource.Name
+          For Each oCostRateTable In oResource.CostRateTables
+            If myResourceDemand_frm.Controls(Choose(oCostRateTable.Index, "chkA", "chkB", "chkC", "chkD", "chkE")).Value = True Then
+              For Each oPayRate In oCostRateTable.PayRates
+                .Cells(lngRow, 1) = cptRegEx(ActiveProject.Name, "[^\\/]{1,}$")
+                .Cells(lngRow, 2) = oResource.Name
+                .Cells(lngRow, 3) = Choose(oResource.Type + 1, "Work", "Material", "Cost")
+                .Cells(lngRow, 4) = oResource.Enterprise
+                .Cells(lngRow, 5) = oCostRateTable.Name
+                .Cells(lngRow, 6) = FormatDateTime(oPayRate.EffectiveDate, vbShortDate)
+                .Cells(lngRow, 7) = Replace(oPayRate.StandardRate, "/h", "")
+                .Cells(lngRow, 8) = Replace(oPayRate.OvertimeRate, "/h", "")
+                .Cells(lngRow, 9) = oPayRate.CostPerUse
+                lngRow = .Cells(.Rows.Count, 1).End(-4162).Row + 1
+              Next oPayRate
+            End If
+          Next oCostRateTable
+        End With
       Next oResource
     ElseIf ActiveProject.Subprojects.Count > 0 Then
       For Each oSubproject In ActiveProject.Subprojects
         For Each oResource In oSubproject.SourceProject.Resources
-          oWorksheet.Cells(lngRow, 1) = oResource.Name
-          For Each oCostRateTable In oResource.CostRateTables
-            If myResourceDemand_frm.Controls(Choose(oCostRateTable.Index, "chkA", "chkB", "chkC", "chkD", "chkE")).Value = True Then
-              For Each oPayRate In oCostRateTable.PayRates
-                oWorksheet.Cells(lngRow, 1) = cptRegEx(oSubproject.SourceProject.Name, "[^\\/]{1,}$")
-                oWorksheet.Cells(lngRow, 2) = oResource.Name
-                oWorksheet.Cells(lngRow, 3) = Choose(oResource.Type + 1, "Work", "Material", "Cost")
-                oWorksheet.Cells(lngRow, 4) = oResource.Enterprise
-                oWorksheet.Cells(lngRow, 5) = oCostRateTable.Name
-                oWorksheet.Cells(lngRow, 6) = FormatDateTime(oPayRate.EffectiveDate, vbShortDate)
-                oWorksheet.Cells(lngRow, 7) = Replace(oPayRate.StandardRate, "/h", "")
-                oWorksheet.Cells(lngRow, 8) = Replace(oPayRate.OvertimeRate, "/h", "")
-                oWorksheet.Cells(lngRow, 9) = oPayRate.CostPerUse
-                lngRow = oWorksheet.Cells(oWorksheet.Rows.Count, 1).End(-4162).Row + 1
-              Next oPayRate
-            End If
-          Next oCostRateTable
+          With oWorksheet
+            .Cells(lngRow, 1) = oResource.Name
+            For Each oCostRateTable In oResource.CostRateTables
+              If myResourceDemand_frm.Controls(Choose(oCostRateTable.Index, "chkA", "chkB", "chkC", "chkD", "chkE")).Value = True Then
+                For Each oPayRate In oCostRateTable.PayRates
+                  .Cells(lngRow, 1) = cptRegEx(oSubproject.SourceProject.Name, "[^\\/]{1,}$")
+                  .Cells(lngRow, 2) = oResource.Name
+                  .Cells(lngRow, 3) = Choose(oResource.Type + 1, "Work", "Material", "Cost")
+                  .Cells(lngRow, 4) = oResource.Enterprise
+                  .Cells(lngRow, 5) = oCostRateTable.Name
+                  .Cells(lngRow, 6) = FormatDateTime(oPayRate.EffectiveDate, vbShortDate)
+                  .Cells(lngRow, 7) = Replace(oPayRate.StandardRate, "/h", "")
+                  .Cells(lngRow, 8) = Replace(oPayRate.OvertimeRate, "/h", "")
+                  .Cells(lngRow, 9) = oPayRate.CostPerUse
+                  lngRow = .Cells(.Rows.Count, 1).End(-4162).Row + 1
+                Next oPayRate
+              End If
+            Next oCostRateTable
+          End With
         Next oResource
       Next oSubproject
     End If
@@ -1048,15 +1069,12 @@ Sub cptShowExportResourceDemand_frm()
   Dim strBaseline As String
   Dim strCostSets As String
   Dim strCosts As String
-  Dim strFields As String
   Dim strWeeks As String
   Dim strMonths As String
   Dim strWeekday As String
   Dim strMissing As String
-  Dim strActiveView As String
   Dim strFieldName As String
   Dim strFileName As String
-  Dim strExportExceptions As String
   'longs
   Dim lngFile As Long
   Dim lngResourceCount As Long
@@ -1211,7 +1229,6 @@ next_field1:
       .cboMonths.Enabled = False
       .cboMonths.Locked = True
     End If
-    .chkExportExceptions = False 'default
   End With
   
   'import saved fields if exists
@@ -1306,16 +1323,6 @@ next_saved_field:
       End If
       'non-labor
       cptDeleteSetting "ResourceDemand", "chkNonLabor" 'obsolete setting
-      If ActiveProject.Calendar.Exceptions.Count > 0 Then
-        .chkExportExceptions.Enabled = True
-        strExportExceptions = cptGetSetting("ResourceDemand", "chkExportExceptions")
-        If Len(strExportExceptions) > 0 Then
-          .chkExportExceptions = CBool(strExportExceptions)
-        End If
-      Else
-        .chkExportExceptions = False
-        .chkExportExceptions.Enabled = False
-      End If
     End If
     .Caption = "Export Resource Demand (" & cptGetVersion(MODULE_NAME) & ")"
     If Len(strMissing) > 0 Then
