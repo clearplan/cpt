@@ -2930,7 +2930,7 @@ next_control:
       If blnUseDefault Then
         oComboBox.Enabled = True
       Else
-        oComboBox.Enabled = cptGetPosition(Replace(Replace(strRequiredFields, "[", ""), "]", ""), vControl, ",") > 0
+        oComboBox.Enabled = cptGetPosition(Replace(Replace(strRequiredFields, "[", ""), "]", ""), vControl, ",") >= 0
       End If
       If oRequiredFields(vControl) Then
         If vControl = "LOE" Or vControl = "PP" Then
@@ -3165,7 +3165,7 @@ Function cptErrorTrapping() As Boolean
 
 exit_here:
   On Error Resume Next
-  Call cptCore_bas.cptStartEvents
+'  Call cptCore_bas.cptStartEvents
   Exit Function
 err_here:
   Call cptHandleErr("cptCore_bas", "cptErrorTrapping", Err, Erl)
@@ -3232,6 +3232,7 @@ Function cptSortedArray(vArray As Variant, lngSortKey As Long) As Variant
 End Function
 
 Function cptGetPosition(vList As Variant, vValue As Variant, Optional strDelimiter As String) As Long
+  'IMPORTANT: result is 0-bound; -1 means "not found"!
   'find position of a value in a list
   'accepts comma-separated lists or arrays
   'if vList is comma-separated then strDelimiter is required
@@ -3279,7 +3280,7 @@ Function cptGetPosition(vList As Variant, vValue As Variant, Optional strDelimit
       lngPosition = lngPosition + 1
     Next vPosition
   End If
-  cptGetPosition = lngTemp
+  cptGetPosition = lngTemp - 1
 End Function
 
 Function cptGetDate(dtDate As Date, Optional strFormat As String)

@@ -13,12 +13,12 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.5.3</cpt_version>
+'<cpt_version>v1.6.0</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 
 Private Sub cboMonths_Change()
-  If Me.cboMonths.Value = 0 Then
+  If Me.cboMonths.Value = 0 Then 'not fiscal
     Me.cboWeeks.Enabled = True
     Me.cboWeeks.Locked = False
     Me.cboWeekday.Enabled = True
@@ -31,6 +31,11 @@ Private Sub cboMonths_Change()
     Me.cboWeekday.Enabled = False
     Me.cboWeekday.Locked = True
   End If
+  If Me.Visible Then cptSaveSetting "ResourceDemand", "cboMonths", Me.cboMonths.Value
+End Sub
+
+Private Sub cboWeekday_Change()
+  If Me.Visible Then cptSaveSetting "ResourceDemand", "cboWeekday", Me.cboWeekday.Value
 End Sub
 
 Private Sub cboWeeks_Change()
@@ -45,14 +50,30 @@ Private Sub cboWeeks_Change()
       Me.cboWeekday.AddItem "Saturday"
       Me.cboWeekday.Value = "Friday"
   End Select
+  If Me.Visible Then cptSaveSetting "ResourceDemand", "cboWeeks", Me.cboMonths.Value
+End Sub
+
+Private Sub chkAssociatedBaseline_Click()
+  If Me.Visible Then
+    cptSaveSetting "ResourceDemand", "chkAssociatedBaseline", IIf(Me.chkAssociatedBaseline, 1, 0)
+    If Me.chkAssociatedBaseline And Me.chkFullBaseline Then Me.chkFullBaseline = False
+  End If
 End Sub
 
 Private Sub chkCosts_AfterUpdate()
-  Me.chkA.Enabled = Me.chkCosts
-  Me.chkB.Enabled = Me.chkCosts
-  Me.chkC.Enabled = Me.chkCosts
-  Me.chkD.Enabled = Me.chkCosts
-  Me.chkE.Enabled = Me.chkCosts
+  Me.chkA.Enabled = CBool(Me.chkCosts.Value)
+  Me.chkB.Enabled = CBool(Me.chkCosts.Value)
+  Me.chkC.Enabled = CBool(Me.chkCosts.Value)
+  Me.chkD.Enabled = CBool(Me.chkCosts.Value)
+  Me.chkE.Enabled = CBool(Me.chkCosts.Value)
+  If Me.Visible Then cptSaveSetting "ResourceDemand", "chkCosts", IIf(Me.chkCosts, 1, 0)
+End Sub
+
+Private Sub chkFullBaseline_Click()
+  If Me.Visible Then
+    cptSaveSetting "ResourceDemand", "chkFullBaseline", IIf(Me.chkFullBaseline, 1, 0)
+    If Me.chkAssociatedBaseline And Me.chkFullBaseline Then Me.chkAssociatedBaseline = False
+  End If
 End Sub
 
 Private Sub cmdAdd_Click()
