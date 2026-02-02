@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.6.1</cpt_version>
+'<cpt_version>v1.6.2</cpt_version>
 Option Explicit
 
 Sub cptBulkAppend()
@@ -133,7 +133,7 @@ Sub cptEnumerate()
   
   Application.OpenUndoTransaction "Enumeration"
   
-  If oTasks.Count > 2 Then
+  If oTasks.Count >= 2 Then
     For Each oTask In oTasks
       If oTask.ExternalTask Then GoTo next_task
       If Not oTask Is Nothing Then
