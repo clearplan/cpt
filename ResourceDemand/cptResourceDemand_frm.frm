@@ -219,7 +219,6 @@ Private Sub stxtSearch_Change()
     Me.lblStatus.Caption = lngItem & " record" & IIf(lngItem = 1, "", "s") & " found."
   End With
   
-  
 exit_here:
   On Error Resume Next
   Exit Sub

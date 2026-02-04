@@ -52,6 +52,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim strRange As String
   Dim strHeader As String
   'longs
+  Dim lngTimeScale As Long
   Dim lngLastCol As Long
   Dim lngItem As Long
   Dim lngCols As Long
@@ -224,7 +225,13 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
  '  If oExcel Is Nothing Then
      Set oExcel = CreateObject("Excel.Application")
  '  End If
-
+  
+'  If optSpeed Then
+'    lngTimeScale = pjTimescaleWeeks
+'  ElseIf optAccurate Then
+    lngTimeScale = pjTimescaleDays 'pjTimescaleDays;pjTimescaleWeeks
+'  End If
+  
    Set oEstimates = CreateObject("Scripting.Dictionary")
    For Each oTask In ActiveProject.Tasks
      If oTask Is Nothing Then GoTo next_task 'skip blank lines
@@ -268,10 +275,10 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
        dtFinish = oTask.Finish
 
        If blnFiscal Then
-         'Set oTSVS_WORK = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledWork, pjTimescaleDays, 1)
-         Set oTSVS_WORK = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledWork, pjTimescaleWeeks, 1)
+         'Set oTSVS_WORK = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledWork, lngTimeScale, 1)
+         Set oTSVS_WORK = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledWork, lngTimeScale, 1)
        Else
-         Set oTSVS_WORK = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledWork, pjTimescaleWeeks, 1)
+         Set oTSVS_WORK = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledWork, lngTimeScale, 1)
        End If
 
        For Each oTSV In oTSVS_WORK
@@ -282,10 +289,10 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
          dtEndDate = oTSV.EndDate
          'capture (and subtract) actual work, leaving ETC/Remaining Work
          If blnFiscal Then
-           'Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, pjTimescaleDays, 1)
-           Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, pjTimescaleWeeks, 1)
+           'Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, lngTimeScale, 1)
+           Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, lngTimeScale, 1)
          Else
-           Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, pjTimescaleWeeks, 1)
+           Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, lngTimeScale, 1)
          End If
          dblWork = (Val(oTSV.Value) - Val(oTSVS_AW(1))) / 60
          If dblWork = 0 Then GoTo next_tsv_etc
@@ -312,7 +319,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
                End If
              End If
            End With
-           strKey = strKey & "|" & dtWeek & "|" & Format(dtWeek, "yyyymm")
+           strKey = strKey & "|" & dtWeek & "|" & Format(dtStartDate, "yyyymm")
          End If
 
          'add work without cost yet
@@ -336,15 +343,15 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
          If blnIncludeCosts Then
            'get active cost
            If blnFiscal Then
-             'Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, pjTimescaleDays, 1)
-             Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, pjTimescaleWeeks, 1)
+             'Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, lngTimeScale, 1)
+             Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, lngTimeScale, 1)
              'get actual cost
-             'Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, pjTimescaleDays, 1)
-             Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, pjTimescaleWeeks, 1)
+             'Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, lngTimeScale, 1)
+             Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, lngTimeScale, 1)
            Else
-             Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, pjTimescaleWeeks, 1)
+             Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, lngTimeScale, 1)
              'get actual cost
-             Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, pjTimescaleWeeks, 1)
+             Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, lngTimeScale, 1)
            End If
            'subtract actual cost from cost to get remaining cost
            dblCost = Val(oTSVS_COST(1).Value) - Val(oTSVS_AC(1))
@@ -383,10 +390,10 @@ next_tsv_etc:
              strKey = strTask & "|" & oAssignment.ResourceName & "|ETC" 'keep this here
              'capture (and subtract) actual work, leaving ETC/Remaining Work
              If blnFiscal Then
-               'Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, pjTimescaleDays, 1)
-               Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, pjTimescaleWeeks, 1)
+               'Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, lngTimeScale, 1)
+               Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, lngTimeScale, 1)
              Else
-               Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, pjTimescaleWeeks, 1)
+               Set oTSVS_AW = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualWork, lngTimeScale, 1)
              End If
              dblWork = (Val(oTSV.Value) - Val(oTSVS_AW(1))) / 60
              If dblWork = 0 Then GoTo next_tsv_rs
@@ -413,7 +420,7 @@ next_tsv_etc:
                    End If
                  End If
                End With
-               strKey = strKey & "|" & dtWeek & "|" & Format(dtWeek, "yyyymm")
+               strKey = strKey & "|" & dtWeek & "|" & Format(dtStartDate, "yyyymm")
              End If
 
              'add work without cost yet
@@ -436,15 +443,15 @@ next_tsv_etc:
              'get active cost
              If oAssignment.CostRateTable <> CLng(vRateSet) Then oAssignment.CostRateTable = CLng(vRateSet) 'very expensive
              If blnFiscal Then
-               'Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, pjTimescaleDays, 1)
-               Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, pjTimescaleWeeks, 1)
+               'Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, lngTimeScale, 1)
+               Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, lngTimeScale, 1)
                'get actual cost
-               'Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, pjTimescaleDays, 1)
-               Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, pjTimescaleWeeks, 1)
+               'Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, lngTimeScale, 1)
+               Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, lngTimeScale, 1)
              Else
-               Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, pjTimescaleWeeks, 1)
+               Set oTSVS_COST = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledCost, lngTimeScale, 1)
                'get actual cost
-               Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, pjTimescaleWeeks, 1)
+               Set oTSVS_AC = oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledActualCost, lngTimeScale, 1)
              End If
              'subtract actual cost from cost to get remaining cost
              dblCost = Val(oTSVS_COST(1).Value) - Val(oTSVS_AC(1))
@@ -471,8 +478,8 @@ export_baseline:
        If blnExportAssociatedBaseline Or blnExportFullBaseline Then
          dtStart = oExcel.WorksheetFunction.Min(oTask.Start, IIf(oTask.BaselineStart = "NA", oTask.Start, oTask.BaselineStart)) 'works with forecast, actual, and baseline start
          dtFinish = oExcel.WorksheetFunction.Max(oTask.Finish, IIf(oTask.BaselineFinish = "NA", oTask.Finish, oTask.BaselineFinish)) 'works with forecast, actual, and baseline finish
-         'Set oTSVS_BCWS = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledBaselineWork, pjTimescaleDays, 1)
-         Set oTSVS_BCWS = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledBaselineWork, pjTimescaleWeeks, 1)
+         'Set oTSVS_BCWS = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledBaselineWork, lngTimeScale, 1)
+         Set oTSVS_BCWS = oAssignment.TimeScaleData(dtStart, dtFinish, pjAssignmentTimescaledBaselineWork, lngTimeScale, 1)
          For Each oTSV In oTSVS_BCWS
            If Val(oTSV.Value) = 0 Then GoTo next_tsv_bcws
            strKey = strTask & "|" & oAssignment.ResourceName & "|BCWS" 'keep this here
@@ -481,8 +488,8 @@ export_baseline:
            dblWork = Val(oTSV.Value) / 60
            If blnIncludeCosts Then
              strKey = strKey & "|BASELINED|TRUE"
-             'dblCost = Val(oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledBaselineCost, pjTimescaleDays, 1)(1).Value)
-             dblCost = Val(oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledBaselineCost, pjTimescaleWeeks, 1)(1).Value)
+             'dblCost = Val(oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledBaselineCost, lngTimeScale, 1)(1).Value)
+             dblCost = Val(oAssignment.TimeScaleData(dtStartDate, dtEndDate, pjAssignmentTimescaledBaselineCost, lngTimeScale, 1)(1).Value)
            End If
            If blnFiscal Then
              'get fiscal month of day
@@ -502,7 +509,7 @@ export_baseline:
                  End If
                End If
              End With
-             strKey = strKey & "|" & dtWeek & "|" & Format(dtWeek, "yyyymm")
+             strKey = strKey & "|" & dtWeek & "|" & Format(dtStartDate, "yyyymm")
            End If
            If oEstimates.Exists(strKey) Then
              If blnIncludeCosts Then
