@@ -18,24 +18,11 @@ Option Explicit
 Private Const adVarChar As Long = 200
 
 Private Sub cboMonths_Change()
-  If Me.cboMonths.Value = 0 Then 'not fiscal
-    Me.cboWeeks.Enabled = True
-    Me.cboWeeks.Locked = False
-    Me.cboWeekday.Enabled = True
-    Me.cboWeekday.Locked = False
-  ElseIf Me.cboMonths.Value = 1 Then 'fiscal
-    Me.cboWeeks.Value = "Ending"
-    Me.cboWeeks.Enabled = False
-    Me.cboWeeks.Locked = True
-    Me.cboWeekday.Value = "Friday"
-    Me.cboWeekday.Enabled = False
-    Me.cboWeekday.Locked = True
-  End If
   If Me.Visible Then cptSaveSetting "ResourceDemand", "cboMonths", Me.cboMonths.Value
 End Sub
 
 Private Sub cboWeekday_Change()
-  If Me.Visible Then cptSaveSetting "ResourceDemand", "cboWeekday", Me.cboWeekday.Value
+  If Me.Visible And Me.cboWeekday.Value <> "" Then cptSaveSetting "ResourceDemand", "cboWeekday", Me.cboWeekday.Value
 End Sub
 
 Private Sub cboWeeks_Change()
@@ -50,7 +37,7 @@ Private Sub cboWeeks_Change()
       Me.cboWeekday.AddItem "Saturday"
       Me.cboWeekday.Value = "Friday"
   End Select
-  If Me.Visible Then cptSaveSetting "ResourceDemand", "cboWeeks", Me.cboMonths.Value
+  If Me.Visible Then cptSaveSetting "ResourceDemand", "cboWeeks", Me.cboWeeks.Value
 End Sub
 
 Private Sub chkAssociatedBaseline_Click()
