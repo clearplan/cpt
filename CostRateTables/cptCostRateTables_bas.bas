@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCostRateTables_bas"
-'<cpt_version>v1.1.1</cpt_version>
+'<cpt_version>v1.1.2</cpt_version>
 Option Explicit
 
 Sub cptShowCostRateTables_frm()
@@ -21,7 +21,7 @@ Sub cptShowCostRateTables_frm()
   
   'prevent spawning
   If Not cptGetUserForm("cptCostRateTables_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   Set myCostRateTables_frm = New cptCostRateTables_frm
@@ -311,7 +311,7 @@ Sub cptImportCostRateTables(ByRef myCostRateTables_frm As cptCostRateTables_frm,
           oResource.SetField lngField, "ADDED"
         Else
           If Not oDict.Exists(oResource.UniqueID & "|" & oResource.Name) Then
-            oDict.Add oResource.UniqueID & "|" & oResource.Name, "ADDED"
+            oDict.Add oResource.UniqueID & "|" & oResource.Name, "ADDED: "
           End If
         End If
         GoTo cost_rate_tables
