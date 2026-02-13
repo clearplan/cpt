@@ -15,6 +15,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   'Dim Shape As PowerPoint.Shape
   'Dim ShapeRange As PowerPoint.ShapeRange
   'strings
+  Dim strTitle As String
   Dim strDrivingPaths As String
   Dim strFileName As String
   Dim strProjectName As String
@@ -100,7 +101,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   strFileName = cptRegEx(ActiveProject.Name, "[^\\/]{1,}$")
   strFileName = Replace(strFileName, ".mpp", "")
   strFileName = Replace(strFileName, " ", "_")
-  strFileName = strDir & cptGetProgramAcronym & "-CriticalPathAnalysis-" & Format(Now, "yyyy-mm-dd") & ".pptx"
+  strFileName = strDir & cptGetProgramAcronym & "-DrivingPathAnalysis-" & Format(Now, "yyyy-mm-dd") & ".pptx"
   On Error Resume Next
   Set pptExists = oPowerPoint.Presentations(strFileName)
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -124,7 +125,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   Set oSlide = oPresentation.Slides.Add(1, ppLayoutCustom)
   oSlide.Layout = ppLayoutTitle
   strProjectName = Replace(cptRegEx(ActiveProject.Name, "[^\\/]{1,}$"), ".mpp", "")
-  oSlide.Shapes(1).TextFrame.TextRange.Text = strProjectName & vbCrLf & "Critical Path Analysis"
+  oSlide.Shapes(1).TextFrame.TextRange.Text = strProjectName & vbCrLf & "Driving Path Analysis"
   oSlide.Shapes(2).TextFrame.TextRange.Text = cptGetUserFullName & vbCrLf & FormatDateTime(Now, vbShortDate)
   
   'close timeline view / bottom pane if open
@@ -137,7 +138,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   'for each primary,secondary,tertiary > make a slide
   For Each vPath In Split(strDrivingPaths, ",")
     'copy the picture
-    'SetAutoFilter FieldName:="CP Driving Paths", FilterType:=pjAutoFilterCustom, test1:="contains", Criteria1:=CStr(vPath)
+    'SetAutoFilter FieldName:="CP Driving Paths", FilterType:=pjAutoFilterCustom, Test1:="contains", Criteria1:=CStr(vPath)
     SetAutoFilter FieldName:="CP Driving Path Group ID", FilterType:=pjAutoFilterIn, Criteria1:=CStr(vPath)
     Sort Key1:="Finish", Key2:="Duration", Ascending2:=False, Renumber:=False
     TimescaleEdit MajorUnits:=0, MinorUnits:=2, MajorLabel:=0, MinorLabel:=10, MinorTicks:=True, Separator:=True, TierCount:=2
@@ -189,7 +190,11 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
         oPresentation.Slides.Add oPresentation.Slides.Count + 1, ppLayoutCustom
         Set oSlide = oPresentation.Slides(oPresentation.Slides.Count)
         oSlide.Layout = ppLayoutChart
-        oSlide.Shapes(1).TextFrame.TextRange.Text = Choose(vPath, "Primary", "Secondary", "Tertiary", "Quaternary", "Quinary") & " Critical Path" & IIf(lngSlide > 1, " (cont'd)", "")
+        strTitle = "Driving Path #" & vPath
+        If CLng(vPath) <= 3 Then
+          strTitle = strTitle & " (" & Choose(vPath, "Primary/Critical", "Secondary", "Tertiary") & ")"
+        End If
+        oSlide.Shapes(1).TextFrame.TextRange.Text = strTitle & IIf(lngSlide > 1, " (cont'd)", "")
         oSlide.Shapes(2).Delete
         oSlide.Shapes.Paste
         oSlide.Shapes(oSlide.Shapes.Count).Width = oSlide.Master.Width * 0.9
@@ -208,7 +213,11 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
         oPresentation.Slides.Add oPresentation.Slides.Count + 1, ppLayoutCustom
         Set oSlide = oPresentation.Slides(oPresentation.Slides.Count)
         oSlide.Layout = ppLayoutChart
-        oSlide.Shapes(1).TextFrame.TextRange.Text = Choose(vPath, "Primary", "Secondary", "Tertiary", "Quaternary", "Quinary") & " Critical Path" & IIf(lngSlide > 1, " (cont'd)", "")
+        strTitle = "Driving Path #" & vPath
+        If CLng(vPath) <= 3 Then
+          strTitle = strTitle & " (" & Choose(vPath, "Primary/Critical", "Secondary", "Tertiary") & ")"
+        End If
+        oSlide.Shapes(1).TextFrame.TextRange.Text = strTitle & IIf(lngSlide > 1, " (cont'd)", "")
         oSlide.Shapes(2).Delete
         oSlide.Shapes.Paste
         oSlide.Shapes(oSlide.Shapes.Count).Width = oSlide.Master.Width * 0.9
