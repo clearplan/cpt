@@ -1,6 +1,22 @@
 Attribute VB_Name = "cptCriticalPathTools_bas"
 '<cpt_version>v1.3.0</cpt_version>
 Option Explicit
+#If Win64 And VBA7 Then
+  Declare PtrSafe Sub keybd_event Lib "user32" ( _
+      ByVal bVk As Byte, _
+      ByVal bScan As Byte, _
+      ByVal dwFlags As Long, _
+      ByVal dwExtraInfo As Long)
+#Else
+Declare Sub keybd_event Lib "user32" ( _
+    ByVal bVk As Byte, _
+    ByVal bScan As Byte, _
+    ByVal dwFlags As Long, _
+    ByVal dwExtraInfo As Long)
+#End If
+
+Const VK_PAGEDOWN As Long = &H22
+Const KEYEVENTF_KEYUP As Long = &H2
 
 Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendEmail As Boolean = False, Optional blnKeepOpen As Boolean = False, Optional ByRef oTargetTask As MSProject.Task)
   'objects
@@ -134,7 +150,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   SelectTaskColumn "Name"
   WrapText
-  
+ 
   'for each primary,secondary,tertiary > make a slide
   For Each vPath In Split(strDrivingPaths, ",")
     'copy the picture
@@ -165,7 +181,9 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
         SelectRow lngFromRow - oTasks.Count, True
         DoEvents
       End If
-      SendKeys "{PgDn}", Wait:=True
+      'PageDown here
+      keybd_event VK_PAGEDOWN, 0, 0, 0
+      keybd_event VK_PAGEDOWN, 0, KEYEVENTF_KEYUP, 0
       DoEvents
       SelectCellUp
       DoEvents
