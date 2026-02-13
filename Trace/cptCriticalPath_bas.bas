@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.4.1</cpt_version>
+'<cpt_version>v3.4.2</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -27,7 +27,7 @@ Public export_to_PPT As Boolean 'cpt controlled var for controlling user notific
 Private CustTextFields() As String 'v2.9.0 Array of custTextFields
 Private CustNumFields() As String 'v2.9.0 Array of custNumFields
 Private curProj As Project 'Stores active user project - not compatible with Master/Sub Architecture v2.9.0 - set as module var for cust field mapping
-Private masterProj As Boolean 'v3.0.0 stores master project status of active project based on subproject count
+Private masterproj As Boolean 'v3.0.0 stores master project status of active project based on subproject count
 Private subP As SubProject 'v3.0.0 used to iterate through subprojects collection
 Private subPID As Integer 'v3.0.0 used to temporarily store subproject ID
 Private tempproj As Project 'v3.0.0 used to temporarily reference subprojects
@@ -57,9 +57,9 @@ Sub DrivingPaths()
     
     'v3.0.0 - check for subprojects
     If curProj.Subprojects.Count > 1 Then
-        masterProj = True
+        masterproj = True
     Else
-        masterProj = False
+        masterproj = False
     End If
     
     'used to avoid code break during intial error checks
@@ -141,6 +141,14 @@ Sub DrivingPaths()
         .Left = Application.Left + (0.5 * Application.Width) - (0.5 * .Width)
         .Top = Application.Top + (0.5 * Application.Height) - (0.5 * .Height)
         
+        If singlePath Then 'v2.4.2 - hide path count when only running single path
+            .pathCnt_lbl.Visible = False
+            .pathCnt_txtBox.Visible = False
+        Else
+            .pathCnt_lbl.Visible = True
+            .pathCnt_txtBox.Visible = True
+        End If
+        
         .Show
         
         If .Tag = "cancel" Then
@@ -163,7 +171,7 @@ Sub DrivingPaths()
     curProj.Application.ScreenUpdating = False
     
     'v3.0.0 Assign Custom Field names and create lookup table for each subproject
-    If masterProj = True Then
+    If masterproj = True Then
         For Each subP In curProj.Subprojects
             FileOpenEx subP.Path, True
             Set tempproj = ActiveProject
@@ -347,7 +355,7 @@ Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Tas
     Dim subIndex As Integer
 
     'v3.0.0 need to convert the
-    If firstTask = True And masterProj = True Then
+    If firstTask = True And masterproj = True Then
         firstTask = False
         If tdp.To.ExternalTask = True Then
             subIndex = get_subProj_index(curProj, tdp.To.Project)
@@ -363,7 +371,7 @@ Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Tas
     'Only evaluate incomplete predecessors
     If real_ToUID = t.UniqueID And tdp.From.PercentComplete <> 100 Then
         'v3.0.0 account for master project condition
-        If masterProj Then
+        If masterproj Then
         
             If tdp.To.ExternalTask = True Then
                 subIndex = get_subProj_index(curProj, tdp.To.Project)
@@ -428,7 +436,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     Dim t As Task 'used to store user selected anlaysis task
     
     'Create CP Driving Path Table
-    curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, fieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
+    curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, FieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
     
     'Add fields to CP Driving Path Table
     curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Unique ID", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1, LockFirstColumn:=True
@@ -440,12 +448,12 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Total Slack", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=6
 
     'Create CP Driving Path Filter
-    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
+    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
     
     'On Error Resume Next
     
     'Create CP Driving Path Group
-    curProj.TaskGroups.Add Name:="*ClearPlan Driving Path Group", fieldName:=GroupField
+    curProj.TaskGroups.Add Name:="*ClearPlan Driving Path Group", FieldName:=GroupField
     
     'Create CP Driving Path view if necessary
     curProj.Application.ViewEditSingle Name:="*ClearPlan Driving Path View", Create:=True, ShowInMenu:=True, Table:="*ClearPlan Driving Path Table", Filter:="*ClearPlan Driving Path Filter", Group:="*ClearPlan Driving Path Group"
@@ -457,9 +465,10 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     
     'Apply the CP Driving Path view
     curProj.Application.ViewApply Name:="*ClearPlan Driving Path View"
+    curProj.Application.GanttBarEditEx Item:="1", RightText:="" '2.4.2 - remove resource names from view
     
     'Sort the View by Finish, then by Duration to produce Waterfall Gantt
-    curProj.Application.Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", ascending2:=False, Outline:=False
+    curProj.Application.Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, Outline:=False
     
     'Select all tasks and zoom the Gantt to display all tasks in view
     curProj.Application.SelectAll
@@ -479,8 +488,8 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
                 GoTo NextTask
             End If
         
-            If masterProj Then
-                t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue), projectName:=curProj.Subprojects(t.Project).Path
+            If masterproj Then
+                t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue), ProjectName:=curProj.Subprojects(t.Project).Path
             Else
                 t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue)
             End If
@@ -706,7 +715,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
     
     'Assign the dependency predecessor task to predT var
     'v3.0.0 consider mast project condition
-    If masterProj Then
+    If masterproj Then
         If tdp.From.ExternalTask = True Then
             subpIndex = get_subProj_index(curProj, tdp.From.Project)
             If subpIndex = 0 Then 'subproject is not present
@@ -732,7 +741,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
     
     'Assign the dependency successor task to the succT var
     'v3.0.0 consider master project condition - succ T will never be an external task
-    If masterProj Then
+    If masterproj Then
         subpIndex = get_subProj_index(curProj, curProj.Subprojects(tdp.To.Project).Path)
         realSuccUID = get_tdp_MasterUID(tdp.To.UniqueID, subpIndex)
         Set succT = curProj.Tasks.UniqueID(realSuccUID)
@@ -876,7 +885,7 @@ Private Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType
         Set pCalObj = tPred.CalendarObject
     Else 'If no task calendar, store project cal
         'v3.0.0 consider master project condition
-        If masterProj = True Then
+        If masterproj = True Then
             If tPred.Project = curProj.Tasks.UniqueID(0).Project Then 'task is in master project
                 Set pCalObj = curProj.Calendar
             Else
@@ -892,7 +901,7 @@ Private Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType
         Set sCalObj = tSucc.CalendarObject
     Else 'If no task calendar, store project cal
         'v3.0.0 consider master project condition
-        If masterProj = True Then
+        If masterproj = True Then
             If tSucc.Project = curProj.Tasks.UniqueID(0).Project Then 'task is in master project
                 Set sCalObj = curProj.Calendar
             Else
@@ -1159,17 +1168,17 @@ Private Sub ReadCustomFields(ByVal curProj As Project)
 
 End Sub
 
-Function get_subProj_index(ByVal masterProj As Project, ByVal subprojectFilename As String) As Integer
+Function get_subProj_index(ByVal masterproj As Project, ByVal subprojectFilename As String) As Integer
 'v3.0.0 gets the subproject index
 'used for calculating the Master Project UID
 
     Dim subP As SubProject
     
-    For Each subP In masterProj.Subprojects
+    For Each subP In masterproj.Subprojects
     
         If subP.Path = subprojectFilename Then
         
-            get_subProj_index = masterProj.Subprojects(subP.Index).InsertedProjectSummary.UniqueID
+            get_subProj_index = masterproj.Subprojects(subP.Index).InsertedProjectSummary.UniqueID
             Exit Function
         
         End If
