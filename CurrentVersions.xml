@@ -318,14 +318,14 @@
 	<Module>
 		<Name>cptResourceDemand_bas</Name>
 		<FileName>cptResourceDemand_bas.bas</FileName>
-		<Version>v1.5.3</Version>
+		<Version>v1.6.0</Version>
 		<Type>1</Type>
 		<Directory>ResourceDemand</Directory>
 	</Module>
 	<Module>
 		<Name>cptResourceDemand_frm</Name>
 		<FileName>cptResourceDemand_frm.frm</FileName>
-		<Version>v1.5.3</Version>
+		<Version>v1.6.0</Version>
 		<Type>3</Type>
 		<Directory>ResourceDemand</Directory>
 	</Module>
