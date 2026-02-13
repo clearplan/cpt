@@ -944,8 +944,8 @@ next_task:
     strMsg = strMsg & "- activate ResourceDemand or PivotChart sheet and Refresh Pivot data" & vbCrLf & vbCrLf
     strMsg = strMsg & "(Take a screen shot of these instructions, if needed.)"
     MsgBox strMsg, vbInformation + vbOKOnly, "Next Actions:"
-    oWorkbook.Sheets("FiscalPeriods").Activate
-    oWorkbook.Sheets("FiscalPeriods").[E2].Select
+    oWorkbook.Sheets("Calendar").Activate
+    oWorkbook.Sheets("Calendar").[E2].Select
   End If
   
   MsgBox "Export Complete", vbInformation + vbOKOnly, "Staffing Profile"
