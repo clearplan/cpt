@@ -2026,7 +2026,7 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     strSQL = strSQL & "    t1.ca, "
     strSQL = strSQL & "    t1.wp "
   Else
-    strSQL = "SELECT CA,WP,SUM(BLW/60) AS [WP_BLW] "
+    strSQL = "SELECT CA,WP,SUM(BLW)/60 AS [WP_BLW] "
     strSQL = strSQL & "FROM [tasks.csv] "
     strSQL = strSQL & "GROUP BY CA,WP"
   End If
@@ -2155,9 +2155,9 @@ Sub DECM_11A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   
   'get total as Y
   If blnResourceLoaded Then
-    strSQL = "SELECT SUM(BLW/60) FROM assignments.csv"
+    strSQL = "SELECT SUM(BLW)/60 FROM assignments.csv"
   Else
-    strSQL = "SELECT SUM(BLW/60) FROM tasks.csv"
+    strSQL = "SELECT SUM(BLW)/60 FROM tasks.csv"
   End If
   oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
   If oRecordset.RecordCount > 0 Then
