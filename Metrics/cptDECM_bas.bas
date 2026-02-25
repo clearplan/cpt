@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v8.1.1</cpt_version>
+'<cpt_version>v8.1.2</cpt_version>
 Option Explicit
 Private strWBS As String
 Private strOBS As String
@@ -4054,9 +4054,10 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
           End If
         ElseIf strMetric = "06I201a" Then 'SVTs
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT UID,CAM,TASK_NAME,SUM(BLW),SUM(BLC) "
+            strSQL = "SELECT UID,CAM,TASK_NAME,SUM(BLW)/60,SUM(BLC) "
             strSQL = strSQL & "FROM [tasks.csv] "
             strSQL = strSQL & "WHERE UID IN (" & oDECM(strMetric) & ") "
+            strSQL = strSQL & "GROUP BY UID,CAM,TASK_NAME "
             strSQL = strSQL & "ORDER BY CAM"
             oRecordset.Open strSQL, strCon, adOpenKeyset
             oWorksheet.[A3:E3] = Split("UID,CAM,TASK NAME,BLW,BLC", ",")
@@ -4497,7 +4498,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strList
-        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", ascending2:=False, Renumber:=False, Outline:=False
+        Sort Key1:="Finish", Ascending1:=True, Key2:="Duration", Ascending2:=False, Renumber:=False, Outline:=False
         SelectBeginning
         EditGoTo Date:=ActiveSelection.Tasks(1).Finish
       Else
@@ -5115,7 +5116,9 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
   oExcel.ActiveWindow.Zoom = 85
   oExcel.ActiveWindow.SplitRow = 1
   oExcel.ActiveWindow.SplitColumn = 0
+  oExcel.WindowState = xlMaximized
   oExcel.ActiveWindow.FreezePanes = True
+  oExcel.WindowState = xlMinimized
   
   Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
   oListObject.TableStyle = ""
