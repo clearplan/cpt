@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.4.0</cpt_version>
+'<cpt_version>v1.4.1</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -760,7 +760,7 @@ skip_evp:
                   blnValid = False
                   GoTo next_row
                 End If
-                dblETC = oWorksheet.Cells(lngRow, lngETCCol).Value 'get the new value
+                dblETC = Round(oWorksheet.Cells(lngRow, lngETCCol).Value, 12) 'get the new value
                 dblWas = 0 'reset was
                 If oAssignment.ResourceType = pjResourceTypeWork Then
                   dblWas = Val(oAssignment.RemainingWork) / 60

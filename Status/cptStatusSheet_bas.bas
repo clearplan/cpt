@@ -4218,7 +4218,7 @@ Sub cptMarkOnTrackRetainETC(Optional blnOpenUndoTransaction As Boolean = True)
         End If
       End If
       If oAssignment.ResourceType <> pjResourceTypeCost Then
-        oDict.Add oAssignment.UniqueID, oAssignment.RemainingWork
+        oDict.Add oAssignment.UniqueID, Round(oAssignment.RemainingWork, 12)
       Else
         If oAssignment.Resource.AccrueAt = pjStart Then
           Calculation = pjAutomatic
@@ -4256,9 +4256,9 @@ next_assignment:
         Application.StatusBar = "Restoring " & oAssignment.ResourceName & "..."
         DoEvents
         If oAssignment.ResourceType = pjResourceTypeWork Then
-          Do While oAssignment.RemainingWork <> oDict(oAssignment.UniqueID)
+          Do While Round(oAssignment.RemainingWork, 12) <> Round(oDict(oAssignment.UniqueID), 12)
             oAssignment.RemainingWork = 0
-            oAssignment.RemainingWork = oDict(oAssignment.UniqueID)
+            oAssignment.RemainingWork = Round(oDict(oAssignment.UniqueID), 12)
           Loop
         ElseIf oAssignment.ResourceType = pjResourceTypeMaterial Then
           oAssignment.RemainingWork = oDict(oAssignment.UniqueID) * 60
