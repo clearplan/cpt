@@ -294,7 +294,7 @@ next_item:
         SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
       ElseIf .optID Then
         .lboHeader.List(0, 0) = "ID"
-        SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+        SetAutoFilter "ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
       End If
     End With
     OptionsViewEx ProjectSummary:=False, DisplayOutlineNumber:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False
