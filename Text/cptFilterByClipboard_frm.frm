@@ -15,6 +15,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 '<cpt_version>v1.4.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptFilterByClipboard_frm"
 
 Private Sub chkFilter_Click()
   Dim strFilter As String
@@ -26,7 +27,11 @@ End Sub
 Private Sub cmdClear_Click()
   Me.lboHeader.Clear
   Me.lboHeader.ColumnCount = 2
-  Me.lboHeader.AddItem "UID"
+  If Me.optID Then
+    Me.lboHeader.AddItem "ID"
+  Else
+    Me.lboHeader.AddItem "UID"
+  End If
   Me.lboHeader.Column(1, 0) = "Task Name"
   Me.lboFilter.ColumnCount = 2
   Me.txtFilter.Text = ""
@@ -243,7 +248,7 @@ Private Sub txtFilter_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, B
   Dim strNewList As Variant
   Dim vData As Variant
   'dates
-
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
