@@ -1,5 +1,7 @@
 Attribute VB_Name = "cptSmartDuration_bas"
-'<cpt_version>v2.1.1</cpt_version>
+'<cpt_version>v2.2.0</cpt_version>
+Option Explicit
+Private Const THIS_MODULE As String = "cptSmartDuration_bas"
 
 Sub cptShowSmartDuration_frm()
   'objects
@@ -40,6 +42,18 @@ Sub cptShowSmartDuration_frm()
     Else
       .chkKeepOpen = CBool(strSetting)
     End If
+    strSetting = cptGetSetting("StatusSheetImport", "cboFF")
+    If Len(strSetting) = 0 Then
+      .chkNewFF.Enabled = False
+    Else
+      .chkNewFF.Enabled = True
+      strSetting = cptGetSetting("SmartDuration", "chkFF")
+      If Len(strSetting) = 0 Then
+        .chkNewFF.Value = False
+      Else
+        .chkNewFF = CBool(strSetting)
+      End If
+    End If
     .Show False
     If .txtTargetFinish.Enabled Then .txtTargetFinish.SetFocus
   End With
@@ -61,13 +75,16 @@ Sub cptUpdateSmartDurationForm(ByRef mySmartDuration_frm As cptSmartDuration_frm
   'objects
   Dim oTasks As MSProject.Tasks
   'strings
+  Dim strSetting As String
   'longs
+  Dim lngFF As Long
   'integers
   'doubles
   'booleans
   Dim blnValid As Boolean
   'variants
   'dates
+  Dim dtFinish As Date
   
   On Error Resume Next
   Set oTasks = Nothing
@@ -113,7 +130,23 @@ Sub cptUpdateSmartDurationForm(ByRef mySmartDuration_frm As cptSmartDuration_frm
     If blnValid Then
       .lngUID = oTasks(1).UniqueID
       .StartDate = oTasks(1).Start
-      .txtTargetFinish = FormatDateTime(oTasks(1).Finish, vbShortDate)
+      If .chkNewFF Then
+        'pre-populate with imported status sheet data if exists
+        strSetting = cptGetSetting("StatusSheetImport", "cboFF")
+        If Len(strSetting) > 0 Then
+          lngFF = CLng(strSetting)
+          If oTasks(1).GetField(lngFF) <> "NA" Then
+            dtFinish = oTasks(1).GetField(lngFF)
+          Else
+            dtFinish = oTasks(1).Finish
+          End If
+        Else
+          dtFinish = oTasks(1).Finish
+        End If
+      Else
+        dtFinish = oTasks(1).Finish
+      End If
+      .txtTargetFinish = FormatDateTime(dtFinish, vbShortDate)
       .lblWeekday.Caption = Format(.txtTargetFinish.Text, "dddd")
       .lblWeekday.ControlTipText = ""
       '.txtTargetFinish.SetFocus 'this steals focus when user may not want it to
