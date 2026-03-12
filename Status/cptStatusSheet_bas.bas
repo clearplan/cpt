@@ -4231,7 +4231,7 @@ Sub cptMarkOnTrackRetainETC(Optional blnOpenUndoTransaction As Boolean = True)
           CalculateProject
           Calculation = pjManual
         ElseIf oAssignment.Resource.AccrueAt = pjProrated Then
-          oDict.Add oAssignment.UniqueID, oAssignment.RemainingCost
+          oDict.Add oAssignment.UniqueID, Round(oAssignment.RemainingCost, 12)
         End If
       End If
       'todo: deal with misaligned dates
@@ -4261,14 +4261,14 @@ next_assignment:
             oAssignment.RemainingWork = Round(oDict(oAssignment.UniqueID), 12)
           Loop
         ElseIf oAssignment.ResourceType = pjResourceTypeMaterial Then
-          oAssignment.RemainingWork = oDict(oAssignment.UniqueID) * 60
+          oAssignment.RemainingWork = Round(oDict(oAssignment.UniqueID), 12) * 60
         ElseIf oAssignment.ResourceType = pjResourceTypeCost Then
           If oAssignment.Resource.AccrueAt = pjStart Then
             'take no action
           ElseIf oAssignment.Resource.AccrueAt = pjEnd Then
             'take no action
           ElseIf oAssignment.Resource.AccrueAt = pjProrated Then
-            oAssignment.Cost = oAssignment.ActualCost + oDict(oAssignment.UniqueID)
+            oAssignment.Cost = oAssignment.ActualCost + Round(oDict(oAssignment.UniqueID), 12)
           End If
         End If
       Else
