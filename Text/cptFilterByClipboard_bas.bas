@@ -285,7 +285,7 @@ next_item:
       OutlineShowAllTasks
     End If
     SelectAll
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     SelectBeginning
     strFilter = Left(strFilter, Len(strFilter) - 1)
     With myFilterByClipboard_frm
@@ -297,6 +297,7 @@ next_item:
         SetAutoFilter "ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
       End If
     End With
+    'todo: what about if user pastes in a summary task?
     OptionsViewEx ProjectSummary:=False, DisplayOutlineNumber:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False
     If lngFreeField > 0 Then Sort FieldConstantToFieldName(lngFreeField)
   End If
@@ -608,19 +609,21 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
   If IsNull(myFilterByClipboard_frm.lboFreeField.List(0, 0)) Then GoTo exit_here
   If myFilterByClipboard_frm.lboFreeField.List(0, 0) = "" Then GoTo exit_here
   lngFreeField = myFilterByClipboard_frm.lboFreeField.List(0, 0)
-  If lngFreeField > 0 And blnPromptToSave Then
-    strMsg = "Save '" & FieldConstantToFieldName(lngFreeField) & "' for next time?" & vbCrLf & vbCrLf
-    If ActiveProject.Subprojects.Count > 0 Then
-      strMsg = strMsg & "Local Custom Field '" & FieldConstantToFieldName(lngFreeField) & "' will be renamed 'cptFilterByClipboard' in '" & ActiveProject.Name & "' only."
-    Else
-      strMsg = strMsg & "Local Custom Field '" & FieldConstantToFieldName(lngFreeField) & "' will be renamed 'cptFilterByClipboard'."
-    End If
-    If MsgBox(strMsg, vbQuestion + vbYesNo, "Save Local Custom Number Field?") = vbYes Then
-      CustomFieldRename lngFreeField, "cptFilterByClipboard"
-      cptSaveSetting "FilterByClipboard", "lboFreeField", lngFreeField
-    Else
-      cptDeleteSetting "FilterByClipboard", "lboFreeField"
-      cptDeleteSetting "FilterByClipboard", "cboFreeField" 'legacy
+  If lngFreeField > 0 Then
+    If blnPromptToSave Then
+      strMsg = "Save '" & FieldConstantToFieldName(lngFreeField) & "' for next time?" & vbCrLf & vbCrLf
+      If ActiveProject.Subprojects.Count > 0 Then
+        strMsg = strMsg & "Local Custom Field '" & FieldConstantToFieldName(lngFreeField) & "' will be renamed 'cptFilterByClipboard' in '" & ActiveProject.Name & "' only."
+      Else
+        strMsg = strMsg & "Local Custom Field '" & FieldConstantToFieldName(lngFreeField) & "' will be renamed 'cptFilterByClipboard'."
+      End If
+      If MsgBox(strMsg, vbQuestion + vbYesNo, "Save Local Custom Number Field?") = vbYes Then
+        CustomFieldRename lngFreeField, "cptFilterByClipboard"
+        cptSaveSetting "FilterByClipboard", "lboFreeField", lngFreeField
+      Else
+        cptDeleteSetting "FilterByClipboard", "lboFreeField"
+        cptDeleteSetting "FilterByClipboard", "cboFreeField" 'legacy
+      End If
     End If
     SelectAll
     SetField FieldConstantToFieldName(lngFreeField), 0
