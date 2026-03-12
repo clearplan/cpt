@@ -4242,6 +4242,7 @@ next_assignment:
     If oTask.Type <> pjFixedDuration Then oTask.Type = pjFixedDuration
     If oTask.EffortDriven Then oTask.EffortDriven = False
     'update as scheduled
+    If IsDate(oTask.Stop) Then
     If oTask.Stop <> dtStatus Then 'rebuild the task
       Application.StatusBar = "Rebuilding UID " & oTask.UniqueID & "..."
       DoEvents
@@ -4250,13 +4251,14 @@ next_assignment:
       oTask.RemainingDuration = Application.DateDifference(dtStatus, dtFinish, ActiveProject.Calendar)
       Calculation = pjManual
     End If
+    End If
     'retain ETC
     For Each oAssignment In oTask.Assignments
       If oDict.Exists(oAssignment.UniqueID) Then
         Application.StatusBar = "Restoring " & oAssignment.ResourceName & "..."
         DoEvents
         If oAssignment.ResourceType = pjResourceTypeWork Then
-          Do While Round(oAssignment.RemainingWork, 12) <> Round(oDict(oAssignment.UniqueID), 12)
+          Do While CStr(oAssignment.RemainingWork) <> CStr(oDict(oAssignment.UniqueID))
             oAssignment.RemainingWork = 0
             oAssignment.RemainingWork = Round(oDict(oAssignment.UniqueID), 12)
           Loop
