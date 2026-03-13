@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.6.5</cpt_version>
+'<cpt_version>v1.6.6</cpt_version>
 Option Explicit
 
 Private Sub cboField_Change()
@@ -147,7 +147,7 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink ("http://" & Me.lblURL.Caption)
+  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
 
 exit_here:
   On Error Resume Next
