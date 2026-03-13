@@ -50,7 +50,7 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink ("http://" & Me.lblURL.Caption)
+  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
 
 exit_here:
   On Error Resume Next

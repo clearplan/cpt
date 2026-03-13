@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCustomFieldUsage_bas"
-'<cpt_version>v0.1.1</cpt_version>
+'<cpt_version>v0.1.2</cpt_version>
 Option Explicit
 Public oCustomFields As Scripting.Dictionary
 Public strCustomFieldUsageStartingView As String
