@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptNetworkBrowser_bas"
-'<cpt_version>v1.2.2</cpt_version>
+'<cpt_version>v1.2.3</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptNetworkBrowser_bas"
 '=====================================
 Public Const GWL_STYLE = -16
 Public Const WS_CAPTION = &HC00000
@@ -9,13 +10,13 @@ Public Const WS_THICKFRAME = &H40000
 #If VBA7 Then
     Public Declare PtrSafe Function GetWindowLong _
         Lib "user32" Alias "GetWindowLongA" ( _
-        ByVal hWnd As Long, ByVal nIndex As Long) As Long
+        ByVal hwnd As Long, ByVal nIndex As Long) As Long
     Public Declare PtrSafe Function SetWindowLong _
         Lib "user32" Alias "SetWindowLongA" ( _
-        ByVal hWnd As Long, ByVal nIndex As Long, _
+        ByVal hwnd As Long, ByVal nIndex As Long, _
         ByVal dwNewLong As Long) As Long
     Public Declare PtrSafe Function DrawMenuBar _
-        Lib "user32" (ByVal hWnd As Long) As Long
+        Lib "user32" (ByVal hwnd As Long) As Long
     Public Declare PtrSafe Function FindWindowA _
         Lib "user32" (ByVal lpClassName As String, _
         ByVal lpWindowName As String) As Long
@@ -73,10 +74,10 @@ Sub cptShowNetworkBrowser_frm()
   'booleans
   'variants
   'dates
-    
+  
   'prevent spawning
   If Not cptGetUserForm("cptNetworkBrowser_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   If Not cptFilterExists("Marked") Then cptCreateFilter ("Marked")
@@ -84,7 +85,7 @@ Sub cptShowNetworkBrowser_frm()
   Call cptStartEvents
   Set myNetworkBrowser_frm = New cptNetworkBrowser_frm
   With myNetworkBrowser_frm
-    .Caption = "Network Browser (" & cptGetVersion("cptNetworkBrowser_frm") & ")"
+    .Caption = "Network Browser (" & cptGetVersion("cptNetworkBrowser_frm") & ") - ClearPlan Toolbar"
     .tglTrace = False
     .tglTrace.Caption = "Jump"
     .lboPredecessors.MultiSelect = fmMultiSelectSingle
@@ -142,7 +143,7 @@ End Sub
 Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
   'objects
   Dim oTaskDependencies As TaskDependencies
-  Dim oSubproject As Subproject
+  Dim oSubProject As SubProject
   Dim oLink As TaskDependency, oTask As MSProject.Task
   'strings
   Dim strHideInactive As String
@@ -180,13 +181,13 @@ Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
     Else
       oSubMap.RemoveAll
     End If
-    For Each oSubproject In ActiveProject.Subprojects
-      If InStr(oSubproject.Path, "<>") = 0 Then 'offline
-        oSubMap.Add Replace(Dir(oSubproject.Path), ".mpp", ""), 0
-      ElseIf Left(oSubproject.Path, 2) = "<>" Then 'online
-        oSubMap.Add Replace(oSubproject.Path, "<>\", ""), 0
+    For Each oSubProject In ActiveProject.Subprojects
+      If Left(oSubProject.Path, 2) = "<>" Then 'PWA
+        oSubMap.Add Replace(oSubProject.Path, "<>\", ""), 0
+      Else 'mpp (local or remote)
+        oSubMap.Add Replace(cptRegEx(oSubProject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
       End If
-      If oSubproject.IsLoaded = False Then
+      If oSubProject.IsLoaded = False Then
         Application.OpenUndoTransaction "cpt - load subproject"
         FilterClear
         GroupClear
@@ -199,7 +200,7 @@ Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
           End If
         End If
       End If
-    Next oSubproject
+    Next oSubProject
     For Each oTask In ActiveProject.Tasks
       If oSubMap.Exists(oTask.Project) Then
         If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
@@ -313,9 +314,10 @@ next_mapping_task:
         'fix the returned UID
         lngLinkUID = oLink.From.GetField(185073906) Mod 4194304
         strProject = oLink.From.Project
-        If InStr(oLink.From.Project, "\") > 0 Then
-          strProject = Replace(strProject, ".mpp", "")
-          strProject = Mid(strProject, InStrRev(strProject, "\") + 1)
+        If Left(strProject, 2) = "<>" Then
+          strProject = Replace(strProject, "<>\", "")
+        Else
+          strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
         End If
         lngFactor = oSubMap(strProject)
         lngLinkUID = (lngFactor * 4194304) + lngLinkUID
@@ -365,6 +367,7 @@ next_mapping_task:
           Case Else
             .Column(5, .ListCount - 1) = FormatDateTime(oLink.From.Finish, vbShortDate)
         End Select
+        'todo: TrueFloat
         .Column(6, .ListCount - 1) = Round(oLink.From.TotalSlack / (ActiveProject.HoursPerDay * 60), 2) & "d"
         .Column(8, .ListCount - 1) = IIf(oLink.From.Critical, "X", "")
       End With
@@ -375,9 +378,10 @@ next_mapping_task:
         'fix the returned UID
         lngLinkUID = oLink.To.GetField(185073906) Mod 4194304
         strProject = oLink.To.Project
-        If InStr(oLink.To.Project, "\") > 0 Then
-          strProject = Replace(strProject, ".mpp", "")
-          strProject = Mid(strProject, InStrRev(strProject, "\") + 1)
+        If Left(strProject, 2) = "<>" Then
+          strProject = Replace(strProject, "<>\", "")
+        Else
+          strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
         End If
         lngFactor = oSubMap(strProject)
         lngLinkUID = (lngFactor * 4194304) + lngLinkUID
@@ -423,6 +427,7 @@ next_mapping_task:
           Case Else
             .Column(5, .ListCount - 1) = FormatDateTime(oLink.To.Start, vbShortDate)
         End Select
+        'todo: TrueFloat
         .Column(6, .ListCount - 1) = Round(oLink.To.TotalSlack / (ActiveProject.HoursPerDay * 60), 2) & "d"
         .Column(8, .ListCount - 1) = IIf(oLink.To.Critical, "X", "")
       End With
@@ -453,7 +458,7 @@ exit_here:
   cptSpeed False
   'Set myNetworkBrowser_frm = Nothing 'do not do this
   Set oTaskDependencies = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oLink = Nothing
   Set oTask = Nothing
   Exit Sub
@@ -550,7 +555,7 @@ next_task:
     cptSpeed True
     If Edition = pjEditionProfessional Then
       If Not cptFilterExists("Active Tasks") Then
-        FilterEdit Name:="Active Tasks", TaskFilter:=True, Create:=True, OverwriteExisting:=False, FieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=True
+        FilterEdit Name:="Active Tasks", TaskFilter:=True, Create:=True, OverwriteExisting:=False, FieldName:="Active", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=True
       End If
       FilterApply "Active Tasks"
     ElseIf Edition = pjEditionStandard Then
