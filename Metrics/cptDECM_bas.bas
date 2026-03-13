@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptDECM_bas"
 '<cpt_version>v8.1.2</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptDECM_bas"
 Private strWBS As String
 Private strOBS As String
 Private strCA As String
@@ -25,7 +26,7 @@ Private oSubMap As Scripting.Dictionary
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
   'objects
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim myDECM_frm As cptDECM_frm
   Dim oException As MSProject.Exception
   Dim oTasks As MSProject.Tasks
@@ -279,13 +280,13 @@ Sub cptDECM_GET_DATA()
     Else
       oSubMap.RemoveAll
     End If
-    For Each oSubproject In ActiveProject.Subprojects
-      If Left(oSubproject.Path, 2) <> "<>" Then 'offline
-        oSubMap.Add Replace(Dir(oSubproject.Path), ".mpp", ""), 0
-      ElseIf Left(oSubproject.Path, 2) = "<>" Then 'online
-        oSubMap.Add oSubproject.Path, 0
+    For Each oSubProject In ActiveProject.Subprojects
+      If Left(oSubProject.Path, 2) = "<>" Then 'PWA
+        oSubMap.Add Replace(oSubProject.Path, "<>\", ""), 0
+      Else 'mpp (local or SharePoint
+        oSubMap.Add Replace(cptRegEx(oSubProject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
       End If
-    Next oSubproject
+    Next oSubProject
     For Each oTask In ActiveProject.Tasks
       If oTask Is Nothing Then GoTo next_mapping_task
       If Not oTask.Active Then GoTo next_mapping_task
@@ -445,9 +446,10 @@ next_field:
           'fix the pred UID if master-sub
           lngFromUID = oLink.From.GetField(185073906) Mod 4194304
           strProject = oLink.From.Project
-          If InStr(oLink.From.Project, "\") > 0 Then
-            strProject = Replace(strProject, ".mpp", "")
-            strProject = Mid(strProject, InStrRev(strProject, "\") + 1)
+          If Left(strProject, 2) = "<>" Then
+            strProject = Replace(strProject, "<>\", "")
+          Else
+            strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
           End If
           lngFactor = oSubMap(strProject)
           lngFromUID = (lngFactor * 4194304) + lngFromUID
@@ -464,9 +466,10 @@ next_field:
         If blnMaster And oLink.To.ExternalTask Then
           lngToUID = oLink.To.GetField(185073906) Mod 4194304
           strProject = oLink.To.Project
-          If InStr(strProject, "\") > 0 Then
-            strProject = Replace(strProject, ".mpp", "")
-            strProject = Mid(strProject, InStrRev(strProject, "\") + 1)
+          If Left(strProject, 2) = "<>" Then
+            strProject = Replace(strProject, "<>\", "")
+          Else
+            strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
           End If
           lngFactor = oSubMap(strProject)
           lngToUID = (lngFactor * 4194304) + lngToUID
@@ -1288,7 +1291,7 @@ exit_here:
   DoEvents
   Exit Function
 err_here:
-  Call cptHandleErr("cptDECM_bas", "DECM_CPT01", Err, Erl)
+  Call cptHandleErr("cptDECM_bas", "DECM_CPT01", Err, Erl, "DECM_CPT01")
   Resume exit_here
   
 End Function
@@ -4613,7 +4616,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   Dim oAssignment As MSProject.Assignment
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   'Dim oSubMap As Scripting.Dictionary
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
@@ -4660,27 +4663,8 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   
   blnMaster = ActiveProject.Subprojects.Count > 0
   If blnMaster Then
-'    'set up mapping
-'    If oSubMap Is Nothing Then
-'      Set oSubMap = CreateObject("Scripting.Dictionary")
-'    Else
-'      oSubMap.RemoveAll
-'    End If
-'    For Each oSubproject In ActiveProject.Subprojects
-'      If Left(oSubproject.Path, 2) <> "<>" Then 'offline
-'        oSubMap.Add Replace(Dir(oSubproject.Path), ".mpp", ""), 0
-'      ElseIf Left(oSubproject.Path, 2) = "<>" Then 'online
-'        oSubMap.Add oSubproject.Path, 0
-'      End If
-'    Next oSubproject
     For Each oTask In ActiveProject.Tasks
       If oTask Is Nothing Then GoTo next_mapping_task
-'      If oSubMap.Exists(oTask.Project) Then
-'        If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
-'        If Not oTask.Summary Then
-'          oSubMap.Item(oTask.Project) = CLng(oTask.UniqueID / 4194304)
-'        End If
-'      End If
 next_mapping_task:
       If oTask.Active Then lngTasks = lngTasks + 1
     Next oTask
@@ -4721,9 +4705,10 @@ next_mapping_task:
           'fix the pred UID if master-sub
           lngFromUID = oLink.From.GetField(185073906) Mod 4194304
           strProject = oLink.From.Project
-          If InStr(oLink.From.Project, "\") > 0 Then
-            strProject = Replace(strProject, ".mpp", "")
-            strProject = Mid(strProject, InStrRev(strProject, "\") + 1)
+          If Left(strProject, 2) = "<>" Then
+            strProject = Replace(strProject, "<>\", "")
+          Else
+            strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
           End If
           lngFactor = oSubMap(strProject)
           lngFromUID = (lngFactor * 4194304) + lngFromUID
@@ -4738,9 +4723,10 @@ next_mapping_task:
         If blnMaster And oLink.To.ExternalTask Then
           lngToUID = oLink.To.GetField(185073906) Mod 4194304
           strProject = oLink.To.Project
-          If InStr(strProject, "\") > 0 Then
-            strProject = Replace(strProject, ".mpp", "")
-            strProject = Mid(strProject, InStrRev(strProject, "\") + 1)
+          If Left(strProject, 2) = "<>" Then
+            strProject = Replace(strProject, "<>\", "")
+          Else
+            strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
           End If
           lngFactor = oSubMap(strProject)
           lngToUID = (lngFactor * 4194304) + lngToUID
@@ -4991,7 +4977,7 @@ exit_here:
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oSubMap = Nothing
   Application.StatusBar = ""
   oExcel.EnableEvents = True

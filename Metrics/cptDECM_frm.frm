@@ -15,6 +15,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 '<cpt_version>v8.1.2</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptDECM_frm"
 
 Private Sub chkUpdateView_Click()
   Dim blnUpdateView As Boolean

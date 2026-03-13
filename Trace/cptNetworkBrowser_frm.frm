@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.2.2</cpt_version>
+'<cpt_version>v1.2.3</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptNetworkBrowser_frm"
 
 Private Sub cboSortPredecessorsBy_Change()
   If Me.Visible Then
