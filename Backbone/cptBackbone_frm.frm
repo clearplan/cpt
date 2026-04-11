@@ -16,6 +16,7 @@ Attribute VB_Exposed = False
 
 '<cpt_version>v1.3.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptBackbone_frm"
 
 Private Sub cboExport_Change()
 
