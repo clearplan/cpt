@@ -13,11 +13,61 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.0.11</cpt_version>
+'<cpt_version>v1.1.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptSaveMarked_frm"
 
 Private Sub cmdDone_Click()
   Me.Hide
+End Sub
+
+Private Sub cmdForget_Click()
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strDir As String
+  Dim strFileName As String
+  'longs
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  If MsgBox("Are you sure?" & vbCrLf & vbCrLf & "This action cannot be undone.", vbCritical + vbYesNo, "Please confirm:") = vbNo Then GoTo exit_here
+  
+  blnErrorTrapping = cptErrorTrapping
+  If IsNull(Me.lboMarked) Then GoTo exit_here
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  strDir = cptDir
+  strFileName = strDir & "\cpt-marked-details.adtg"
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  oRecordset.Open strFileName
+  oRecordset.Filter = "TSTAMP=#" & Me.lboMarked.Value & "#"
+  For lngItem = Me.lboDetails.ListCount - 1 To 0 Step -1 'reverse
+    If Me.lboDetails.Selected(lngItem) Then
+      oRecordset.MoveFirst
+      oRecordset.Find "UID=" & Me.lboDetails.List(lngItem, 0)
+      oRecordset.Delete adAffectCurrent
+      Me.lboDetails.Selected(lngItem) = False
+      Me.lboDetails.RemoveItem lngItem
+    End If
+  Next lngItem
+  oRecordset.Filter = 0
+  oRecordset.Save strFileName, adPersistADTG
+  
+exit_here:
+  On Error Resume Next
+  oRecordset.Close
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptSaveMarked_frm", "cptForget_Click", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 Private Sub cmdImport_Click()
@@ -156,7 +206,7 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then Application.FollowHyperlink "http://www.ClearPlanConsulting.com"
 
 exit_here:
   On Error Resume Next
@@ -165,6 +215,14 @@ exit_here:
 err_here:
   Call cptHandleErr("cptSaveMarked_frm", "lblURL_Click", Err, Erl)
   Resume exit_here
+
+End Sub
+
+Private Sub lboDetails_AfterUpdate()
+  Me.cmdForget.Enabled = Not IsNull(Me.lboDetails)
+End Sub
+
+Private Sub lboDetails_Click()
 
 End Sub
 
@@ -230,6 +288,8 @@ Private Sub lboMarked_Click()
       Loop
     End If
   End With
+  
+  Me.cmdForget.Enabled = False
   
 exit_here:
   On Error Resume Next
