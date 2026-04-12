@@ -48,11 +48,15 @@ Private Sub cmdForget_Click()
   oRecordset.Filter = "TSTAMP=#" & Me.lboMarked.Value & "#"
   For lngItem = Me.lboDetails.ListCount - 1 To 0 Step -1 'reverse
     If Me.lboDetails.Selected(lngItem) Then
-      oRecordset.MoveFirst
-      oRecordset.Find "UID=" & Me.lboDetails.List(lngItem, 0)
-      oRecordset.Delete adAffectCurrent
-      Me.lboDetails.Selected(lngItem) = False
-      Me.lboDetails.RemoveItem lngItem
+      If lngItem = 0 Then 'don't delete the header...
+        Me.lboDetails.Selected(lngItem) = False
+      Else
+        oRecordset.MoveFirst
+        oRecordset.Find "UID=" & Me.lboDetails.List(lngItem, 0)
+        oRecordset.Delete adAffectCurrent
+        Me.lboDetails.Selected(lngItem) = False
+        Me.lboDetails.RemoveItem lngItem
+      End If
     End If
   Next lngItem
   oRecordset.Filter = 0
@@ -219,11 +223,8 @@ err_here:
 End Sub
 
 Private Sub lboDetails_AfterUpdate()
+  If Me.lboDetails.Selected(0) Then Me.lboDetails.Selected(0) = False
   Me.cmdForget.Enabled = Not IsNull(Me.lboDetails)
-End Sub
-
-Private Sub lboDetails_Click()
-
 End Sub
 
 Private Sub lboMarked_Click()
