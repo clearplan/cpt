@@ -2,154 +2,38 @@ Attribute VB_Name = "cptAdmin_bas"
 '>no cpt version - not for release<
 Option Explicit
 
-Sub cptCreateCurrentVersionsXML(Optional strRepo As String)
-'objects
-Dim rstModules As ADODB.Recordset
-Dim dTypes As Scripting.Dictionary
-Dim oStream As Object
-Dim vbComponent As Object 'adodb.stream
-'strings
-Dim strMsg As String
-Dim strModule As String
-Dim strDirectory As String
-Dim strFileName As String
-Dim strXML As String
-Dim strVersion As String
-Dim strBranch As String
-'longs
-Dim lngItem As Long
-Dim lngFile As Long
-'integers
-'booleans
-'variants
-'dates
-
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+Function cptBuildAdminRibbon() As String
+  Dim ribbonXML As String
   
-  'do not use this
-  Exit Sub
+  ribbonXML = ribbonXML + vbCrLf & "<mso:tab id=""tCPTAdmin"" label=""CPT ADMIN"" >"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gCPTAdmin"" label=""Admin"" visible=""true"">"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLoadFromPath"" label=""Create Release Asset"" imageMso=""RefreshWebView"" onAction=""cptLoadModulesFromPath"" size=""large"" supertip=""Create release asset; save it to /releases; and load modules from repo branch."" />"
+  ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
+  ribbonXML = ribbonXML + vbCrLf & "</mso:tab>"
+  cptBuildAdminRibbon = ribbonXML
   
-  'confirm repo selected
-  If Len(frmGitVBA.cboRepo.Value) = 0 Or Dir(frmGitVBA.cboRepo.Value & "\.git\", vbDirectory) = vbNullString Then
-    MsgBox "Please select a valid git repo.", vbExclamation + vbOKOnly, "Nope"
-    frmGitVBA.cboRepo.SetFocus
-    frmGitVBA.cboRepo.DropDown
-    GoTo exit_here
-  Else
-    strRepo = frmGitVBA.cboRepo.Value
-  End If
-
-  'confirm branch selected
-  If Len(frmGitVBA.cboBranch.Value) = 0 Then
-    MsgBox "Please select a valid branch.", vbExclamation + vbOKOnly, "Nope"
-    frmGitVBA.cboBranch.SetFocus
-    frmGitVBA.cboBranch.DropDown
-    GoTo exit_here
-  Else
-    strBranch = Replace(Replace(frmGitVBA.cboBranch.Value, Chr(32), ""), "*", "")
-  End If
-
-  'measure twice...
-  If MsgBox("Writing to repo (branch): " & vbCrLf & strRepo & " (" & strBranch & ")", vbQuestion + vbYesNo, "Please Confirm") = vbNo Then GoTo exit_here
-
-  'use dTypes
-  Set dTypes = CreateObject("Scripting.Dictionary")
-  dTypes.Add 1, ".bas"
-  dTypes.Add 2, ".cls"
-  dTypes.Add 3, ".frm"
-  dTypes.Add 100, ".cls"
-  
-  '<issue18> sort the list to limit merge conflicts - added
-  Set rstModules = CreateObject("ADODB.Recordset")
-  rstModules.Fields.Append "Module", adVarChar, 200
-  rstModules.Open
-  For Each vbComponent In ThisProject.VBProject.VBComponents
-    If vbComponent.Name = "cptAdmin_bas" Then GoTo next_vbComponent
-    If vbComponent.CodeModule.Find("<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      rstModules.AddNew Array(0), Array(vbComponent.Name)
-      rstModules.Update
-    End If
-next_vbComponent:
-  Next vbComponent
-
-  'write xml
-  strXML = "<?xml version=""1.0"" encoding=""utf-8"" ?>" & vbCrLf
-  strXML = strXML & "<Modules>" & vbCrLf
-  lngItem = 0
-  rstModules.Sort = "Module"
-  rstModules.MoveFirst
-  Do While Not rstModules.EOF
-    Set vbComponent = ThisProject.VBProject.VBComponents(rstModules(lngItem))
-    Debug.Print rstModules(lngItem)
-    strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
-    strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
-    strXML = strXML & String(1, vbTab) & "<Module>" & vbCrLf
-    strModule = Replace(vbComponent.Name, cptRegEx(vbComponent.Name, "_frm|_bas|_cls"), "")
-    strXML = strXML & String(2, vbTab) & "<Name>" & vbComponent.Name & "</Name>" & vbCrLf
-    strXML = strXML & String(2, vbTab) & "<FileName>" & vbComponent.Name & dTypes(CInt(vbComponent.Type)) & "</FileName>" & vbCrLf
-    strXML = strXML & String(2, vbTab) & "<Version>" & strVersion & "</Version>" & vbCrLf
-    strXML = strXML & String(2, vbTab) & "<Type>" & vbComponent.Type & "</Type>" & vbCrLf
-    strDirectory = Replace(vbComponent.Name, cptRegEx(vbComponent.Name, "_frm|_bas|_cls"), "")
-    strXML = strXML & String(2, vbTab) & "<Directory>" & Replace(cptSetDirectory(CStr(vbComponent.Name)), "\", "") & "</Directory>" & vbCrLf
-    strXML = strXML & String(1, vbTab) & "</Module>" & vbCrLf
-    lngItem = lngItem + 1
-  Loop
-  strXML = strXML & "</Modules>" & vbCrLf
-
-  'ensure correct branch is active
-  frmGitVBA.txtNotes.Value = frmGitVBA.txtNotes.Value & vbCrLf & String(53, "-") & vbCrLf & Redirect("git", "-C " & strRepo & " checkout " & Replace(Replace(frmGitVBA.cboBranch.Value, Chr(32), ""), "*", ""))
-  Call gitScrollDown
-
-  'write to the file
-  Set oStream = CreateObject("ADODB.Stream")
-  oStream.Type = adTypeText
-  oStream.Charset = "utf-8"
-  strFileName = strRepo & "CurrentVersions.xml"
-  oStream.Open
-  oStream.WriteText strXML
-  oStream.SaveToFile strFileName, adSaveCreateOverWrite
-  oStream.Close
-  Set oStream = Nothing
-
-  frmGitVBA.txtNotes.Value = frmGitVBA.txtNotes.Value & vbCrLf & String(53, "-") & vbCrLf & Redirect("git", "-C " & strRepo & " add CurrentVersions.xml")
-  Call gitScrollDown
-
-exit_here:
-  On Error Resume Next
-  If rstModules.State Then rstModules.Close
-  Set rstModules = Nothing
-  Set dTypes = Nothing
-  Set vbComponent = Nothing
-  If oStream.State <> adStateClosed Then oStream.Close
-  Set oStream = Nothing
-  Exit Sub
-
-err_here:
-  Call cptHandleErr("cptAdmin_bas", "cptCreateCurrentVersionXML", Err)
-  Resume exit_here
-
-End Sub
+End Function
 
 Sub cptDocument()
-'objects
-Dim vbComponent As vbComponent
-Dim oExcel As Object
-Dim oWorkbook As Object
-Dim oWorksheet As Object
-'strings
-Dim strModule As String
-Dim strProcName As String
-'longs
-Dim lngSLOC As Long
-Dim lngLines As Long
-Dim lngLine As Long
-Dim lngRow As Long
-Dim lngCountDecl As Long
-'integers
-'booleans
-'variants
-Dim arrHeader As Variant
-'dates
+  'objects
+  Dim vbComponent As vbComponent
+  Dim oExcel As Object
+  Dim oWorkbook As Object
+  Dim oWorksheet As Object
+  'strings
+  Dim strModule As String
+  Dim strProcName As String
+  'longs
+  Dim lngSLOC As Long
+  Dim lngLines As Long
+  Dim lngLine As Long
+  Dim lngRow As Long
+  Dim lngCountDecl As Long
+  'integers
+  'booleans
+  'variants
+  Dim arrHeader As Variant
+  'dates
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
@@ -244,6 +128,10 @@ Dim strDirectory As String
       strDirectory = "Core"
     Case "Adjustment"
       strDirectory = "Integration"
+    Case "AdvancedFilter"
+      strDirectory = "Text"
+    Case "AdvancedFilterEdit"
+      strDirectory = "Text"
     Case "AgeDates"
       strDirectory = "Status"
     Case "BrowseFolder"
@@ -258,6 +146,8 @@ Dim strDirectory As String
       strDirectory = "Trace"
     Case "CritPathFields"
       strDirectory = "Trace"
+    Case "CustomFieldUsage"
+      strDirectory = "CustomFields"
     Case "CheckAssignments"
       strDirectory = "Integration"
     Case "CommonFieldMap"
@@ -278,6 +168,8 @@ Dim strDirectory As String
       strDirectory = "CustomFields"
     Case "FilterByClipboard"
       strDirectory = "Text"
+    Case "FilterItem"
+      strDirectory = "Text"
     Case "Fiscal"
       strDirectory = "Calendar"
     Case "Graphics"
@@ -288,6 +180,8 @@ Dim strDirectory As String
       strDirectory = "Status"
     Case "IPMDARMapping"
       strDirectory = "Status"
+    Case "FlowDown"
+      strDirectory = "CustomFields"
     Case "MetricsData"
       strDirectory = "Metrics"
     Case "MetricsSettings"
@@ -454,22 +348,41 @@ Sub cptLoadModulesFromPath()
   Dim oFile As Scripting.File
   Dim oVBProject As VBProject
   'strings
+  Dim strVersion As String
+  Dim strBranch As String
   Dim strDir As String
   'longs
+  Dim lngProject As Long
   'integers
   'doubles
   'booleans
   'variants
+  Dim vResponse As Variant
   'dates
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  'update this before running - NOT THE GLOBAL!
-  Set oVBProject = VBE.VBProjects(VBE.VBProjects.Count)
+  vResponse = InputBox("version:", "Create Release Asset")
+  If StrPtr(vResponse) = 0 Then 'user hit cancel
+    GoTo exit_here
+  ElseIf Len(vResponse) = 0 Then 'no entry
+    GoTo exit_here
+  ElseIf Len(vResponse) > 0 Then
+    strVersion = CStr(vResponse)
+  End If
   
-  If MsgBox("Load Modules into '" & Dir(oVBProject.FileName) & "'?", vbQuestion + vbYesNo, "Confirm") = vbNo Then GoTo exit_here
+  Application.FileNew
+  strDir = Environ("USERPROFILE") & "\GitHub\cpt"
+  Application.FileSaveAs strDir & "\releases\cpt_" & strVersion & ".mpp"
+  Set oVBProject = ActiveProject.VBProject
 
-  strDir = Environ("USERPROFILE") & "\GitHub\cpt-dev"
+  If oVBProject Is Nothing Then GoTo exit_here
+  
+  strBranch = Replace(GitCommand("c:/users/arongahagan/GitHub/cpt", "rev-parse --abbrev-ref HEAD"), Chr(10), "")
+  If MsgBox("Load modules from branch '" & strBranch & "' into cpt_" & strVersion & ".mpp?", vbQuestion + vbYesNo, "Confirm") = vbNo Then
+    FileClose pjDoNotSave
+    Kill strDir & "\releases\cpt_" & strVersion & ".mpp"
+  End If
   
   Set oFSO = CreateObject("Scripting.FileSystemObject")
   Set oFolder = oFSO.GetFolder(strDir)
@@ -593,3 +506,159 @@ err_here:
   Call cptHandleErr("cptAdmin_bas", "ImportKEODataToCPT", Err, Erl)
   Resume exit_here
 End Sub
+
+Sub LoadMilStd881()
+  'copy/paste from latest Mil-Std-881 into vim/csv and clean up
+  'objects
+  Dim oRecordsOut As ADODB.Recordset
+  Dim oRecordsIn As ADODB.Recordset
+  'strings
+  Dim strDir As String
+  Dim strFileName As String
+  Dim strCon As String
+  Dim strSQL As String
+  'longs
+  Dim lngField As Long
+  Dim lngFile As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  'create schema for the csv
+  strDir = Environ("USERPROFILE") & "\GitHub\cpt"
+  strFileName = strDir & "\Schema.ini"
+  lngFile = FreeFile
+  Open strFileName For Output As #lngFile
+  Print #lngFile, "[mil-std-881.csv]"
+  Print #lngFile, "Format=CSVDelimited"
+  Print #lngFile, "ColNameHeader=True"
+  Print #lngFile, "Col1=VERSION text width 1"
+  Print #lngFile, "Col2=APPENDIX text width 4"
+  Print #lngFile, "Col3=CODE text width 16"
+  Print #lngFile, "Col4=DESCRIPTION text width 255"
+  Close #lngFile
+  
+  'create a connection string
+  strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
+  
+  'create the sql query
+  strSQL = "SELECT * FROM [mil-std-881.csv]"
+  
+  'create recordset: csv (in)
+  Set oRecordsIn = CreateObject("ADODB.Recordset")
+  'open recordset: csv (in)
+  oRecordsIn.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
+  
+  'create recordset: adtg (out)
+  Set oRecordsOut = CreateObject("ADODB.Recordset")
+  For lngField = 0 To oRecordsIn.Fields.Count - 1
+    oRecordsOut.Fields.Append oRecordsIn.Fields(lngField).Name, oRecordsIn.Fields(lngField).Type, oRecordsIn.Fields(lngField).DefinedSize
+  Next lngField
+  'open recordset: adtg (out)
+  oRecordsOut.Open
+  
+  'load csv->adtg
+  Do While Not oRecordsIn.EOF
+    oRecordsOut.AddNew Array(0, 1, 2, 3), Array(oRecordsIn(0), oRecordsIn(1), oRecordsIn(2), Replace(oRecordsIn(3), "…", "..."))
+    oRecordsIn.MoveNext
+  Loop
+  
+  'save the adtg
+  strFileName = cptDir & "\cpt-mil-std-881.adtg"
+  'provide user feedback
+  Debug.Print Format(oRecordsOut.RecordCount, "#,##0") & " records imported."
+  'overwrite file if it exists
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  oRecordsOut.Save strFileName, adPersistADTG
+
+exit_here:
+  On Error Resume Next
+  'kill the Schema.ini
+  If Not Dir(strDir & "\Schema.ini") = vbNullString Then
+    Kill strDir & "\Schema.ini"
+  End If
+  'close the recordsets
+  If oRecordsOut.State Then oRecordsOut.Close
+  If oRecordsIn.State Then oRecordsIn.Close
+  Set oRecordsOut = Nothing
+  Set oRecordsIn = Nothing
+  Reset 'close any open text files
+
+  Exit Sub
+err_here:
+  Call cptHandleErr("foo", "bar", Err, Erl)
+  Resume exit_here
+End Sub
+
+Sub UpdateVersionsFromFile()
+  'run ./get-current-versions.sh >> CurrentVersions.txt
+  'run this
+  Dim oFSO As Scripting.FileSystemObject
+  Dim oStream As Scripting.TextStream
+  Dim oCodeModule As VBIDE.CodeModule
+  Dim strFileName As String
+  Dim strLine As String
+  Dim strModule As String
+  Dim strVersion As String
+  Dim strVersionWas As String
+  Dim lngLine As Long
+  Dim lngResponse As Long
+  Dim lngUpdated As Long
+  Dim lngSkipped As Long
+  
+  On Error GoTo 0
+  
+  'get new versions from branch
+  Set oFSO = CreateObject("Scripting.FileSystemOBject")
+  strFileName = Environ("userprofile") & "\GitHub\cpt\CurrentVersions.txt"
+  Set oStream = oFSO.OpenTextFile(strFileName, ForReading)
+  Do While Not oStream.AtEndOfStream
+    strLine = oStream.ReadLine
+    strModule = Replace(cptRxMatch(Split(strLine, ",")(0), "[A-z_]+\.", True, False), ".", "")
+    strVersion = Split(strLine, ",")(1)
+    Set oCodeModule = Nothing
+    On Error Resume Next
+    Set oCodeModule = ThisProject.VBProject.VBComponents(strModule).CodeModule
+    If oCodeModule Is Nothing Then
+      Debug.Print strModule & ": not found! <<<<<<<<<<"
+      lngSkipped = lngSkipped + 1
+      GoTo next_module
+    End If
+    If Not oCodeModule.Find("<cpt_version>" & strVersion & "</cpt_version>", 1, 1, 50, 80, True, True, False) Then
+      For lngLine = 1 To oCodeModule.CountOfLines
+        If oCodeModule.Find("</cpt_version>", lngLine, 1, lngLine, 80, False, True, False) Then
+          strVersionWas = cptRxMatch(oCodeModule.Lines(lngLine, 1), "<cpt_version>.*</cpt_version>")
+          strVersionWas = Replace(Replace(strVersionWas, "<cpt_version>", ""), "</cpt_version>", "")
+          Debug.Print oCodeModule.Lines(lngLine, 1)
+          lngResponse = MsgBox(strModule & ":" & vbCrLf & strVersionWas & " > " & strVersion & "?" & vbCrLf & vbCrLf & "Replace?", vbQuestion + vbYesNoCancel, "Please Confirm")
+          If lngResponse = vbYes Then
+            oCodeModule.ReplaceLine lngLine, "'<cpt_version>" & strVersion & "</cpt_version>"
+            lngUpdated = lngUpdated + 1
+            Debug.Print strModule & ": " & strVersionWas & " > " & strVersion
+            Exit For
+          ElseIf lngResponse = vbNo Then
+            Debug.Print strModule & ": skipped"
+            lngSkipped = lngSkipped + 1
+            Exit For
+          ElseIf lngResponse = vbCancel Then
+            Debug.Print "...process terminated."
+            Exit Do
+          End If
+        End If
+      Next lngLine
+    End If
+next_module:
+  Loop
+  Debug.Print "updated: " & lngUpdated & vbCrLf & "skipped: " & lngSkipped
+  oStream.Close
+  Set oCodeModule = Nothing
+  Set oStream = Nothing
+  Set oFSO = Nothing
+End Sub
+
