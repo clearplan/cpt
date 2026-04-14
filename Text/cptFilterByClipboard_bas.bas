@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
 '<cpt_version>v1.4.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptFilterByClipboard_bas"
 
 Sub cptShowFilterByClipboard_frm()
   'objects
@@ -16,6 +17,9 @@ Sub cptShowFilterByClipboard_frm()
   Dim blnMaster As Boolean
   'variants
   'dates
+  
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
   
   'prevent spawning
   If Not cptGetUserForm("cptFilterByClipboard_frm") Is Nothing Then Exit Sub
@@ -275,31 +279,35 @@ next_item:
     myFilterByClipboard_frm.lboHeader.List(0, 1) = "Task Name"
   End If
   
-  If Len(strFilter) > 0 And myFilterByClipboard_frm.chkFilter Then
-    ActiveWindow.TopPane.Activate
-    ScreenUpdating = False
-    OptionsViewEx DisplaySummaryTasks:=True
-    On Error Resume Next
-    If Not OutlineShowAllTasks Then
-      Sort "ID", , , , , , False, True
-      OutlineShowAllTasks
-    End If
-    SelectAll
-    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    SelectBeginning
-    strFilter = Left(strFilter, Len(strFilter) - 1)
-    With myFilterByClipboard_frm
-      If .optUID Then
-        .lboHeader.List(0, 0) = "UID"
-        SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
-      ElseIf .optID Then
-        .lboHeader.List(0, 0) = "ID"
-        SetAutoFilter "ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+  If myFilterByClipboard_frm.chkFilter Then
+    If Len(strFilter) > 0 Then
+      ActiveWindow.TopPane.Activate
+      ScreenUpdating = False
+      OptionsViewEx DisplaySummaryTasks:=True
+      On Error Resume Next
+      If Not OutlineShowAllTasks Then
+        Sort "ID", , , , , , False, True
+        OutlineShowAllTasks
       End If
-    End With
-    'todo: what about if user pastes in a summary task?
-    OptionsViewEx ProjectSummary:=False, DisplayOutlineNumber:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False
-    If lngFreeField > 0 Then Sort FieldConstantToFieldName(lngFreeField)
+      SelectAll
+      If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      SelectBeginning
+      strFilter = Left(strFilter, Len(strFilter) - 1)
+      With myFilterByClipboard_frm
+        If .optUID Then
+          .lboHeader.List(0, 0) = "UID"
+          SetAutoFilter "Unique ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+        ElseIf .optID Then
+          .lboHeader.List(0, 0) = "ID"
+          SetAutoFilter "ID", FilterType:=pjAutoFilterIn, Criteria1:=strFilter
+        End If
+      End With
+      'todo: what about if user pastes in a summary task?
+      OptionsViewEx ProjectSummary:=False, DisplayOutlineNumber:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False
+      If lngFreeField > 0 Then Sort FieldConstantToFieldName(lngFreeField)
+    Else
+      SetAutoFilter FieldName:="Name", FilterType:=pjAutoFilterCustom, Test1:="equals", Criteria1:="DOES NOT EXIST"
+    End If
   End If
   
 exit_here:

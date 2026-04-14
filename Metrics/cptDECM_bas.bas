@@ -341,7 +341,7 @@ next_mapping_task:
   
   Set myDECM_frm = New cptDECM_frm
   With myDECM_frm
-    .Caption = "DECM v7.0 (cpt " & cptGetVersion("cptDECM_bas") & ")"
+    .Caption = "DECM v8.0 (cpt " & cptGetVersion("cptDECM_bas") & ")"
     .lboOOS.Visible = False
     lngItem = 0
     .lboHeader.Clear
@@ -1575,6 +1575,29 @@ Sub DECM_10A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'Y = count of incomplete WPs
   'X/Y <= 5%
 
+'  'limit to incomplete WPs with PMB and either mixed or missing EVTs
+'  'discrete WPs are complete if BAC and BCWP are within $100 (or 1h)
+'  'LOE WPs are complete if BAC and BCWP are within $100 (or 1h) AND ETC < $100 (or 1h)
+'  'PPs and SLPPs are not included todo: unless a WP has a K and something else
+'  strSQL = "SELECT DISTINCT WP "
+'  strSQL = strSQL & "FROM("
+'  strSQL = strSQL & "    SELECT WP, Count(EVT) AS CountOfEVT" 'WP has mixed EVTs
+'  strSQL = strSQL & "    FROM ("
+'  strSQL = strSQL & "        SELECT T.WP, Iif(Isnull(T.EVT),'',T.EVT) AS EVT, SUM(T.BLW+T.BLC) AS BAC "
+'  strSQL = strSQL & "        FROM [tasks.csv] AS T "
+'  strSQL = strSQL & "        WHERE T.WP IS NOT NULL AND T.AF IS NULL AND SUMMARY='No' " 'AND T.EVT<>'" & strPP & "' "
+'  strSQL = strSQL & "        GROUP BY T.WP, T.EVT "
+'  strSQL = strSQL & "        HAVING SUM(T.BLW+T.BLC)>0 "
+'  strSQL = strSQL & "    )  AS PMB"
+'  strSQL = strSQL & "    GROUP BY WP"
+'  strSQL = strSQL & "    HAVING Count(EVT)>1"
+'  strSQL = strSQL & "    UNION"
+'  strSQL = strSQL & "    SELECT WP,Count(EVT) " 'WP has no EVTs
+'  strSQL = strSQL & "    FROM [tasks.csv] AS T "
+'  strSQL = strSQL & "    WHERE WP IS NOT NULL AND T.EVT IS NULL AND SUMMARY='No' "
+'  strSQL = strSQL & "    GROUP BY WP"
+'  strSQL = strSQL & ") AS [10A102a]"
+
   'limit to incomplete WPs with PMB and either mixed or missing EVTs
   'discrete WPs are complete if BAC and BCWP are within $100 (or 1h)
   'LOE WPs are complete if BAC and BCWP are within $100 (or 1h) AND ETC < $100 (or 1h)
@@ -1584,19 +1607,26 @@ Sub DECM_10A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = strSQL & "    SELECT WP, Count(EVT) AS CountOfEVT" 'WP has mixed EVTs
   strSQL = strSQL & "    FROM ("
   strSQL = strSQL & "        SELECT T.WP, Iif(Isnull(T.EVT),'',T.EVT) AS EVT, SUM(T.BLW+T.BLC) AS BAC "
-  strSQL = strSQL & "        FROM [tasks.csv] AS T "
-  strSQL = strSQL & "        WHERE T.WP IS NOT NULL AND T.AF IS NULL AND T.EVT<>'" & strPP & "' "
+  strSQL = strSQL & "        FROM [tasks.csv] AS T"
+  strSQL = strSQL & "        WHERE T.WP IS NOT NULL AND T.AF IS NULL AND T.SUMMARY='No'"
   strSQL = strSQL & "        GROUP BY T.WP, T.EVT "
   strSQL = strSQL & "        HAVING SUM(T.BLW+T.BLC)>0 "
   strSQL = strSQL & "    )  AS PMB"
   strSQL = strSQL & "    GROUP BY WP"
   strSQL = strSQL & "    HAVING Count(EVT)>1"
   strSQL = strSQL & "    UNION"
-  strSQL = strSQL & "    SELECT WP,Count(EVT) " 'WP has no EVTs
-  strSQL = strSQL & "    FROM [tasks.csv] AS T "
-  strSQL = strSQL & "    WHERE WP IS NOT NULL AND T.EVT IS NULL"
+  strSQL = strSQL & "    SELECT WP,Count(EVT) AS CountOfEVT" 'WP has no EVTs
+  strSQL = strSQL & "    FROM ("
+  strSQL = strSQL & "         SELECT T.WP,T.EVT,SUM(T.BLW+T.BLC) AS BAC "
+  strSQL = strSQL & "         FROM [tasks.csv] AS T"
+  strSQL = strSQL & "         WHERE T.WP IS NOT NULL AND T.AF IS NULL AND T.SUMMARY='No'"
+  strSQL = strSQL & "         GROUP BY T.WP, T.EVT"
+  strSQL = strSQL & "         HAVING SUM(T.BLW+T.BLC)>0"
+  strSQL = strSQL & "    ) AS PMB"
+  strSQL = strSQL & "    WHERE PMB.EVT IS NULL"
   strSQL = strSQL & "    GROUP BY WP"
   strSQL = strSQL & ") AS [10A102a]"
+
 
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
@@ -1627,15 +1657,27 @@ Sub DECM_10A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     End If
     .Close
   End With
+'  'limit to incomplete WPs with PMB
+'  'discrete WPs are complete if BAC and BCWP are within $100
+'  'LOE WPs are complete if BAC and BCWP are within $100 AND ETC < $100
+'  'PPs and SLPPs are not included
+'  strSQL = "SELECT T.WP,SUM(T.BLW+T.BLC) AS BAC "
+'  strSQL = strSQL & "FROM [tasks.csv] AS T "
+'  strSQL = strSQL & "WHERE T.WP IS NOT NULL AND T.AF IS NULL AND T.SUMMARY='No' " 'AND (T.EVT<>'" & strPP & "' OR T.EVT IS NULL) "
+'  strSQL = strSQL & "GROUP BY T.WP "
+'  strSQL = strSQL & "HAVING SUM(T.BLW+T.BLC)>0"
+
   'limit to incomplete WPs with PMB
   'discrete WPs are complete if BAC and BCWP are within $100
   'LOE WPs are complete if BAC and BCWP are within $100 AND ETC < $100
   'PPs and SLPPs are not included
   strSQL = "SELECT T.WP,SUM(T.BLW+T.BLC) AS BAC "
   strSQL = strSQL & "FROM [tasks.csv] AS T "
-  strSQL = strSQL & "WHERE T.WP IS NOT NULL AND T.AF IS NULL AND (T.EVT<>'" & strPP & "' OR T.EVT IS NULL) "
+  strSQL = strSQL & "WHERE T.WP IS NOT NULL AND T.AF IS NULL AND T.SUMMARY='No' " ' AND (T.EVT<>'" & strPP & "' OR T.EVT IS NULL) "
   strSQL = strSQL & "GROUP BY T.WP "
   strSQL = strSQL & "HAVING SUM(T.BLW+T.BLC)>0"
+
+
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngY = .RecordCount
@@ -3590,14 +3632,16 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             strSQL = "SELECT DISTINCT CAM,WP,EVT "
             strSQL = strSQL & "FROM [tasks.csv] "
             strSQL = strSQL & "WHERE WP IN (" & Chr(34) & Replace(oDECM(strMetric), ",", Chr(34) & "," & Chr(34)) & Chr(34) & ") "
+            strSQL = strSQL & "AND SUMMARY='No' "
             strSQL = strSQL & "ORDER BY CAM"
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
             oWorksheet.[A3:C3] = Split("CAM,WP,EVT", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = .lboMetrics.List(lngItem, 3)
+            oWorksheet.[A3].End(xlToRight).Offset(-1, 0).AddComment "Unique WPs"
             oRecordset.Close
             oWorksheet.Range(oWorksheet.[A2], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
+            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[B3].End(xlDown).Offset(0, 1))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
           End If
