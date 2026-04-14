@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.17.0</cpt_version>
+'<cpt_version>v1.18.0</cpt_version>
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
@@ -302,8 +302,10 @@ Sub cptShowAbout_frm()
   'myAbout_frm.lblScoreBoard.Caption = "t0 : b6" 'NAS > EWR '2/20/20 = 6
   'myAbout_frm.lblScoreBoard.Caption = "t0 : b7" 'EWR > SAV '6/3/22 = 7
   'myAbout_frm.lblScoreBoard.Caption = "t0 : b8" 'EWR > SAV '6/5/22 = 8
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b9" 'EWR > DFW '5/16/25 = 9     v1.9.0
-  myAbout_frm.lblScoreBoard.Caption = "t0 : b10" 'DFW > EWR '5/18/25 = 10  v1.9.1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b9" 'EWR > DFW '5/16/25 = 9	v1.9.0
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b10" 'DFW > EWR '5/18/25 = 10  	v1.9.1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b11" 'EWR > SLC '4/10/2026 = 11	v1.13.0
+  myAbout_frm.lblScoreBoard.Caption = "t0 : b12" 'SLC > EWR '4/12/2026 = 12	v1.13.1
   
   myAbout_frm.Caption = "The ClearPlan Toolbar - " & cptGetVersion("cptAbout_frm")
   myAbout_frm.Show '<issue19>
