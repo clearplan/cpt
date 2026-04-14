@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.4.7</cpt_version>
+'<cpt_version>v3.5.0</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -15,7 +15,10 @@ Private BCR_WP() As String
 Private BCR_ID As String
 Private BCRxport As Boolean
 Private BCR_Error As Boolean
-Private fProject, fCAID1, fCAID1t, fCAID3, fCAID3t, fWP, fCAM, fPCNT, fAssignPcnt, fEVT, fCAID2, fCAID2t, fMilestone, fMilestoneWeight, fBCR, fWhatIf, fResID As String 'v3.3.0, v3.4.3
+Private fProject As String, fCAID1 As String, fCAID1t As String, fCAID3 As String, _
+fCAID3t As String, fWP As String, fCAM As String, fPCNT As String, fAssignPcnt As String, _
+fEVT As String, fCAID2 As String, fCAID2t As String, fMilestone As String, _
+fMilestoneWeight As String, fBCR As String, fWhatIf As String, fResID As String 'v3.3.0, v3.4.3
 Private dateFmt As String 'v3.3.5
 Private CustTextFields() As String
 Private EntFields() As String
@@ -105,6 +108,13 @@ Private Type TaskDataCheck
     AssignmentCount As Integer
 End Type
 Private noFolderSelected As Boolean
+Private Enum ExportType 'v3.5.0
+    BCWS = 0
+    BCWP = 1
+    ETC = 2
+    WhatIf = 3
+End Enum
+Private Const MODULE_NAME As String = "cptIMSCobraExport_bas"
 
 Sub Export_IMS()
 
@@ -141,6 +151,8 @@ Sub Export_IMS()
 
         .resBox.List = Split("Name,Code,Initials", ",")
 
+        .Caption = "IMS Export Utility " & cptGetVersion("cptIMSCobraExport_bas")
+
         'populate listboxes
         Dim vArray As Variant
         vArray = Split(Join(CustTextFields, ",") & "," & Join(CustOLCodeFields, ",") & "," & Join(EntFields, ","), ",") 'v3.3.9
@@ -170,9 +182,8 @@ Sub Export_IMS()
         
         On Error GoTo CleanUp
         ErrMsg = "Please try again, or contact the developer if this message repeats."
-        '********************************************
-        'On Error GoTo 0 '**Used for Debugging ONLY**
-        '********************************************
+        
+        If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
 
         .Show
 
@@ -260,6 +271,10 @@ Sub Export_IMS()
     Set curProj = Nothing
 
     Exit Sub
+    
+ErrorHandler:
+    
+    Call cptHandleErr(MODULE_NAME, "Export_IMS", err, Erl, "Error exporting project data.")
 
 CleanUp:
 
@@ -326,7 +341,7 @@ Private Sub DataChecks(ByVal curProj As Project)
     Dim tempID As String
     Dim subProj As SubProject
     Dim subProjs As Subprojects
-    Dim curSProj As Project
+    Dim cursproj As Project
     Dim wpCount As Integer
     Dim camCount As Integer
     Dim taskCount As Integer
@@ -380,9 +395,9 @@ Private Sub DataChecks(ByVal curProj As Project)
 
             FileOpen Name:=subProj.Path, ReadOnly:=True
 
-            Set curSProj = ActiveProject
+            Set cursproj = ActiveProject
 
-            For Each t In curSProj.Tasks
+            For Each t In cursproj.Tasks
 
                 If Not t Is Nothing Then
 
@@ -710,7 +725,7 @@ Private Sub DataChecks(ByVal curProj As Project)
                             CAMChecks(i).CAM_Error = True
                         End If
 
-                        GoTo next_task
+                        GoTo Next_Task
 
                     End If
 
@@ -776,7 +791,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                         End If
 
-                        GoTo next_task
+                        GoTo Next_Task
 
                     End If
 
@@ -804,7 +819,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
         End If
 
-next_task:
+Next_Task:
 
         '**Report Tasks Missing Metadata**
 
@@ -1383,11 +1398,12 @@ Private Sub BCWP_Export(ByVal curProj As Project)
     Dim t As Task
     Dim tAss As Assignments
     Dim tAssign As Assignment
-    Dim ProjID, CAID1, CAID3, WP, CAM, EVT, UID, CAID2, ResName, MSWeight, ID, PCNT As String 'v3.3.0, v3.4.3
+    Dim ProjID As String, CAID1 As String, CAID3 As String, WP As String, CAM As String, _
+    EVT As String, UID As String, CAID2 As String, ResName As String, MSWeight As String, _
+    ID As String, PCNT As String 'v3.3.0, v3.4.3, v3.5.0
     Dim Milestone As String
     Dim subProj As SubProject
     Dim subProjs As Subprojects
-    Dim curSProj As Project
     Dim ACTarray() As ACTrowWP
     Dim X As Integer
     Dim i As Integer
@@ -1396,593 +1412,91 @@ Private Sub BCWP_Export(ByVal curProj As Project)
     Dim tempID As String 'v3.3.3
     Dim headerStr As String 'v3.4.3
     Dim outputStr As String 'v3.4.3
+    Dim exportProj As Project
+    Dim subprojCount As Integer
+    
+    OpenExportFiles curProj, "BCWP", BCWP, False
 
-    If ResourceLoaded = False Then
+    X = 1
+    ActFound = False
+    
+    'Evaluate Project Data
 
-        ACTfilename = destFolder & "\BCWP ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
+    If curProj.Subprojects.Count > 0 Then
         
-        'v3.4.3 - refactored header output code
-        headerStr = ",WP,Milestone,Forecast Start Date,Forecast Finish Date,Actual Start Date,Actual Finish Date,Percent Complete,"
+        subprojCount = 0
+        Set subProjs = curProj.Subprojects
+    
+        For Each subProj In subProjs
+            
+            subprojCount = subprojCount + 1
+    
+            FileOpen Name:=subProj.Path, ReadOnly:=True
+            Set exportProj = ActiveProject
+    
+            GoTo Export_Project_Data
+    
+Next_Subproject:
+    
+            FileClose pjDoNotSave
+    
+        Next subProj
         
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
+    Else
+    
+        Set exportProj = curProj
         
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
+    End If
 
-        X = 1
-        ActFound = False
+Export_Project_Data:
+    
+    For Each t In exportProj.Tasks
 
-        If curProj.Subprojects.Count > 0 Then
+        If Not t Is Nothing Then
 
-            Set subProjs = curProj.Subprojects
+            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
 
-            For Each subProj In subProjs
+                If (ResourceLoaded And (t.BaselineWork > 0 Or t.BaselineCost > 0)) Or (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "") Then
 
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
-
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                            If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
-
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                If Milestones_Used = True Then
-                                    UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                End If
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                                If EVT = "B" And Milestones_Used = False Then
-                                    ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                    err.Raise 1
-                                End If
-                                
-                                'v3.4.3 - refactored data output code
-                                
-                                If EVT = "B" Or EVT = "N" Or EVT = "B Milestone" Or EVT = "N Earning Rules" Then
-
-                                    outputStr = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
-
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-
-                                ElseIf EVT = "C" Or EVT = "C % Work Complete" Then
-
-                                    'store ACT info
-                                    'WP Data
-                                    If X = 1 Then
-
-                                        'create new WP line in ACTarrray
-                                        ReDim ACTarray(1 To X)
-                                        If t.BaselineFinish <> "NA" Then
-                                            ACTarray(X).BFinish = t.BaselineFinish
-                                        End If
-                                        If t.BaselineStart <> "NA" Then
-                                            ACTarray(X).BStart = t.BaselineStart
-                                        End If
-                                        If CAID3_Used = True Then
-                                            ACTarray(X).CAID3 = CAID3
-                                        End If
-                                        ACTarray(X).CAM = CAM
-                                        ACTarray(X).ID = ID
-                                        ACTarray(X).CAID1 = CAID1
-                                        ACTarray(X).EVT = EVT
-                                        ACTarray(X).FFinish = t.Finish
-                                        ACTarray(X).FStart = t.Start
-                                        If CAID2_Used = True Then
-                                            ACTarray(X).CAID2 = CAID2
-                                        End If
-                                        If subprojectIDs Then 'v3.4.3
-                                            ACTarray(X).SubProject = ProjID
-                                        End If
-                                        ACTarray(X).WP = WP
-                                        If t.ActualStart <> "NA" Then
-                                            ACTarray(X).AStart = t.ActualStart
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            ACTarray(X).AFinish = t.ActualFinish
-                                        End If
-                                        If t.BaselineWork <> 0 Then
-                                            ACTarray(X).sumBCWS = 1
-                                            ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                        Else
-                                            ACTarray(X).sumBCWS = 1
-                                            ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                        End If
-                                        ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                        X = X + 1
-                                        ActFound = True
-
-                                        GoTo nrBCWP_WP_Match_A
-
-                                    End If
-
-                                    For i = 1 To UBound(ACTarray)
-                                        If ACTarray(i).ID = ID Then
-                                            'Found an existing matching WP line
-                                            If t.BaselineStart <> "NA" Then
-                                                If ACTarray(i).BStart = 0 Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                Else
-                                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                                        ACTarray(i).BStart = t.BaselineStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.BaselineFinish <> "NA" Then
-                                                If ACTarray(i).BFinish = 0 Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                Else
-                                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                        ACTarray(i).BFinish = t.BaselineFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If ACTarray(i).FStart > t.Start Then
-                                                ACTarray(i).FStart = t.Start
-                                            End If
-                                            If ACTarray(i).FFinish < t.Finish Then
-                                                ACTarray(i).FFinish = t.Finish
-                                            End If
-                                            If t.ActualStart <> "NA" Then
-                                                If ACTarray(i).AStart = 0 Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                Else
-                                                    If t.ActualStart < ACTarray(i).AStart Then
-                                                        ACTarray(i).AStart = t.ActualStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.ActualFinish <> "NA" Then
-                                                If ACTarray(i).AFinish = 0 Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                Else
-                                                    If t.ActualFinish > ACTarray(i).AFinish Then
-                                                        ACTarray(i).AFinish = t.ActualFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.BaselineWork <> 0 Then
-                                                ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + 1
-                                                ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                            Else
-                                                ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + 1
-                                                ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                            End If
-
-                                            ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
-
-                                            GoTo nrBCWP_WP_Match_A
-                                        End If
-                                    Next i
-
-                                    'No match found, create new WP line in ACTarrray
-                                    ReDim Preserve ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-                                    If t.BaselineWork <> 0 Then
-                                        ACTarray(i).sumBCWS = 1
-                                        ACTarray(i).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                    Else
-                                        ACTarray(i).sumBCWS = 1
-                                        ACTarray(i).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                    End If
-                                    ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                ElseIf EVT = "E" Or EVT = "F" Or EVT = "G" Or EVT = "H" Or EVT = "E 50/50" Or EVT = "F 0/100" Or _
-                                    EVT = "G 100/0" Or EVT = "H User Defined" Or EVT = "A" Or EVT = "A Level of Effort" Or EVT = "O" Or EVT = "O Earned As Spent" Then '3.4.4
-
-                                    'store ACT info
-                                    'WP Data
-                                    If X = 1 Then
-
-                                        'create new WP line in ACTarrray
-                                        ReDim ACTarray(1 To X)
-                                        If t.BaselineFinish <> "NA" Then
-                                            ACTarray(X).BFinish = t.BaselineFinish
-                                        End If
-                                        If t.BaselineStart <> "NA" Then
-                                            ACTarray(X).BStart = t.BaselineStart
-                                        End If
-                                        If CAID3_Used = True Then
-                                            ACTarray(X).CAID3 = CAID3
-                                        End If
-                                        ACTarray(X).CAM = CAM
-                                        ACTarray(X).ID = ID
-                                        ACTarray(X).CAID1 = CAID1
-                                        ACTarray(X).EVT = EVT
-                                        ACTarray(X).FFinish = t.Finish
-                                        ACTarray(X).FStart = t.Start
-                                        If CAID2_Used = True Then
-                                            ACTarray(X).CAID2 = CAID2
-                                        End If
-                                        If subprojectIDs Then 'v3.4.3
-                                            ACTarray(X).SubProject = ProjID
-                                        End If
-                                        ACTarray(X).WP = WP
-                                        If t.ActualStart <> "NA" Then
-                                            ACTarray(X).AStart = t.ActualStart
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            ACTarray(X).AFinish = t.ActualFinish
-                                        End If
-
-                                        X = X + 1
-                                        ActFound = True
-
-                                        GoTo nrBCWP_WP_Match_A
-
-                                    End If
-
-                                    For i = 1 To UBound(ACTarray)
-                                        If ACTarray(i).ID = ID Then
-                                            'Found an existing matching WP line
-                                            If t.BaselineStart <> "NA" Then
-                                                If ACTarray(i).BStart = 0 Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                Else
-                                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                                        ACTarray(i).BStart = t.BaselineStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.BaselineFinish <> "NA" Then
-                                                If ACTarray(i).BFinish = 0 Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                Else
-                                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                        ACTarray(i).BFinish = t.BaselineFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If ACTarray(i).FStart > t.Start Then
-                                                ACTarray(i).FStart = t.Start
-                                            End If
-                                            If ACTarray(i).FFinish < t.Finish Then
-                                                ACTarray(i).FFinish = t.Finish
-                                            End If
-                                            If t.ActualStart <> "NA" Then
-                                                If ACTarray(i).AStart = 0 Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                Else
-                                                    If t.ActualStart < ACTarray(i).AStart Then
-                                                        ACTarray(i).AStart = t.ActualStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.ActualFinish <> "NA" Then
-                                                If ACTarray(i).AFinish = 0 Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                Else
-                                                    If t.ActualFinish > ACTarray(i).AFinish Then
-                                                        ACTarray(i).AFinish = t.ActualFinish
-                                                    End If
-                                                End If
-                                            End If
-
-                                            GoTo nrBCWP_WP_Match_A
-                                        End If
-                                    Next i
-
-                                    'No match found, create new WP line in ACTarrray
-                                    ReDim Preserve ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                End If
-
-                            End If
-
-                        End If
-
+                    ReadTaskFields t, CAID1, CAID2, CAID3, WP, EVT, CAM, ID, ProjID
+                    If Milestones_Used = True Then
+                        UID = t.GetField(FieldNameToFieldConstant(fMilestone))
                     End If
+                    ResName = ""
 
-nrBCWP_WP_Match_A:
+                    ValidateEVTB EVT
 
-                Next t
+                    If EVT = "B" Or EVT = "B Milestone" Or EVT = "N" Or EVT = "N Steps" Then
 
-                FileClose pjDoNotSave
+                        'v3.4.3 - refactored data output code
+                        outputStr = createMilestoneStr(BCWP, CAM, WP, UID, t, MSWeight, CAID2_Used, CAID3_Used, subprojectIDs, CAID1, CAID2, CAID3, ProjID)
+                        
+                        Print #1, outputStr
+                        
+                    ElseIf ResourceLoaded And (EVT = "L" Or EVT = "L Assignment % Complete") Then 'v3.3.0
+                        
+                        'store ACT info
+                        'WP Data
+                        
+                        Set tAss = t.Assignments
+                            
+                        For Each tAssign In tAss
+                        
+                            ResName = tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource))
+                            tempID = ID & "/" & ResName
+                            
+                            If X = 1 Then
 
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            If Milestones_Used = True Then
-                                UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                            End If
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                            If EVT = "B" And Milestones_Used = False Then
-                                ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                err.Raise 1
-                            End If
-
-                            'v3.4.3 - refactored data output code
-
-                            If EVT = "B" Or EVT = "B Milestone" Or EVT = "N" Or EVT = "N Earning Rules" Then
-
-                                outputStr = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
-
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    outputStr = CAID1 & "," & outputStr
-                                End If
-                                
-                                If subprojectIDs Then 'v3.4.3
-                                    outputStr = ProjID & "," & outputStr
-                                End If
-                                
-                                Print #1, outputStr
-
-                            ElseIf EVT = "C" Or EVT = "C % Work Complete" Then
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-                                    If t.BaselineWork <> 0 Then
-                                        ACTarray(X).sumBCWS = 1
-                                        ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                    Else
-                                        ACTarray(X).sumBCWS = 1
-                                        ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                    End If
-                                    ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo nrBCWP_WP_Match_B
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        'Found an existing matching WP line
-                                        If t.BaselineStart <> "NA" Then
-                                            If ACTarray(i).BStart = 0 Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            Else
-                                                If ACTarray(i).BStart > t.BaselineStart Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineFinish <> "NA" Then
-                                            If ACTarray(i).BFinish = 0 Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            Else
-                                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                        If t.ActualStart <> "NA" Then
-                                            If ACTarray(i).AStart = 0 Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            Else
-                                                If t.ActualStart < ACTarray(i).AStart Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            If ACTarray(i).AFinish = 0 Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            Else
-                                                If t.ActualFinish > ACTarray(i).AFinish Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineWork <> 0 Then
-                                            ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + 1
-                                            ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                        Else
-                                            ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + 1
-                                            ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                        End If
-                                        ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
-
-                                        GoTo nrBCWP_WP_Match_B
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
+                                'create new WP line in ACTarrray
+                                ReDim ACTarray(1 To X)
                                 If CAID3_Used = True Then
                                     ACTarray(X).CAID3 = CAID3
                                 End If
-                                ACTarray(X).ID = ID
                                 ACTarray(X).CAM = CAM
+                                ACTarray(X).Resource = ResName
+                                ACTarray(X).ID = tempID
                                 ACTarray(X).CAID1 = CAID1
                                 ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
                                 If CAID2_Used = True Then
                                     ACTarray(X).CAID2 = CAID2
                                 End If
@@ -1990,1264 +1504,331 @@ nrBCWP_WP_Match_A:
                                     ACTarray(X).SubProject = ProjID
                                 End If
                                 ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-                                If t.BaselineWork <> 0 Then
-                                    ACTarray(X).sumBCWS = 1
-                                    ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                                ACTarray(X).FFinish = tAssign.Finish
+                                ACTarray(X).FStart = tAssign.Start
+                                If tAssign.ActualStart <> "NA" Then ACTarray(X).AStart = tAssign.ActualStart
+                                If tAssign.ActualFinish <> "NA" Then ACTarray(X).AFinish = tAssign.ActualFinish
+                                
+                                If tAssign.BaselineWork <> 0 Then
+                                    ACTarray(X).sumBCWS = tAssign.BaselineWork / 60
+                                    ACTarray(X).sumBCWP = tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
                                 Else
-                                    ACTarray(X).sumBCWS = 1
-                                    ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                                    ACTarray(X).sumBCWS = tAssign.BaselineCost
+                                    ACTarray(X).sumBCWP = tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
                                 End If
-                                ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
+                                
+                                If ACTarray(X).sumBCWS > 0 Then ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
 
                                 X = X + 1
+                                
                                 ActFound = True
 
-                            ElseIf EVT = "E" Or EVT = "E 50/50" Or EVT = "F" Or EVT = "F 0/100" Or EVT = "G" Or EVT = "G 100/0" Or _
-                                EVT = "H" Or EVT = "H User Defined" Or EVT = "A" Or EVT = "A Level of Effort" Or EVT = "O" Or EVT = "O Earned As Spent" Then '3.4.4
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo nrBCWP_WP_Match_B
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        'Found an existing matching WP line
-                                        If t.BaselineStart <> "NA" Then
-                                            If ACTarray(i).BStart = 0 Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            Else
-                                                If ACTarray(i).BStart > t.BaselineStart Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineFinish <> "NA" Then
-                                            If ACTarray(i).BFinish = 0 Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            Else
-                                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                        If t.ActualStart <> "NA" Then
-                                            If ACTarray(i).AStart = 0 Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            Else
-                                                If t.ActualStart < ACTarray(i).AStart Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            If ACTarray(i).AFinish = 0 Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            Else
-                                                If t.ActualFinish > ACTarray(i).AFinish Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                End If
-                                            End If
-                                        End If
-
-                                        GoTo nrBCWP_WP_Match_B
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-
-                                X = X + 1
-                                ActFound = True
+                                GoTo Next_Assign_B
 
                             End If
 
-                        End If
-
-                    End If
-
-                End If
-
-nrBCWP_WP_Match_B:
-
-            Next t
-
-        End If
-
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
-                If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
-
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).WP & "," & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & "," & aStartString & "," & aFinishString & "," & ACTarray(i).Prog & ","
-
-                If CAID3_Used = True And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = False Then
-                    outputStr = ACTarray(i).CAID1 & "," & outputStr
-                End If
-                
-                If subprojectIDs Then 'v3.4.3
-                    outputStr = ACTarray(i).SubProject & "," & outputStr
-                End If
-                
-                Print #1, outputStr
-
-            Next i
-        End If
-
-        Close #1
-
-    Else '**Resource Loaded**
-
-        ACTfilename = destFolder & "\BCWP ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
-        
-        'v3.4.3 - refactored header output code
-        headerStr = ",WP,Milestone,Forecast Start Date,Forecast Finish Date,Actual Start Date,Actual Finish Date,Percent Complete,Resource,"
-        
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
-        
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
-
-        X = 1
-        ActFound = False
-
-        If curProj.Subprojects.Count > 0 Then
-
-            Set subProjs = curProj.Subprojects
-
-            For Each subProj In subProjs
-
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
-
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                            If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                If Milestones_Used = True Then
-                                    UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                End If
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                                ResName = "" 'v3.3.0
-
-                                If EVT = "B" And Milestones_Used = False Then
-                                    ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                    err.Raise 1
-                                End If
-                                
-                                'v3.4.3 - refactored data output code
-
-                                If EVT = "B" Or EVT = "B Milestone" Or EVT = "N" Or EVT = "N Earned Rules" Then
-
-                                    outputStr = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
-
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
+                            For i = 1 To UBound(ACTarray)
+                                If ACTarray(i).ID = tempID Then
+                                    'Found an existing matching WP line
+                                    If ACTarray(i).FStart > tAssign.Start Then
+                                        ACTarray(i).FStart = tAssign.Start
                                     End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
+                                    If ACTarray(i).FFinish < tAssign.Finish Then
+                                        ACTarray(i).FFinish = tAssign.Finish
                                     End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-    
-                                ElseIf EVT = "L" Or EVT = "L Assignment % Complete" Then 'v3.3.0
-                                
-                                    'store ACT info
-                                    'WP Data
-                                    
-                                    Set tAss = t.Assignments
-                                        
-                                    For Each tAssign In tAss
-                                    
-                                        ResName = tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource))
-                                        tempID = ID & "/" & ResName
-                                        
-                                        If X = 1 Then
-    
-                                            'create new WP line in ACTarrray
-                                            ReDim ACTarray(1 To X)
-                                            If CAID3_Used = True Then
-                                                ACTarray(X).CAID3 = CAID3
-                                            End If
-                                            ACTarray(X).CAM = CAM
-                                            ACTarray(X).Resource = ResName
-                                            ACTarray(X).ID = tempID
-                                            ACTarray(X).CAID1 = CAID1
-                                            ACTarray(X).EVT = EVT
-                                            If CAID2_Used = True Then
-                                                ACTarray(X).CAID2 = CAID2
-                                            End If
-                                            If subprojectIDs Then 'v3.4.3
-                                                ACTarray(X).SubProject = ProjID
-                                            End If
-                                            ACTarray(X).WP = WP
-                                            ACTarray(X).FFinish = tAssign.Finish
-                                            ACTarray(X).FStart = tAssign.Start
-                                            If tAssign.ActualStart <> "NA" Then ACTarray(X).AStart = tAssign.ActualStart
-                                            If tAssign.ActualFinish <> "NA" Then ACTarray(X).AFinish = tAssign.ActualFinish
-                                            
-                                            If tAssign.BaselineWork <> 0 Then
-                                                ACTarray(X).sumBCWS = tAssign.BaselineWork / 60
-                                                ACTarray(X).sumBCWP = tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
-                                            Else
-                                                ACTarray(X).sumBCWS = tAssign.BaselineCost
-                                                ACTarray(X).sumBCWP = tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
-                                            End If
-                                            
-                                            If ACTarray(X).sumBCWS > 0 Then ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-    
-                                            X = X + 1
-                                            ActFound = True
-    
-                                            GoTo Next_Assign_A
-    
-                                        End If
-    
-                                        For i = 1 To UBound(ACTarray)
-                                            If ACTarray(i).ID = tempID Then
-                                                'Found an existing matching WP line
-                                                If ACTarray(i).FStart > tAssign.Start Then
-                                                    ACTarray(i).FStart = tAssign.Start
-                                                End If
-                                                If ACTarray(i).FFinish < tAssign.Finish Then
-                                                    ACTarray(i).FFinish = tAssign.Finish
-                                                End If
-                                                If tAssign.ActualStart <> "NA" Then
-                                                    If ACTarray(i).AStart = 0 Then
-                                                        ACTarray(i).AStart = tAssign.ActualStart
-                                                    Else
-                                                        If tAssign.ActualStart < ACTarray(i).AStart Then
-                                                            ACTarray(i).AStart = tAssign.ActualStart
-                                                        End If
-                                                    End If
-                                                End If
-                                                If tAssign.ActualFinish <> "NA" Then
-                                                    If ACTarray(i).AFinish = 0 Then
-                                                        ACTarray(i).AFinish = tAssign.ActualFinish
-                                                    Else
-                                                        If tAssign.ActualFinish > ACTarray(i).AFinish Then
-                                                            ACTarray(i).AFinish = tAssign.ActualFinish
-                                                        End If
-                                                    End If
-                                                End If
-                                                If tAssign.BaselineWork <> 0 Then
-                                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineWork / 60
-                                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
-                                                Else
-                                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineCost
-                                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
-                                                End If
-    
-                                                If ACTarray(i).sumBCWS > 0 Then ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
-    
-                                                GoTo Next_Assign_A
-                                            End If
-                                        Next i
-    
-                                        'No match found, create new WP line in ACTarrray
-                                        ReDim Preserve ACTarray(1 To X)
-                                        
-                                        If CAID3_Used = True Then
-                                            ACTarray(X).CAID3 = CAID3
-                                        End If
-                                        ACTarray(X).Resource = ResName
-                                        ACTarray(X).ID = tempID
-                                        ACTarray(X).CAM = CAM
-                                        ACTarray(X).CAID1 = CAID1
-                                        ACTarray(X).EVT = EVT
-                                        ACTarray(X).FFinish = tAssign.Finish
-                                        ACTarray(X).FStart = tAssign.Start
-                                        If CAID2_Used = True Then
-                                            ACTarray(X).CAID2 = CAID2
-                                        End If
-                                        If subprojectIDs Then 'v3.4.3
-                                            ACTarray(X).SubProject = ProjID
-                                        End If
-                                        ACTarray(X).WP = WP
-                                        If tAssign.ActualStart <> "NA" Then
-                                            ACTarray(X).AStart = tAssign.ActualStart
-                                        End If
-                                        If tAssign.ActualFinish <> "NA" Then
-                                            ACTarray(X).AFinish = tAssign.ActualFinish
-                                        End If
-                                        If tAssign.BaselineWork <> 0 Then
-                                            ACTarray(X).sumBCWS = tAssign.BaselineWork / 60
-                                            ACTarray(X).sumBCWP = tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
-                                        Else
-                                            ACTarray(X).sumBCWS = tAssign.BaselineCost
-                                            ACTarray(X).sumBCWP = tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
-                                        End If
-                                        
-                                        If ACTarray(X).sumBCWS > 0 Then ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                        X = X + 1
-                                        
-                                        ActFound = True
-                                        
-Next_Assign_A:
-
-                                    Next tAssign
-                                
-                                ElseIf EVT = "C" Or EVT = "C % Work Complete" Then
-
-                                    'store ACT info
-                                    'WP Data
-                                    If X = 1 Then
-
-                                        'create new WP line in ACTarrray
-                                        ReDim ACTarray(1 To X)
-                                        If t.BaselineFinish <> "NA" Then
-                                            ACTarray(X).BFinish = t.BaselineFinish
-                                        End If
-                                        If t.BaselineStart <> "NA" Then
-                                            ACTarray(X).BStart = t.BaselineStart
-                                        End If
-                                        If CAID3_Used = True Then
-                                            ACTarray(X).CAID3 = CAID3
-                                        End If
-                                        ACTarray(X).CAM = CAM
-                                        ACTarray(X).ID = ID
-                                        ACTarray(X).CAID1 = CAID1
-                                        ACTarray(X).EVT = EVT
-                                        ACTarray(X).FFinish = t.Finish
-                                        ACTarray(X).FStart = t.Start
-                                        If CAID2_Used = True Then
-                                            ACTarray(X).CAID2 = CAID2
-                                        End If
-                                        If subprojectIDs Then 'v3.4.3
-                                            ACTarray(X).SubProject = ProjID
-                                        End If
-                                        ACTarray(X).WP = WP
-                                        If t.ActualStart <> "NA" Then
-                                            ACTarray(X).AStart = t.ActualStart
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            ACTarray(X).AFinish = t.ActualFinish
-                                        End If
-                                        If t.BaselineWork <> 0 Then
-                                            ACTarray(X).sumBCWS = t.BaselineWork / 60
-                                            ACTarray(X).sumBCWP = t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                        Else
-                                            ACTarray(X).sumBCWS = t.BaselineCost
-                                            ACTarray(X).sumBCWP = t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                        End If
-                                        ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                        X = X + 1
-                                        ActFound = True
-
-                                        GoTo BCWP_WP_Match_A
-
-                                    End If
-
-                                    For i = 1 To UBound(ACTarray)
-                                        If ACTarray(i).ID = ID Then
-                                            'Found an existing matching WP line
-                                            If t.BaselineStart <> "NA" Then
-                                                If ACTarray(i).BStart = 0 Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                Else
-                                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                                        ACTarray(i).BStart = t.BaselineStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.BaselineFinish <> "NA" Then
-                                                If ACTarray(i).BFinish = 0 Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                Else
-                                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                        ACTarray(i).BFinish = t.BaselineFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If ACTarray(i).FStart > t.Start Then
-                                                ACTarray(i).FStart = t.Start
-                                            End If
-                                            If ACTarray(i).FFinish < t.Finish Then
-                                                ACTarray(i).FFinish = t.Finish
-                                            End If
-                                            If t.ActualStart <> "NA" Then
-                                                If ACTarray(i).AStart = 0 Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                Else
-                                                    If t.ActualStart < ACTarray(i).AStart Then
-                                                        ACTarray(i).AStart = t.ActualStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.ActualFinish <> "NA" Then
-                                                If ACTarray(i).AFinish = 0 Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                Else
-                                                    If t.ActualFinish > ACTarray(i).AFinish Then
-                                                        ACTarray(i).AFinish = t.ActualFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.BaselineWork <> 0 Then
-                                                ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineWork / 60
-                                                ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                            Else
-                                                ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineCost
-                                                ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                            End If
-
-                                            ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
-
-                                            GoTo BCWP_WP_Match_A
-                                        End If
-                                    Next i
-
-                                    'No match found, create new WP line in ACTarrray
-                                    ReDim Preserve ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-                                    If t.BaselineWork <> 0 Then
-                                        ACTarray(X).sumBCWS = t.BaselineWork / 60 'v3.3.0
-                                        ACTarray(X).sumBCWP = t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100 'v3.3.0
-                                    Else
-                                        ACTarray(X).sumBCWS = t.BaselineCost
-                                        ACTarray(X).sumBCWP = t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100 'v3.3.0
-                                    End If
-                                    ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                ElseIf EVT = "E" Or EVT = "E 50/50" Or EVT = "F" Or EVT = "F 0/100" Or EVT = "G" Or EVT = "G 100/0" Or _
-                                    EVT = "H" Or EVT = "H User Defined" Or EVT = "A" Or EVT = "A Level of Effort" Or EVT = "O" Or EVT = "O Earned As Spent" Then '3.4.4
-
-                                    'store ACT info
-                                    'WP Data
-                                    If X = 1 Then
-
-                                        'create new WP line in ACTarrray
-                                        ReDim ACTarray(1 To X)
-                                        If t.BaselineFinish <> "NA" Then
-                                            ACTarray(X).BFinish = t.BaselineFinish
-                                        End If
-                                        If t.BaselineStart <> "NA" Then
-                                            ACTarray(X).BStart = t.BaselineStart
-                                        End If
-                                        If CAID3_Used = True Then
-                                            ACTarray(X).CAID3 = CAID3
-                                        End If
-                                        ACTarray(X).CAM = CAM
-                                        ACTarray(X).ID = ID
-                                        ACTarray(X).CAID1 = CAID1
-                                        ACTarray(X).EVT = EVT
-                                        ACTarray(X).FFinish = t.Finish
-                                        ACTarray(X).FStart = t.Start
-                                        If CAID2_Used = True Then
-                                            ACTarray(X).CAID2 = CAID2
-                                        End If
-                                        If subprojectIDs Then 'v3.4.3
-                                            ACTarray(X).SubProject = ProjID
-                                        End If
-                                        ACTarray(X).WP = WP
-                                        If t.ActualStart <> "NA" Then
-                                            ACTarray(X).AStart = t.ActualStart
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            ACTarray(X).AFinish = t.ActualFinish
-                                        End If
-
-                                        X = X + 1
-                                        ActFound = True
-
-                                        GoTo BCWP_WP_Match_A
-
-                                    End If
-
-                                    For i = 1 To UBound(ACTarray)
-                                        If ACTarray(i).ID = ID Then
-                                            'Found an existing matching WP line
-                                            If t.BaselineStart <> "NA" Then
-                                                If ACTarray(i).BStart = 0 Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                Else
-                                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                                        ACTarray(i).BStart = t.BaselineStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.BaselineFinish <> "NA" Then
-                                                If ACTarray(i).BFinish = 0 Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                Else
-                                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                        ACTarray(i).BFinish = t.BaselineFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If ACTarray(i).FStart > t.Start Then
-                                                ACTarray(i).FStart = t.Start
-                                            End If
-                                            If ACTarray(i).FFinish < t.Finish Then
-                                                ACTarray(i).FFinish = t.Finish
-                                            End If
-                                            If t.ActualStart <> "NA" Then
-                                                If ACTarray(i).AStart = 0 Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                Else
-                                                    If t.ActualStart < ACTarray(i).AStart Then
-                                                        ACTarray(i).AStart = t.ActualStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If t.ActualFinish <> "NA" Then
-                                                If ACTarray(i).AFinish = 0 Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                Else
-                                                    If t.ActualFinish > ACTarray(i).AFinish Then
-                                                        ACTarray(i).AFinish = t.ActualFinish
-                                                    End If
-                                                End If
-                                            End If
-
-                                            GoTo BCWP_WP_Match_A
-                                        End If
-                                    Next i
-
-                                    'No match found, create new WP line in ACTarrray
-                                    ReDim Preserve ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                End If
-
-                            End If
-
-                        End If
-
-                    End If
-
-BCWP_WP_Match_A:
-
-                Next t
-
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            If Milestones_Used = True Then
-                                UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                            End If
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                            ResName = "" 'v3.3.0
-
-                            If EVT = "B" And Milestones_Used = False Then
-                                ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                err.Raise 1
-                            End If
-
-                            If EVT = "B" Or EVT = "B Milestone" Or EVT = "N" Or EVT = "N Earned Rules" Then
-
-                                'v3.4.3 - refactored data output code
-                                
-                                outputStr = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
-
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    outputStr = CAID1 & "," & outputStr
-                                End If
-                                
-                                If subprojectIDs Then 'v3.4.3
-                                    outputStr = ProjID & "," & outputStr
-                                End If
-                                
-                                Print #1, outputStr
-                                
-                            ElseIf EVT = "L" Or EVT = "L Assignment % Complete" Then 'v3.3.0
-                                
-                                'store ACT info
-                                'WP Data
-                                
-                                Set tAss = t.Assignments
-                                    
-                                For Each tAssign In tAss
-                                
-                                    ResName = tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource))
-                                    tempID = ID & "/" & ResName
-                                    
-                                    If X = 1 Then
-
-                                        'create new WP line in ACTarrray
-                                        ReDim ACTarray(1 To X)
-                                        If CAID3_Used = True Then
-                                            ACTarray(X).CAID3 = CAID3
-                                        End If
-                                        ACTarray(X).CAM = CAM
-                                        ACTarray(X).Resource = ResName
-                                        ACTarray(X).ID = tempID
-                                        ACTarray(X).CAID1 = CAID1
-                                        ACTarray(X).EVT = EVT
-                                        If CAID2_Used = True Then
-                                            ACTarray(X).CAID2 = CAID2
-                                        End If
-                                        If subprojectIDs Then 'v3.4.3
-                                            ACTarray(X).SubProject = ProjID
-                                        End If
-                                        ACTarray(X).WP = WP
-                                        ACTarray(X).FFinish = tAssign.Finish
-                                        ACTarray(X).FStart = tAssign.Start
-                                        If tAssign.ActualStart <> "NA" Then ACTarray(X).AStart = tAssign.ActualStart
-                                        If tAssign.ActualFinish <> "NA" Then ACTarray(X).AFinish = tAssign.ActualFinish
-                                        
-                                        If tAssign.BaselineWork <> 0 Then
-                                            ACTarray(X).sumBCWS = tAssign.BaselineWork / 60
-                                            ACTarray(X).sumBCWP = tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
-                                        Else
-                                            ACTarray(X).sumBCWS = tAssign.BaselineCost
-                                            ACTarray(X).sumBCWP = tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
-                                        End If
-                                        
-                                        If ACTarray(X).sumBCWS > 0 Then ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                        X = X + 1
-                                        
-                                        ActFound = True
-
-                                        GoTo Next_Assign_B
-
-                                    End If
-
-                                    For i = 1 To UBound(ACTarray)
-                                        If ACTarray(i).ID = tempID Then
-                                            'Found an existing matching WP line
-                                            If ACTarray(i).FStart > tAssign.Start Then
-                                                ACTarray(i).FStart = tAssign.Start
-                                            End If
-                                            If ACTarray(i).FFinish < tAssign.Finish Then
-                                                ACTarray(i).FFinish = tAssign.Finish
-                                            End If
-                                            If tAssign.ActualStart <> "NA" Then
-                                                If ACTarray(i).AStart = 0 Then
-                                                    ACTarray(i).AStart = tAssign.ActualStart
-                                                Else
-                                                    If tAssign.ActualStart < ACTarray(i).AStart Then
-                                                        ACTarray(i).AStart = tAssign.ActualStart
-                                                    End If
-                                                End If
-                                            End If
-                                            If tAssign.ActualFinish <> "NA" Then
-                                                If ACTarray(i).AFinish = 0 Then
-                                                    ACTarray(i).AFinish = tAssign.ActualFinish
-                                                Else
-                                                    If tAssign.ActualFinish > ACTarray(i).AFinish Then
-                                                        ACTarray(i).AFinish = tAssign.ActualFinish
-                                                    End If
-                                                End If
-                                            End If
-                                            If tAssign.BaselineWork <> 0 Then
-                                                ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineWork / 60
-                                                ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
-                                            Else
-                                                ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineCost
-                                                ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
-                                            End If
-
-                                            If ACTarray(i).sumBCWS > 0 Then ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
-
-                                            GoTo Next_Assign_B
-                                            
-                                        End If
-                                    Next i
-
-                                    'No match found, create new WP line in ACTarrray
-                                    ReDim Preserve ACTarray(1 To X)
-                                    
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).Resource = ResName
-                                    ACTarray(X).ID = tempID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = tAssign.Finish
-                                    ACTarray(X).FStart = tAssign.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
                                     If tAssign.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = tAssign.ActualStart
+                                        If ACTarray(i).AStart = 0 Then
+                                            ACTarray(i).AStart = tAssign.ActualStart
+                                        Else
+                                            If tAssign.ActualStart < ACTarray(i).AStart Then
+                                                ACTarray(i).AStart = tAssign.ActualStart
+                                            End If
+                                        End If
                                     End If
                                     If tAssign.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = tAssign.ActualFinish
+                                        If ACTarray(i).AFinish = 0 Then
+                                            ACTarray(i).AFinish = tAssign.ActualFinish
+                                        Else
+                                            If tAssign.ActualFinish > ACTarray(i).AFinish Then
+                                                ACTarray(i).AFinish = tAssign.ActualFinish
+                                            End If
+                                        End If
                                     End If
                                     If tAssign.BaselineWork <> 0 Then
-                                        ACTarray(X).sumBCWS = tAssign.BaselineWork / 60
-                                        ACTarray(X).sumBCWP = tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
+                                        ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineWork / 60
+                                        ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
                                     Else
-                                        ACTarray(X).sumBCWS = tAssign.BaselineCost
-                                        ACTarray(X).sumBCWP = tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
+                                        ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineCost
+                                        ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
                                     End If
+
+                                    If ACTarray(i).sumBCWS > 0 Then ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
+
+                                    GoTo Next_Assign_B
                                     
-                                    If ACTarray(X).sumBCWS > 0 Then ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                    X = X + 1
-                                    
-                                    ActFound = True
-                                    
-Next_Assign_B:
-                                
-                                Next tAssign
-
-                            ElseIf EVT = "C" Or EVT = "C % Work Complete" Then
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-                                    If t.BaselineWork <> 0 Then
-                                        ACTarray(X).sumBCWS = t.BaselineWork / 60
-                                        ACTarray(X).sumBCWP = t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                    Else
-                                        ACTarray(X).sumBCWS = t.BaselineCost
-                                        ACTarray(X).sumBCWP = t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                    End If
-                                    ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo BCWP_WP_Match_B
-
                                 End If
+                            Next i
 
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        'Found an existing matching WP line
-                                        If t.BaselineStart <> "NA" Then
-                                            If ACTarray(i).BStart = 0 Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            Else
-                                                If ACTarray(i).BStart > t.BaselineStart Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineFinish <> "NA" Then
-                                            If ACTarray(i).BFinish = 0 Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            Else
-                                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                        If t.ActualStart <> "NA" Then
-                                            If ACTarray(i).AStart = 0 Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            Else
-                                                If t.ActualStart < ACTarray(i).AStart Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            If ACTarray(i).AFinish = 0 Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            Else
-                                                If t.ActualFinish > ACTarray(i).AFinish Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineWork <> 0 Then
-                                            ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineWork / 60
-                                            ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                        Else
-                                            ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineCost
-                                            ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
-                                        End If
-                                        ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
-
-                                        GoTo BCWP_WP_Match_B
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-                                If t.BaselineWork <> 0 Then
-                                    ACTarray(X).sumBCWS = t.BaselineWork / 60
-                                    ACTarray(X).sumBCWP = t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                Else
-                                    ACTarray(X).sumBCWS = t.BaselineCost
-                                    ACTarray(X).sumBCWP = t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
-                                End If
-                                ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
-
-                                X = X + 1
-                                ActFound = True
-
-                            ElseIf EVT = "E" Or EVT = "E 50/50" Or EVT = "F" Or EVT = "F 0/100" Or EVT = "G" Or EVT = "G 100/0" Or _
-                                EVT = "H" Or EVT = "H User Defined" Or EVT = "A" Or EVT = "A Level of Effort" Or EVT = "O" Or EVT = "O Earned As Spent" Then '3.4.4
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo BCWP_WP_Match_B
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        'Found an existing matching WP line
-                                        If t.BaselineStart <> "NA" Then
-                                            If ACTarray(i).BStart = 0 Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            Else
-                                                If ACTarray(i).BStart > t.BaselineStart Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineFinish <> "NA" Then
-                                            If ACTarray(i).BFinish = 0 Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            Else
-                                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                        If t.ActualStart <> "NA" Then
-                                            If ACTarray(i).AStart = 0 Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            Else
-                                                If t.ActualStart < ACTarray(i).AStart Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            If ACTarray(i).AFinish = 0 Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            Else
-                                                If t.ActualFinish > ACTarray(i).AFinish Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                End If
-                                            End If
-                                        End If
-
-                                        GoTo BCWP_WP_Match_B
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
+                            'No match found, create new WP line in ACTarrray
+                            ReDim Preserve ACTarray(1 To X)
+                            
+                            If CAID3_Used = True Then
+                                ACTarray(X).CAID3 = CAID3
                             End If
+                            ACTarray(X).Resource = ResName
+                            ACTarray(X).ID = tempID
+                            ACTarray(X).CAM = CAM
+                            ACTarray(X).CAID1 = CAID1
+                            ACTarray(X).EVT = EVT
+                            ACTarray(X).FFinish = tAssign.Finish
+                            ACTarray(X).FStart = tAssign.Start
+                            If CAID2_Used = True Then
+                                ACTarray(X).CAID2 = CAID2
+                            End If
+                            If subprojectIDs Then 'v3.4.3
+                                ACTarray(X).SubProject = ProjID
+                            End If
+                            ACTarray(X).WP = WP
+                            If tAssign.ActualStart <> "NA" Then
+                                ACTarray(X).AStart = tAssign.ActualStart
+                            End If
+                            If tAssign.ActualFinish <> "NA" Then
+                                ACTarray(X).AFinish = tAssign.ActualFinish
+                            End If
+                            If tAssign.BaselineWork <> 0 Then
+                                ACTarray(X).sumBCWS = tAssign.BaselineWork / 60
+                                ACTarray(X).sumBCWP = tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
+                            Else
+                                ACTarray(X).sumBCWS = tAssign.BaselineCost
+                                ACTarray(X).sumBCWP = tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100
+                            End If
+                            
+                            If ACTarray(X).sumBCWS > 0 Then ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
+
+                            X = X + 1
+                            
+                            ActFound = True
+                            
+Next_Assign_B:
+                        
+                        Next tAssign
+
+                    ElseIf EVT = "C" Or EVT = "C % Work Complete" Then
+
+                        'store ACT info
+                        'WP Data
+                        If X = 1 Then
+
+                            'create new WP line in ACTarrray
+                            ReDim ACTarray(1 To X)
+                            InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish, t.ActualStart, t.ActualFinish
+                            If ResourceLoaded And t.BaselineWork <> 0 Then
+                                ACTarray(X).sumBCWS = t.BaselineWork / 60
+                                ACTarray(X).sumBCWP = t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                            ElseIf ResourceLoaded Then
+                                ACTarray(X).sumBCWS = t.BaselineCost
+                                ACTarray(X).sumBCWP = t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                            Else
+                                ACTarray(X).sumBCWS = 1
+                                ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                            End If
+                            ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
+
+                            X = X + 1
+                            ActFound = True
+
+                            GoTo BCWP_WP_Match_B
 
                         End If
+
+                        For i = 1 To UBound(ACTarray)
+                            If ACTarray(i).ID = ID Then
+                                'Found an existing matching WP line
+                                If t.BaselineStart <> "NA" Then
+                                    If ACTarray(i).BStart = 0 Then
+                                        ACTarray(i).BStart = t.BaselineStart
+                                    Else
+                                        If ACTarray(i).BStart > t.BaselineStart Then
+                                            ACTarray(i).BStart = t.BaselineStart
+                                        End If
+                                    End If
+                                End If
+                                If t.BaselineFinish <> "NA" Then
+                                    If ACTarray(i).BFinish = 0 Then
+                                        ACTarray(i).BFinish = t.BaselineFinish
+                                    Else
+                                        If ACTarray(i).BFinish < t.BaselineFinish Then
+                                            ACTarray(i).BFinish = t.BaselineFinish
+                                        End If
+                                    End If
+                                End If
+                                If ACTarray(i).FStart > t.Start Then
+                                    ACTarray(i).FStart = t.Start
+                                End If
+                                If ACTarray(i).FFinish < t.Finish Then
+                                    ACTarray(i).FFinish = t.Finish
+                                End If
+                                If t.ActualStart <> "NA" Then
+                                    If ACTarray(i).AStart = 0 Then
+                                        ACTarray(i).AStart = t.ActualStart
+                                    Else
+                                        If t.ActualStart < ACTarray(i).AStart Then
+                                            ACTarray(i).AStart = t.ActualStart
+                                        End If
+                                    End If
+                                End If
+                                If t.ActualFinish <> "NA" Then
+                                    If ACTarray(i).AFinish = 0 Then
+                                        ACTarray(i).AFinish = t.ActualFinish
+                                    Else
+                                        If t.ActualFinish > ACTarray(i).AFinish Then
+                                            ACTarray(i).AFinish = t.ActualFinish
+                                        End If
+                                    End If
+                                End If
+                                If ResourceLoaded And t.BaselineWork <> 0 Then
+                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineWork / 60
+                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
+                                ElseIf ResourceLoaded Then
+                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineCost
+                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
+                                Else
+                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + 1
+                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
+                                End If
+                                ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
+
+                                GoTo BCWP_WP_Match_B
+                            End If
+                        Next i
+
+                        'No match found, create new WP line in ACTarrray
+                        ReDim Preserve ACTarray(1 To X)
+                        InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish, t.ActualStart, t.ActualFinish
+                        If ResourceLoaded And t.BaselineWork <> 0 Then
+                            ACTarray(X).sumBCWS = t.BaselineWork / 60
+                            ACTarray(X).sumBCWP = t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                        ElseIf ResourceLoaded Then
+                            ACTarray(X).sumBCWS = t.BaselineCost
+                            ACTarray(X).sumBCWP = t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                        Else
+                            ACTarray(X).sumBCWS = 1
+                            ACTarray(X).sumBCWP = 1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100
+                        End If
+                        ACTarray(X).Prog = ACTarray(X).sumBCWP / ACTarray(X).sumBCWS * 100
+
+                        X = X + 1
+                        ActFound = True
+
+                    ElseIf EVT = "E" Or EVT = "E 50/50" Or EVT = "F" Or EVT = "F 0/100" Or EVT = "G" Or EVT = "G 100/0" Or _
+                        EVT = "H" Or EVT = "H User Defined" Or EVT = "A" Or EVT = "A Level of Effort" Or EVT = "O" Or EVT = "O Earned As Spent" Then '3.4.4
+
+                        'store ACT info
+                        'WP Data
+                        If X = 1 Then
+
+                            'create new WP line in ACTarrray
+                            ReDim ACTarray(1 To X)
+                            InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish, t.ActualStart, t.ActualFinish
+
+                            X = X + 1
+                            ActFound = True
+
+                            GoTo BCWP_WP_Match_B
+
+                        End If
+
+                        For i = 1 To UBound(ACTarray)
+                            If ACTarray(i).ID = ID Then
+                                'Found an existing matching WP line
+                                If t.BaselineStart <> "NA" Then
+                                    If ACTarray(i).BStart = 0 Then
+                                        ACTarray(i).BStart = t.BaselineStart
+                                    Else
+                                        If ACTarray(i).BStart > t.BaselineStart Then
+                                            ACTarray(i).BStart = t.BaselineStart
+                                        End If
+                                    End If
+                                End If
+                                If t.BaselineFinish <> "NA" Then
+                                    If ACTarray(i).BFinish = 0 Then
+                                        ACTarray(i).BFinish = t.BaselineFinish
+                                    Else
+                                        If ACTarray(i).BFinish < t.BaselineFinish Then
+                                            ACTarray(i).BFinish = t.BaselineFinish
+                                        End If
+                                    End If
+                                End If
+                                If ACTarray(i).FStart > t.Start Then
+                                    ACTarray(i).FStart = t.Start
+                                End If
+                                If ACTarray(i).FFinish < t.Finish Then
+                                    ACTarray(i).FFinish = t.Finish
+                                End If
+                                If t.ActualStart <> "NA" Then
+                                    If ACTarray(i).AStart = 0 Then
+                                        ACTarray(i).AStart = t.ActualStart
+                                    Else
+                                        If t.ActualStart < ACTarray(i).AStart Then
+                                            ACTarray(i).AStart = t.ActualStart
+                                        End If
+                                    End If
+                                End If
+                                If t.ActualFinish <> "NA" Then
+                                    If ACTarray(i).AFinish = 0 Then
+                                        ACTarray(i).AFinish = t.ActualFinish
+                                    Else
+                                        If t.ActualFinish > ACTarray(i).AFinish Then
+                                            ACTarray(i).AFinish = t.ActualFinish
+                                        End If
+                                    End If
+                                End If
+
+                                GoTo BCWP_WP_Match_B
+                            End If
+                        Next i
+
+                        'No match found, create new WP line in ACTarrray
+                        ReDim Preserve ACTarray(1 To X)
+                        InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish, t.ActualStart, t.ActualFinish
+
+                        X = X + 1
+                        ActFound = True
 
                     End If
 
                 End If
+
+            End If
+
+        End If
 
 BCWP_WP_Match_B:
 
-            Next t
-
-        End If
-
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
-                If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
-
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).WP & "," & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & "," & aStartString & "," & aFinishString & "," & ACTarray(i).Prog & "," & ACTarray(i).Resource & ","
-
-                If CAID3_Used = True And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = False Then
-                    outputStr = ACTarray(i).CAID1 & "," & outputStr
-                End If
-                
-                If subprojectIDs Then 'v3.4.3
-                    outputStr = ACTarray(i).SubProject & "," & outputStr
-                End If
-                
-                Print #1, outputStr
-
-            Next i
-        End If
-
-        Close #1
-
+    Next t
+    
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    
+    If ActFound = True Then
+        For i = 1 To UBound(ACTarray)
+    
+            If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
+            If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
+    
+            'v3.4.3 - refactored data output code
+            
+            outputStr = ACTarray(i).WP & "," & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & "," & aStartString & "," & aFinishString & "," & ACTarray(i).Prog & ","
+    
+            If ResourceLoaded Then outputStr = outputStr & ACTarray(i).Resource & ","
+    
+            outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+            
+            Print #1, outputStr
+    
+        Next i
     End If
+    
+    Close #1
 
 End Sub
 
@@ -3256,11 +1837,13 @@ Private Sub ETC_Export(ByVal curProj As Project)
     Dim t As Task
     Dim tAss As Assignments
     Dim tAssign As Assignment
-    Dim ProjID, CAID1, CAID3, WP, CAM, EVT, UID, CAID2, MSWeight, ID, PCNT, ShortID As String 'v3.3.5, v3.4.3
+    Dim ProjID As String, CAID1 As String, CAID3 As String, WP As String, _
+    CAM As String, EVT As String, UID As String, CAID2 As String, MSWeight As String, _
+    ID As String, PCNT As String, ShortID As String 'v3.3.5, v3.4.3, v3.5.0
     Dim Milestone As String
     Dim subProj As SubProject
     Dim subProjs As Subprojects
-    Dim curSProj As Project
+    Dim cursproj As Project
     Dim ACTarray() As ACTrowWP
     Dim X As Integer
     Dim i As Integer
@@ -3268,1000 +1851,227 @@ Private Sub ETC_Export(ByVal curProj As Project)
     Dim aFinishString As String
     Dim headerStr As String 'v3.4.3
     Dim outputStr As String 'v3.4.3
+    Dim exportProj As Project
+    Dim subprojCount As Integer
 
     '*******************
     '****ETC Export****
     '*******************
     
+    OpenExportFiles curProj, "ETC", ETC, True
+    
+    X = 1
+    ActFound = False
+    
+    'Evaluate Project Data
+    
     ActIDCounter = 0 'v3.3.5
 
-    If ResourceLoaded = False Then
-
-        ACTfilename = destFolder & "\ETC ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
+    If curProj.Subprojects.Count > 0 Then
         
-        'v3.4.3 - refactored header output code
-        headerStr = ",CAM,WP,ID,Forecast Start Date,Forecast Finish Date,"
+        subprojCount = 0
+        Set subProjs = curProj.Subprojects
+    
+        For Each subProj In subProjs
+            
+            subprojCount = subprojCount + 1
+    
+            FileOpen Name:=subProj.Path, ReadOnly:=True
+            Set exportProj = ActiveProject
+    
+            GoTo Export_Project_Data
+    
+Next_Subproject:
+    
+            FileClose pjDoNotSave
+    
+        Next subProj
         
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
+    Else
+    
+        Set exportProj = curProj
         
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
+    End If
 
-        X = 1
-        ActFound = False
+Export_Project_Data:
+    
+    For Each t In exportProj.Tasks
 
-        If curProj.Subprojects.Count > 0 Then
+        If Not t Is Nothing Then
 
-            Set subProjs = curProj.Subprojects
+            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
 
-            For Each subProj In subProjs
+                If (ResourceLoaded And (t.Work > 0 Or t.Cost > 0)) Or (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "") Then
 
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
+                    ReadTaskFields t, CAID1, CAID2, CAID3, WP, EVT, CAM, ID, ProjID
 
-                For Each t In curSProj.Tasks
+                    'store ACT info
+                    'WP Data
+                    If X = 1 Then
 
-                    If Not t Is Nothing Then
+                        'create new WP line in ACTarrray
+                        ReDim ACTarray(1 To X)
+                        InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish, t.ActualStart, t.ActualFinish
+                        AssignShortID ACTarray, X, ShortID
 
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                        X = X + 1
+                        ActFound = True
 
-                            If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo nrETC_WP_Match
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        'Found an existing matching WP line
-                                        If t.BaselineStart <> "NA" Then
-                                            If ACTarray(i).BStart = 0 Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            Else
-                                                If ACTarray(i).BStart > t.BaselineStart Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineFinish <> "NA" Then
-                                            If ACTarray(i).BFinish = 0 Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            Else
-                                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                        If t.ActualStart <> "NA" Then
-                                            If ACTarray(i).AStart = 0 Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            Else
-                                                If t.ActualStart < ACTarray(i).AStart Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            If ACTarray(i).AFinish = 0 Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            Else
-                                                If t.ActualFinish > ACTarray(i).AFinish Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                End If
-                                            End If
-                                        End If
-                                        GoTo nrETC_WP_Match
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).ID = ID
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                'Milestone Data
-nrETC_WP_Match:
-
-
-
-                            End If
-
-                        End If
+                        GoTo ETC_WP_Match_B
 
                     End If
 
-                Next t
-
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-
-                            'store ACT info
-                            'WP Data
-                            If X = 1 Then
-
-                                'create new WP line in ACTarrray
-                                ReDim ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                GoTo nrETC_WP_Match_B
-
-                            End If
-
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = ID Then
-                                    'Found an existing matching WP line
-                                    If t.BaselineStart <> "NA" Then
-                                        If ACTarray(i).BStart = 0 Then
-                                            ACTarray(i).BStart = t.BaselineStart
-                                        Else
-                                            If ACTarray(i).BStart > t.BaselineStart Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            End If
-                                        End If
-                                    End If
-                                    If t.BaselineFinish <> "NA" Then
-                                        If ACTarray(i).BFinish = 0 Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
-                                        Else
-                                            If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            End If
-                                        End If
-                                    End If
-                                    If ACTarray(i).FStart > t.Start Then
-                                        ACTarray(i).FStart = t.Start
-                                    End If
-                                    If ACTarray(i).FFinish < t.Finish Then
-                                        ACTarray(i).FFinish = t.Finish
-                                    End If
-                                    If t.ActualStart <> "NA" Then
-                                        If ACTarray(i).AStart = 0 Then
-                                            ACTarray(i).AStart = t.ActualStart
-                                        Else
-                                            If t.ActualStart < ACTarray(i).AStart Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            End If
-                                        End If
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        If ACTarray(i).AFinish = 0 Then
-                                            ACTarray(i).AFinish = t.ActualFinish
-                                        Else
-                                            If t.ActualFinish > ACTarray(i).AFinish Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            End If
-                                        End If
-                                    End If
-
-                                    GoTo nrETC_WP_Match_B
-                                End If
-                            Next i
-
-                            'No match found, create new WP line in ACTarrray
-                            ReDim Preserve ACTarray(1 To X)
-                            If t.BaselineFinish <> "NA" Then
-                                ACTarray(X).BFinish = t.BaselineFinish
-                            End If
+                    For i = 1 To UBound(ACTarray)
+                        If ACTarray(i).ID = ID Then
+                            ShortID = ACTarray(i).ShortID
+                            'Found an existing matching WP line
                             If t.BaselineStart <> "NA" Then
-                                ACTarray(X).BStart = t.BaselineStart
+                                If ACTarray(i).BStart = 0 Then
+                                    ACTarray(i).BStart = t.BaselineStart
+                                Else
+                                    If ACTarray(i).BStart > t.BaselineStart Then
+                                        ACTarray(i).BStart = t.BaselineStart
+                                    End If
+                                End If
                             End If
-                            If CAID3_Used = True Then
-                                ACTarray(X).CAID3 = CAID3
+                            If t.BaselineFinish <> "NA" Then
+                                If ACTarray(i).BFinish = 0 Then
+                                    ACTarray(i).BFinish = t.BaselineFinish
+                                Else
+                                    If ACTarray(i).BFinish < t.BaselineFinish Then
+                                        ACTarray(i).BFinish = t.BaselineFinish
+                                    End If
+                                End If
                             End If
-                            ACTarray(X).CAM = CAM
-                            ACTarray(X).ID = ID
-                            ACTarray(X).CAID1 = CAID1
-                            ACTarray(X).EVT = EVT
-                            ACTarray(X).FFinish = t.Finish
-                            ACTarray(X).FStart = t.Start
-                            If CAID2_Used = True Then
-                                ACTarray(X).CAID2 = CAID2
+                            If ACTarray(i).FStart > t.Start Then
+                                ACTarray(i).FStart = t.Start
                             End If
-                            If subprojectIDs Then 'v3.4.3
-                                ACTarray(X).SubProject = ProjID
+                            If ACTarray(i).FFinish < t.Finish Then
+                                ACTarray(i).FFinish = t.Finish
                             End If
-                            ACTarray(X).WP = WP
                             If t.ActualStart <> "NA" Then
-                                ACTarray(X).AStart = t.ActualStart
+                                If ACTarray(i).AStart = 0 Then
+                                    ACTarray(i).AStart = t.ActualStart
+                                Else
+                                    If t.ActualStart < ACTarray(i).AStart Then
+                                        ACTarray(i).AStart = t.ActualStart
+                                    End If
+                                End If
                             End If
                             If t.ActualFinish <> "NA" Then
-                                ACTarray(X).AFinish = t.ActualFinish
-                            End If
-
-                            X = X + 1
-                            ActFound = True
-
-nrETC_WP_Match_B:
-
-                        End If
-
-                    End If
-
-                End If
-
-            Next t
-
-        End If
-
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
-                If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
-
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ID & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & ","
-
-                If aFinishString = "NA" Then
-                    If CAID3_Used = True And CAID2_Used = True Then
-                        outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                    End If
-                    If CAID3_Used = False And CAID2_Used = True Then
-                        outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                    End If
-                    If CAID3_Used = False And CAID2_Used = False Then
-                        outputStr = ACTarray(i).CAID1 & "," & outputStr
-                    End If
-                    
-                    If subprojectIDs Then 'v3.4.3
-                        outputStr = ACTarray(i).SubProject & "," & outputStr
-                    End If
-                    
-                    Print #1, outputStr
-                End If
-
-            Next i
-        End If
-
-        Close #1
-
-    Else '**Resource Loaded**
-
-        ACTfilename = destFolder & "\ETC ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-        RESfilename = destFolder & "\ETC RES_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
-        Open RESfilename For Output As #2
-
-        'v3.4.3 - refactored header output code
-        headerStr = ",CAM,WP,ID,Forecast Start Date,Forecast Finish Date,"
-        
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
-        
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
-
-        Print #2, "Cobra ID,Resource,Amount,From Date,To Date"
-
-        X = 1
-        ActFound = False
-
-        If curProj.Subprojects.Count > 0 Then
-
-            Set subProjs = curProj.Subprojects
-
-            For Each subProj In subProjs
-
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
-
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                            If t.Work > 0 Or t.Cost > 0 Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-                                
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.BaselineFinish <> "NA" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                    End If
-                                    If t.BaselineStart <> "NA" Then
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    If t.ActualStart <> "NA" Then
-                                        ACTarray(X).AStart = t.ActualStart
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        ACTarray(X).AFinish = t.ActualFinish
-                                    End If
-                                    'v3.3.5 - check for ID length limit
-                                    If Len(ID) > 58 Then
-                                        ActIDCounter = ActIDCounter + 1
-                                        ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                        ShortID = ACTarray(X).ShortID
-                                    Else
-                                        ACTarray(X).ShortID = ACTarray(X).ID
-                                        ShortID = ACTarray(X).ShortID 'v3.3.6
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo ETC_WP_Match
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        ShortID = ACTarray(i).ShortID
-                                        'Found an existing matching WP line
-                                        If t.BaselineStart <> "NA" Then
-                                            If ACTarray(i).BStart = 0 Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            Else
-                                                If ACTarray(i).BStart > t.BaselineStart Then
-                                                    ACTarray(i).BStart = t.BaselineStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.BaselineFinish <> "NA" Then
-                                            If ACTarray(i).BFinish = 0 Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            Else
-                                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                    ACTarray(i).BFinish = t.BaselineFinish
-                                                End If
-                                            End If
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                        If t.ActualStart <> "NA" Then
-                                            If ACTarray(i).AStart = 0 Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            Else
-                                                If t.ActualStart < ACTarray(i).AStart Then
-                                                    ACTarray(i).AStart = t.ActualStart
-                                                End If
-                                            End If
-                                        End If
-                                        If t.ActualFinish <> "NA" Then
-                                            If ACTarray(i).AFinish = 0 Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            Else
-                                                If t.ActualFinish > ACTarray(i).AFinish Then
-                                                    ACTarray(i).AFinish = t.ActualFinish
-                                                End If
-                                            End If
-                                        End If
-                                        GoTo ETC_WP_Match
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).ID = ID
-                                
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-                                'v3.3.5 - check for ID length limit
-                                If Len(ID) > 58 Then
-                                    ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                    ShortID = ACTarray(X).ShortID
+                                If ACTarray(i).AFinish = 0 Then
+                                    ACTarray(i).AFinish = t.ActualFinish
                                 Else
-                                    ACTarray(X).ShortID = ACTarray(X).ID
-                                    ShortID = ACTarray(X).ShortID 'v3.3.6
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                'Milestone Data
-ETC_WP_Match:
-
-
-                                Set tAss = t.Assignments
-
-                                For Each tAssign In tAss
-
-                                    If TimeScaleExport = True Then
-
-                                        ExportTimeScaleResources ShortID, t, tAssign, 2, "ETC"
-
-                                    Else
-
-                                        Select Case tAssign.ResourceType
-
-                                            Case pjResourceTypeWork
-
-                                            If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingWork / 60 & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
-
-                                            ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-
-                                            End If
-
-                                        Case pjResourceTypeCost
-
-                                            If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingCost <> 0 Then 'v3.4.5
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingCost & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
-                                                
-
-                                            ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingCost <> 0 Then 'v3.4.5
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Cost & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-
-                                            End If
-
-                                        Case pjResourceTypeMaterial
-
-                                            If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingWork & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
-
-                                            ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-
-                                            End If
-
-                                        End Select
-
+                                    If t.ActualFinish > ACTarray(i).AFinish Then
+                                        ACTarray(i).AFinish = t.ActualFinish
                                     End If
-
-                                Next tAssign
-
+                                End If
                             End If
 
+                            GoTo ETC_WP_Match_B
                         End If
+                    Next i
 
-                    End If
+                    'No match found, create new WP line in ACTarrray
+                    ReDim Preserve ACTarray(1 To X)
+                    InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish, t.ActualStart, t.ActualFinish
+                    AssignShortID ACTarray, X, ShortID
 
-                Next t
+                    X = X + 1
+                    ActFound = True
 
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If t.Work > 0 Or t.Cost > 0 Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-
-                            'store ACT info
-                            'WP Data
-                            If X = 1 Then
-
-                                'create new WP line in ACTarrray
-                                ReDim ACTarray(1 To X)
-                                If t.BaselineFinish <> "NA" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                End If
-                                If t.BaselineStart <> "NA" Then
-                                    ACTarray(X).BStart = t.BaselineStart
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).ID = ID
-                                
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                If t.ActualStart <> "NA" Then
-                                    ACTarray(X).AStart = t.ActualStart
-                                End If
-                                If t.ActualFinish <> "NA" Then
-                                    ACTarray(X).AFinish = t.ActualFinish
-                                End If
-                                'v3.3.5 - check for ID length limit
-                                If Len(ID) > 58 Then
-                                    ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                    ShortID = ACTarray(X).ShortID
-                                Else
-                                    ACTarray(X).ShortID = ACTarray(X).ID
-                                    ShortID = ACTarray(X).ShortID 'v3.3.6
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                GoTo ETC_WP_Match_B
-
-                            End If
-
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = ID Then
-                                    ShortID = ACTarray(i).ShortID
-                                    'Found an existing matching WP line
-                                    If t.BaselineStart <> "NA" Then
-                                        If ACTarray(i).BStart = 0 Then
-                                            ACTarray(i).BStart = t.BaselineStart
-                                        Else
-                                            If ACTarray(i).BStart > t.BaselineStart Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            End If
-                                        End If
-                                    End If
-                                    If t.BaselineFinish <> "NA" Then
-                                        If ACTarray(i).BFinish = 0 Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
-                                        Else
-                                            If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            End If
-                                        End If
-                                    End If
-                                    If ACTarray(i).FStart > t.Start Then
-                                        ACTarray(i).FStart = t.Start
-                                    End If
-                                    If ACTarray(i).FFinish < t.Finish Then
-                                        ACTarray(i).FFinish = t.Finish
-                                    End If
-                                    If t.ActualStart <> "NA" Then
-                                        If ACTarray(i).AStart = 0 Then
-                                            ACTarray(i).AStart = t.ActualStart
-                                        Else
-                                            If t.ActualStart < ACTarray(i).AStart Then
-                                                ACTarray(i).AStart = t.ActualStart
-                                            End If
-                                        End If
-                                    End If
-                                    If t.ActualFinish <> "NA" Then
-                                        If ACTarray(i).AFinish = 0 Then
-                                            ACTarray(i).AFinish = t.ActualFinish
-                                        Else
-                                            If t.ActualFinish > ACTarray(i).AFinish Then
-                                                ACTarray(i).AFinish = t.ActualFinish
-                                            End If
-                                        End If
-                                    End If
-
-                                    GoTo ETC_WP_Match_B
-                                End If
-                            Next i
-
-                            'No match found, create new WP line in ACTarrray
-                            ReDim Preserve ACTarray(1 To X)
-                            If t.BaselineFinish <> "NA" Then
-                                ACTarray(X).BFinish = t.BaselineFinish
-                            End If
-                            If t.BaselineStart <> "NA" Then
-                                ACTarray(X).BStart = t.BaselineStart
-                            End If
-                            If CAID3_Used = True Then
-                                ACTarray(X).CAID3 = CAID3
-                            End If
-                            ACTarray(X).CAM = CAM
-                            ACTarray(X).ID = ID
-                            ACTarray(X).CAID1 = CAID1
-                            ACTarray(X).EVT = EVT
-                            ACTarray(X).FFinish = t.Finish
-                            ACTarray(X).FStart = t.Start
-                            If CAID2_Used = True Then
-                                ACTarray(X).CAID2 = CAID2
-                            End If
-                            If subprojectIDs Then 'v3.4.3
-                                ACTarray(X).SubProject = ProjID
-                            End If
-                            ACTarray(X).WP = WP
-                            If t.ActualStart <> "NA" Then
-                                ACTarray(X).AStart = t.ActualStart
-                            End If
-                            If t.ActualFinish <> "NA" Then
-                                ACTarray(X).AFinish = t.ActualFinish
-                            End If
-                            'v3.3.5 - check for ID length limit
-                            If Len(ID) > 58 Then
-                                ActIDCounter = ActIDCounter + 1
-                                ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                ShortID = ACTarray(X).ShortID
-                            Else
-                                ACTarray(X).ShortID = ACTarray(X).ID
-                                ShortID = ACTarray(X).ShortID 'v3.3.6
-                            End If
-
-
-                            X = X + 1
-                            ActFound = True
-
-                            'Milestone Data
+                    'Milestone Data
 ETC_WP_Match_B:
 
-
-                            Set tAss = t.Assignments
-
-                            For Each tAssign In tAss
-
-                                If TimeScaleExport = True Then
-
-                                    ExportTimeScaleResources ShortID, t, tAssign, 2, "ETC"
-                                    
-                                Else
-
-                                    Select Case tAssign.ResourceType
-
-                                        Case pjResourceTypeWork
-
-                                        If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingWork / 60 & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
-
-                                        ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-
-                                        End If
-
-                                    Case pjResourceTypeCost
-
-                                        If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingCost <> 0 Then 'v3.4.5
-
-                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingCost & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
-
-                                        ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingCost <> 0 Then 'v3.4.5
-
-                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Cost & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-
-                                        End If
-
-                                    Case pjResourceTypeMaterial
-
-                                        If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingWork & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
-
-                                        ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
-
-                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-
-                                        End If
-
-                                    End Select
-
-                                End If
-
-                            Next tAssign
-
-                        End If
-
+                    If ResourceLoaded Then
+                    
+                        Set tAss = t.Assignments
+    
+                        For Each tAssign In tAss
+    
+                            If TimeScaleExport = True Then
+    
+                                ExportTimeScaleResources ShortID, t, tAssign, 2, "ETC"
+                                
+                            Else
+    
+                                Select Case tAssign.ResourceType
+    
+                                    Case pjResourceTypeWork
+    
+                                    If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
+    
+                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingWork / 60 & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
+    
+                                    ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
+    
+                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+    
+                                    End If
+    
+                                Case pjResourceTypeCost
+    
+                                    If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingCost <> 0 Then 'v3.4.5
+    
+                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingCost & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
+    
+                                    ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingCost <> 0 Then 'v3.4.5
+    
+                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Cost & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+    
+                                    End If
+    
+                                Case pjResourceTypeMaterial
+    
+                                    If CStr(AssignmentResumeDate(tAssign)) <> "NA" And t.ActualFinish = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
+    
+                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.RemainingWork & "," & Format(AssignmentResumeDate(tAssign), dateFmt) & "," & Format(tAssign.Finish, dateFmt) 'v3.4.5
+    
+                                    ElseIf CStr(AssignmentResumeDate(tAssign)) = "NA" And tAssign.PercentWorkComplete <> 100 And tAssign.RemainingWork <> 0 Then 'v3.4.5
+    
+                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+    
+                                    End If
+    
+                                End Select
+    
+                            End If
+    
+                        Next tAssign
+                        
                     End If
 
                 End If
 
-            Next t
+            End If
 
         End If
 
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
-                If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
-
-                'v3.4.3 - refactored data output code
+    Next t
+    
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    
+    If ActFound = True Then
+        For i = 1 To UBound(ACTarray)
+    
+            If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
+            If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
+    
+            'v3.4.3 - refactored data output code
+            
+            outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & ","
+    
+            If aFinishString = "NA" Then
+                outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
                 
-                outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & ","
-
-                If aFinishString = "NA" Then
-                    If CAID3_Used = True And CAID2_Used = True Then
-                        outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                    End If
-                    If CAID3_Used = False And CAID2_Used = True Then
-                        outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                    End If
-                    If CAID3_Used = False And CAID2_Used = False Then
-                        outputStr = ACTarray(i).CAID1 & "," & outputStr
-                    End If
-                    
-                    If subprojectIDs Then 'v3.4.3
-                        outputStr = ACTarray(i).SubProject & "," & outputStr
-                    End If
-                    
-                    Print #1, outputStr
-                End If
-
-            Next i
-        End If
-
-        Close #1
-        Close #2
-
+                Print #1, outputStr
+            End If
+    
+        Next i
     End If
+    
+    Close #1
+    If ResourceLoaded Then Close #2
 
 End Sub
 Private Sub BCWS_Export(ByVal curProj As Project)
@@ -4269,11 +2079,13 @@ Private Sub BCWS_Export(ByVal curProj As Project)
     Dim t As Task
     Dim tAss As Assignments
     Dim tAssign As Assignment
-    Dim ProjID, CAID1, CAID3, WP, CAM, EVT, UID, CAID2, MSWeight, ID, ShortID, PCNT As String 'v3.3.5, v3.4.3
+    Dim ProjID As String, CAID1 As String, CAID3 As String, WP As String, CAM As String, _
+    EVT As String, UID As String, CAID2 As String, MSWeight As String, ID As String, _
+    ShortID As String, PCNT As String 'v3.3.5, v3.4.3, v3.5.0
     Dim Milestone As String
     Dim subProj As SubProject
     Dim subProjs As Subprojects
-    Dim curSProj As Project
+    Dim cursproj As Project
     Dim ACTarray() As ACTrowWP
     Dim WPDescArray() As WP_Descriptions
     Dim X As Integer
@@ -4282,6 +2094,8 @@ Private Sub BCWS_Export(ByVal curProj As Project)
     Dim aFinishString As String
     Dim headerStr As String 'v3.4.3
     Dim outputStr As String 'v3.4.3
+    Dim exportProj As Project
+    Dim subprojCount As Integer
 
     '*******************
     '****BCWS Export****
@@ -4292,915 +2106,188 @@ Private Sub BCWS_Export(ByVal curProj As Project)
     If DescExport = True Then
         Get_WP_Descriptions curProj
     End If
+    
+    OpenExportFiles curProj, "BCWS", BCWS, True
+    
+    X = 1
+    ActFound = False
+    
+    'Evaluate Project Data
 
-    If ResourceLoaded = False Then
-
-        ACTfilename = destFolder & "\BCWS ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
+    If curProj.Subprojects.Count > 0 Then
         
-        'v3.4.3 - refactored header output code
-        headerStr = ",CAM,WP,ID,Milestone,Milestone Weight,Description,Baseline Start Date,Baseline Finish Date,Progress Technique,"
+        subprojCount = 0
+        Set subProjs = curProj.Subprojects
+    
+        For Each subProj In subProjs
+            
+            subprojCount = subprojCount + 1
+    
+            FileOpen Name:=subProj.Path, ReadOnly:=True
+            Set exportProj = ActiveProject
+    
+            GoTo Export_Project_Data
+    
+Next_Subproject:
+    
+            FileClose pjDoNotSave
+    
+        Next subProj
         
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
-        
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
-
-        X = 1
-        ActFound = False
-
-        If curProj.Subprojects.Count > 0 Then
-
-            Set subProjs = curProj.Subprojects
-
-            For Each subProj In subProjs
-
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
-
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                            If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-
-                                If Milestones_Used = False Then
-                                    UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                    MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                                End If
-
-                                If BCRxport = True Then
-                                    If IsInArray(WP, BCR_WP) = False Then
-                                        GoTo Next_nrSProj_Task
-                                    End If
-                                End If
-
-                                If EVT = "B" And Milestones_Used = False Then
-                                    ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                    err.Raise 1
-                                End If
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                    ACTarray(X).BStart = t.BaselineStart
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    ACTarray(X).CAID2 = CAID2
-                                    ACTarray(X).WP = WP
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo nrWP_Match
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        'Found an existing matching WP line
-                                        If ACTarray(i).BStart > t.BaselineStart Then
-                                            ACTarray(i).BStart = t.BaselineStart
-                                        End If
-                                        If ACTarray(i).BFinish < t.BaselineFinish Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-
-                                        GoTo nrWP_Match
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                ACTarray(X).BFinish = t.BaselineFinish
-                                ACTarray(X).BStart = t.BaselineStart
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                ACTarray(X).CAID2 = CAID2
-                                ACTarray(X).WP = WP
-
-                                X = X + 1
-                                ActFound = True
-
-                                'Milestone Data
-nrWP_Match:
-
-                                If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                                
-                                    'v3.4.3 - refactored data output code
-                                
-                                    outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-
-                                End If
-
-                            End If
-
-                        End If
-
-                    End If
-Next_nrSProj_Task:
-
-                Next t
-
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If t.GetField(FieldNameToFieldConstant(fWP)) <> "" Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-
-                            If Milestones_Used = True Then
-                                UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                            End If
-
-                            If EVT = "B" And Milestones_Used = False Then
-                                ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                err.Raise 1
-                            End If
-
-                            If BCRxport = True Then
-                                If IsInArray(WP, BCR_WP) = False Then
-                                    GoTo Next_nrTask
-                                End If
-                            End If
-
-                            'store ACT info
-                            'WP Data
-                            If X = 1 Then
-
-                                'create new WP line in ACTarrray
-                                ReDim ACTarray(1 To X)
-                                ACTarray(X).BFinish = t.BaselineFinish
-                                ACTarray(X).BStart = t.BaselineStart
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                ACTarray(X).CAID2 = CAID2
-                                ACTarray(X).WP = WP
-
-                                X = X + 1
-                                ActFound = True
-
-                                GoTo nrWP_Match_B
-
-                            End If
-
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = ID Then
-                                    'Found an existing matching WP line
-                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                        ACTarray(i).BStart = t.BaselineStart
-                                    End If
-                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                        ACTarray(i).BFinish = t.BaselineFinish
-                                    End If
-                                    If ACTarray(i).FStart > t.Start Then
-                                        ACTarray(i).FStart = t.Start
-                                    End If
-                                    If ACTarray(i).FFinish < t.Finish Then
-                                        ACTarray(i).FFinish = t.Finish
-                                    End If
-                                    GoTo nrWP_Match_B
-                                End If
-                            Next i
-
-                            'No match found, create new WP line in ACTarrray
-                            ReDim Preserve ACTarray(1 To X)
-                            ACTarray(X).BFinish = t.BaselineFinish
-                            ACTarray(X).BStart = t.BaselineStart
-                            If CAID3_Used = True Then
-                                ACTarray(X).CAID3 = CAID3
-                            End If
-                            If CAID2_Used = True Then
-                                ACTarray(X).CAID2 = CAID2
-                            End If
-                            If subprojectIDs Then 'v3.4.3
-                                ACTarray(X).SubProject = ProjID
-                            End If
-                            ACTarray(X).CAM = CAM
-                            ACTarray(X).CAID1 = CAID1
-                            ACTarray(X).EVT = EVT
-                            ACTarray(X).ID = ID
-                            ACTarray(X).FFinish = t.Finish
-                            ACTarray(X).FStart = t.Start
-                            ACTarray(X).CAID2 = CAID2
-                            ACTarray(X).WP = WP
-
-                            X = X + 1
-                            ActFound = True
-
-                            'Milestone Data
-nrWP_Match_B:
-
-                            If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                            
-                                'v3.4.3 - refactored data output code
-                                
-                                outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-                            
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    outputStr = CAID1 & "," & outputStr
-                                End If
-                                
-                                If subprojectIDs Then 'v3.4.3
-                                    outputStr = ProjID & "," & outputStr
-                                End If
-                                
-                                Print #1, outputStr
-                            End If
-
-                        End If
-
-                    End If
-
-                End If
-Next_nrTask:
-
-            Next t
-
-        End If
-
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If DescExport = True Then
-                    ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
-                End If
-                
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
-
-                If CAID3_Used = True And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = False Then
-                    outputStr = ACTarray(i).CAID1 & "," & outputStr
-                End If
-                
-                If subprojectIDs Then 'v3.4.3
-                    outputStr = ACTarray(i).SubProject & "," & outputStr
-                End If
-                
-                Print #1, outputStr
-
-            Next i
-        End If
-
-        Close #1
-
     Else
-
-        ACTfilename = destFolder & "\BCWS ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-        RESfilename = destFolder & "\BCWS RES_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
-        Open RESfilename For Output As #2
+    
+        Set exportProj = curProj
         
-        'v3.4.3 - refactored header output code
-        headerStr = ",CAM,WP,ID,Milestone,Milestone Weight,Description,Baseline Start Date,Baseline Finish Date,Progress Technique,"
-        
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
-        
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
+    End If
 
-        Print #2, "Cobra ID,Resource,Amount,From Date,To Date"
+Export_Project_Data:
+    
+    For Each t In exportProj.Tasks
 
-        X = 1
-        ActFound = False
+        If Not t Is Nothing Then
 
-        If curProj.Subprojects.Count > 0 Then
+            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
 
-            Set subProjs = curProj.Subprojects
+                If (ResourceLoaded And (t.BaselineWork > 0 Or t.BaselineCost > 0)) Or (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "") Then
 
-            For Each subProj In subProjs
+                    ReadTaskFields t, CAID1, CAID2, CAID3, WP, EVT, CAM, ID, ProjID
+                    If Milestones_Used = True Then
+                        UID = t.GetField(FieldNameToFieldConstant(fMilestone))
+                        MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
+                    End If
 
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
+                    ValidateEVTB EVT
 
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                            If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-
-                                If Milestones_Used = True Then
-                                    UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                    MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                                End If
-
-                                If EVT = "B" And Milestones_Used = False Then
-                                    ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                    err.Raise 1
-                                End If
-
-                                If BCRxport = True Then
-                                    If IsInArray(WP, BCR_WP) = False Then
-                                        GoTo Next_SProj_Task
-                                    End If
-                                End If
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                    ACTarray(X).BStart = t.BaselineStart
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    'v3.3.5 - check for ID length limit
-                                    If Len(ID) > 58 Then
-                                        ActIDCounter = ActIDCounter + 1
-                                        ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                        ShortID = ACTarray(X).ShortID
-                                    Else
-                                        ACTarray(X).ShortID = ACTarray(X).ID
-                                        ShortID = ACTarray(X).ShortID 'v3.3.6
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo WP_Match
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        ShortID = ACTarray(i).ShortID
-                                        'Found an existing matching WP line
-                                        If ACTarray(i).BStart > t.BaselineStart Then
-                                            ACTarray(i).BStart = t.BaselineStart
-                                        End If
-                                        If ACTarray(i).BFinish < t.BaselineFinish Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-
-                                        GoTo WP_Match
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                ACTarray(X).BFinish = t.BaselineFinish
-                                ACTarray(X).BStart = t.BaselineStart
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                'v3.3.5 - check for ID length limit
-                                If Len(ID) > 58 Then
-                                    ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                    ShortID = ACTarray(X).ShortID
-                                Else
-                                    ACTarray(X).ShortID = ACTarray(X).ID
-                                    ShortID = ACTarray(X).ShortID 'v3.3.6
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                'Milestone Data
-WP_Match:
-
-                                If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                                
-                                    'v3.4.3 - refactored data output code
-                                    
-                                    outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-
-                                End If
-
-                                Set tAss = t.Assignments
-
-                                For Each tAssign In tAss
-
-                                    If tAssign.BaselineWork <> 0 Or tAssign.BaselineCost <> 0 Then
-
-                                        If TimeScaleExport = True Then
-
-                                            ExportTimeScaleResources ShortID, t, tAssign, 2, "BCWS"
-
-                                        Else
-
-                                            Select Case tAssign.ResourceType
-
-                                                Case pjResourceTypeWork
-
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                                Case pjResourceTypeCost
-
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineCost & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                                Case pjResourceTypeMaterial
-
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                            End Select
-
-                                        End If
-
-                                    End If
-
-                                Next tAssign
-
-                            End If
-
+                    If BCRxport = True Then
+                        If IsInArray(WP, BCR_WP) = False Then
+                            GoTo Next_Task
                         End If
+                    End If
+
+                    'store ACT info
+                    'WP Data
+                    If X = 1 Then
+
+                        'create new WP line in ACTarrray
+                        ReDim ACTarray(1 To X)
+                        InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish
+                        AssignShortID ACTarray, X, ShortID
+
+                        X = X + 1
+                        ActFound = True
+
+                        GoTo WP_Match_B
 
                     End If
-Next_SProj_Task:
 
-                Next t
-
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If t.BaselineWork > 0 Or t.BaselineCost > 0 Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
+                    For i = 1 To UBound(ACTarray)
+                        If ACTarray(i).ID = ID Then
+                            ShortID = ACTarray(i).ShortID
+                            'Found an existing matching WP line
+                            If ACTarray(i).BStart > t.BaselineStart Then
+                                ACTarray(i).BStart = t.BaselineStart
                             End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
+                            If ACTarray(i).BFinish < t.BaselineFinish Then
+                                ACTarray(i).BFinish = t.BaselineFinish
                             End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
+                            If ACTarray(i).FStart > t.Start Then
+                                ACTarray(i).FStart = t.Start
                             End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
+                            If ACTarray(i).FFinish < t.Finish Then
+                                ACTarray(i).FFinish = t.Finish
                             End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
+                            GoTo WP_Match_B
+                        End If
+                    Next i
 
-                            If Milestones_Used = True Then
-                                UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                            End If
+                    'No match found, create new WP line in ACTarrray
+                    ReDim Preserve ACTarray(1 To X)
+                    InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, t.BaselineStart, t.BaselineFinish
+                    AssignShortID ACTarray, X, ShortID
 
-                            If EVT = "B" And Milestones_Used = False Then
-                                ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                err.Raise 1
-                            End If
+                    X = X + 1
+                    ActFound = True
 
-                            If BCRxport = True Then
-                                If IsInArray(WP, BCR_WP) = False Then
-                                    GoTo next_task
-                                End If
-                            End If
-
-                            'store ACT info
-                            'WP Data
-                            If X = 1 Then
-
-                                'create new WP line in ACTarrray
-                                ReDim ACTarray(1 To X)
-                                ACTarray(X).BFinish = t.BaselineFinish
-                                ACTarray(X).BStart = t.BaselineStart
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                'v3.3.5 - check for ID length limit
-                                If Len(ID) > 58 Then
-                                    ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                    ShortID = ACTarray(X).ShortID
-                                Else
-                                    ACTarray(X).ShortID = ACTarray(X).ID
-                                    ShortID = ACTarray(X).ShortID 'v3.3.6
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                GoTo WP_Match_B
-
-                            End If
-
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = ID Then
-                                    ShortID = ACTarray(i).ShortID
-                                    'Found an existing matching WP line
-                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                        ACTarray(i).BStart = t.BaselineStart
-                                    End If
-                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                        ACTarray(i).BFinish = t.BaselineFinish
-                                    End If
-                                    If ACTarray(i).FStart > t.Start Then
-                                        ACTarray(i).FStart = t.Start
-                                    End If
-                                    If ACTarray(i).FFinish < t.Finish Then
-                                        ACTarray(i).FFinish = t.Finish
-                                    End If
-                                    GoTo WP_Match_B
-                                End If
-                            Next i
-
-                            'No match found, create new WP line in ACTarrray
-                            ReDim Preserve ACTarray(1 To X)
-                            ACTarray(X).BFinish = t.BaselineFinish
-                            ACTarray(X).BStart = t.BaselineStart
-                            If CAID3_Used = True Then
-                                ACTarray(X).CAID3 = CAID3
-                            End If
-                            ACTarray(X).CAM = CAM
-                            ACTarray(X).CAID1 = CAID1
-                            ACTarray(X).EVT = EVT
-                            ACTarray(X).ID = ID
-                            ACTarray(X).FFinish = t.Finish
-                            ACTarray(X).FStart = t.Start
-                            If CAID2_Used = True Then
-                                ACTarray(X).CAID2 = CAID2
-                            End If
-                            If subprojectIDs Then 'v3.4.3
-                                ACTarray(X).SubProject = ProjID
-                            End If
-                            ACTarray(X).WP = WP
-                            'v3.3.5 - check for ID length limit
-                            If Len(ID) > 58 Then
-                                ActIDCounter = ActIDCounter + 1
-                                ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                ShortID = ACTarray(X).ShortID
-                            Else
-                                ACTarray(X).ShortID = ACTarray(X).ID
-                                ShortID = ACTarray(X).ShortID 'v3.3.6
-                            End If
-
-                            X = X + 1
-                            ActFound = True
-
-                            'Milestone Data
+                    'Milestone Data
 WP_Match_B:
 
-                            If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                            
-                                'v3.4.3 - refactored data output code
-                                
-                                outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-                            
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
+                    If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
+
+                        'v3.4.3 - refactored data output code
+                        outputStr = createMilestoneStr(BCWS, CAM, WP, UID, t, MSWeight, CAID2_Used, CAID3_Used, subprojectIDs, CAID1, CAID2, CAID3, ProjID)
+                        
+                        Print #1, outputStr
+                    End If
+
+                    If ResourceLoaded Then
+                    
+                        Set tAss = t.Assignments
+    
+                        For Each tAssign In tAss
+    
+                            If tAssign.BaselineWork <> 0 Or tAssign.BaselineCost <> 0 Then
+    
+                                If TimeScaleExport = True Then
+    
+                                    ExportTimeScaleResources ShortID, t, tAssign, 2, "BCWS"
+    
+                                Else
+    
+                                    Select Case tAssign.ResourceType
+    
+                                        Case pjResourceTypeWork
+    
+                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+    
+                                        Case pjResourceTypeCost
+    
+                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineCost & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+    
+                                        Case pjResourceTypeMaterial
+    
+                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+    
+                                    End Select
+    
                                 End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    outputStr = CAID1 & "," & outputStr
-                                End If
-                                
-                                If subprojectIDs Then 'v3.4.3
-                                    outputStr = ProjID & "," & outputStr
-                                End If
-                                
-                                Print #1, outputStr
+    
                             End If
-
-                            Set tAss = t.Assignments
-
-                            For Each tAssign In tAss
-
-                                If tAssign.BaselineWork <> 0 Or tAssign.BaselineCost <> 0 Then
-
-                                    If TimeScaleExport = True Then
-
-                                        ExportTimeScaleResources ShortID, t, tAssign, 2, "BCWS"
-
-                                    Else
-
-                                        Select Case tAssign.ResourceType
-
-                                            Case pjResourceTypeWork
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                            Case pjResourceTypeCost
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineCost & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                            Case pjResourceTypeMaterial
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                        End Select
-
-                                    End If
-
-                                End If
-
-                            Next tAssign
-
-                        End If
-
+    
+                        Next tAssign
+                        
                     End If
 
                 End If
-next_task:
 
-            Next t
+            End If
 
         End If
+Next_Task:
 
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
+    Next t
 
-                If DescExport = True Then
-                    ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
-                End If
-                
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
-
-                If CAID3_Used = True And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = False Then
-                    outputStr = ACTarray(i).CAID1 & "," & outputStr
-                End If
-                
-                If subprojectIDs Then 'v3.4.3
-                    outputStr = ACTarray(i).SubProject & "," & outputStr
-                End If
-                
-                Print #1, outputStr
-
-            Next i
-        End If
-
-        Close #1
-        Close #2
-
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    
+    If ActFound = True Then
+        For i = 1 To UBound(ACTarray)
+    
+            If DescExport = True Then
+                ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
+            End If
+            
+            'v3.4.3 - refactored data output code
+            
+            outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
+    
+            outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+            
+            Print #1, outputStr
+    
+        Next i
     End If
+    
+    Close #1
+    If ResourceLoaded Then Close #2
         
 End Sub
 
@@ -5209,11 +2296,13 @@ Private Sub WhatIf_Export(ByVal curProj As Project) 'v3.2
     Dim t As Task
     Dim tAss As Assignments
     Dim tAssign As Assignment
-    Dim ProjID, CAID1, CAID3, WP, CAM, EVT, UID, CAID2, MSWeight, ID, ShortID, PCNT As String 'v3.3.5, v3.4.3
+    Dim ProjID As String, CAID1 As String, CAID3 As String, WP As String, _
+    CAM As String, EVT As String, UID As String, CAID2 As String, MSWeight As String, _
+    ID As String, ShortID As String, PCNT As String 'v3.3.5, v3.4.3, v3.5.0
     Dim Milestone As String
     Dim subProj As SubProject
     Dim subProjs As Subprojects
-    Dim curSProj As Project
+    Dim cursproj As Project
     Dim ACTarray() As ACTrowWP
     Dim WPDescArray() As WP_Descriptions
     Dim X As Integer
@@ -5222,6 +2311,9 @@ Private Sub WhatIf_Export(ByVal curProj As Project) 'v3.2
     Dim aFinishString As String
     Dim headerStr As String 'v3.4.3
     Dim outputStr As String 'v3.4.3
+    Dim exportProj As Project
+    Dim subprojCount As Integer
+    Dim BStartVal As Variant, BFinishVal As Variant 'v3.5.0
 
     '*******************
     '**What-if Export***
@@ -5232,1156 +2324,253 @@ Private Sub WhatIf_Export(ByVal curProj As Project) 'v3.2
     If DescExport = True Then
         Get_WP_Descriptions curProj
     End If
+    
+    OpenExportFiles curProj, "WhatIf", WhatIf, True
+    
+    X = 1
+    ActFound = False
+    
+    'Evaluate Project Data
 
-    If ResourceLoaded = False Then
-
-        ACTfilename = destFolder & "\WhatIf ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
+    If curProj.Subprojects.Count > 0 Then
         
-        'v3.4.3 - refactored header output code
-        headerStr = ",CAM,WP,ID,Milestone,Milestone Weight,Description,Baseline Start Date,Baseline Finish Date,Progress Technique,"
+        subprojCount = 0
+        Set subProjs = curProj.Subprojects
+    
+        For Each subProj In subProjs
+            
+            subprojCount = subprojCount + 1
+    
+            FileOpen Name:=subProj.Path, ReadOnly:=True
+            Set exportProj = ActiveProject
+    
+            GoTo Export_Project_Data
+    
+Next_Subproject:
+    
+            FileClose pjDoNotSave
+    
+        Next subProj
         
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
-        
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
-
-        X = 1
-        ActFound = False
-
-        If curProj.Subprojects.Count > 0 Then
-
-            Set subProjs = curProj.Subprojects
-
-            For Each subProj In subProjs
-
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
-
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                            If t.GetField(FieldNameToFieldConstant(fWP)) <> "" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-
-                                If Milestones_Used = False Then
-                                    UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                    MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                                End If
-
-                                If BCRxport = True Then
-                                    If IsInArray(WP, BCR_WP) = False Then
-                                        GoTo Next_nrSProj_Task
-                                    End If
-                                End If
-
-                                If EVT = "B" And Milestones_Used = False Then
-                                    ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                    err.Raise 1
-                                End If
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    Else
-                                        ACTarray(X).BFinish = t.Finish
-                                        ACTarray(X).BStart = t.Start
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    ACTarray(X).CAID2 = CAID2
-                                    ACTarray(X).WP = WP
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo nrWP_Match
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        
-                                        'Found an existing matching WP line
-                                        If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                            If ACTarray(i).BStart > t.BaselineStart Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            End If
-                                            If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            End If
-                                            If ACTarray(i).FStart > t.Start Then
-                                                ACTarray(i).FStart = t.Start
-                                            End If
-                                            If ACTarray(i).FFinish < t.Finish Then
-                                                ACTarray(i).FFinish = t.Finish
-                                            End If
-                                        Else
-                                            If ACTarray(i).BStart > t.Start Then
-                                                ACTarray(i).BStart = t.Start
-                                            End If
-                                            If ACTarray(i).BFinish < t.Finish Then
-                                                ACTarray(i).BFinish = t.Finish
-                                            End If
-                                            If ACTarray(i).FStart > t.Start Then
-                                                ACTarray(i).FStart = t.Start
-                                            End If
-                                            If ACTarray(i).FFinish < t.Finish Then
-                                                ACTarray(i).FFinish = t.Finish
-                                            End If
-                                        End If
-                                        GoTo nrWP_Match
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                    ACTarray(X).BStart = t.BaselineStart
-                                Else
-                                    ACTarray(X).BFinish = t.Finish
-                                    ACTarray(X).BStart = t.Start
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                ACTarray(X).CAID2 = CAID2
-                                ACTarray(X).WP = WP
-
-                                X = X + 1
-                                ActFound = True
-
-                                'Milestone Data
-nrWP_Match:
-
-                                If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                                    'v3.4.3 - refactored data output code
-                                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                    
-                                        outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-                                    
-                                        If CAID3_Used = True And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = False Then
-                                            outputStr = CAID1 & "," & outputStr
-                                        End If
-                                        
-                                        If subprojectIDs Then 'v3.4.3
-                                            outputStr = ProjID & "," & outputStr
-                                        End If
-                                        
-                                        Print #1, outputStr
-                                    Else
-                                    
-                                        outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
-                                    
-                                        If CAID3_Used = True And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = False Then
-                                            outputStr = CAID1 & "," & outputStr
-                                        End If
-                                        
-                                        If subprojectIDs Then 'v3.4.3
-                                            outputStr = ProjID & "," & outputStr
-                                        End If
-                                        
-                                        Print #1, outputStr
-                                    End If
-
-                                End If
-
-                            End If
-
-                        End If
-
-                    End If
-Next_nrSProj_Task:
-
-                Next t
-
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-                        If t.GetField(FieldNameToFieldConstant(fWP)) <> "" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-
-                            If Milestones_Used = True Then
-                                UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                            End If
-
-                            If EVT = "B" And Milestones_Used = False Then
-                                ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                err.Raise 1
-                            End If
-
-                            If BCRxport = True Then
-                                If IsInArray(WP, BCR_WP) = False Then
-                                    GoTo Next_nrTask
-                                End If
-                            End If
-
-                            'store ACT info
-                            'WP Data
-                            If X = 1 Then
-
-                                'create new WP line in ACTarrray
-                                ReDim ACTarray(1 To X)
-                                If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                    ACTarray(X).BStart = t.BaselineStart
-                                Else
-                                    ACTarray(X).BFinish = t.Finish
-                                    ACTarray(X).BStart = t.Start
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                ACTarray(X).CAID2 = CAID2
-                                ACTarray(X).WP = WP
-
-                                X = X + 1
-                                ActFound = True
-
-                                GoTo nrWP_Match_B
-
-                            End If
-
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = ID Then
-                                    'Found an existing matching WP line
-                                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                        If ACTarray(i).BStart > t.BaselineStart Then
-                                            ACTarray(i).BStart = t.BaselineStart
-                                        End If
-                                        If ACTarray(i).BFinish < t.BaselineFinish Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                    Else
-                                        If ACTarray(i).BStart > t.Start Then
-                                            ACTarray(i).BStart = t.Start
-                                        End If
-                                        If ACTarray(i).BFinish < t.Finish Then
-                                            ACTarray(i).BFinish = t.Finish
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-                                    End If
-                                    GoTo nrWP_Match_B
-                                End If
-                            Next i
-
-                            'No match found, create new WP line in ACTarrray
-                            ReDim Preserve ACTarray(1 To X)
-                            If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                ACTarray(X).BFinish = t.BaselineFinish
-                                ACTarray(X).BStart = t.BaselineStart
-                            Else
-                                ACTarray(X).BFinish = t.Finish
-                                ACTarray(X).BStart = t.Start
-                            End If
-                            If CAID3_Used = True Then
-                                ACTarray(X).CAID3 = CAID3
-                            End If
-                            If CAID2_Used = True Then
-                                ACTarray(X).CAID2 = CAID2
-                            End If
-                            If subprojectIDs Then 'v3.4.3
-                                ACTarray(X).SubProject = ProjID
-                            End If
-                            ACTarray(X).CAM = CAM
-                            ACTarray(X).CAID1 = CAID1
-                            ACTarray(X).EVT = EVT
-                            ACTarray(X).ID = ID
-                            ACTarray(X).FFinish = t.Finish
-                            ACTarray(X).FStart = t.Start
-                            ACTarray(X).CAID2 = CAID2
-                            ACTarray(X).WP = WP
-
-                            X = X + 1
-                            ActFound = True
-
-                            'Milestone Data
-nrWP_Match_B:
-
-                            If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                                'v3.4.3 - refactored data output code
-                                If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                
-                                    outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-                                
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-                                Else
-                                    
-                                    outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
-                                
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-                                End If
-                            End If
-
-                        End If
-
-                    End If
-
-                End If
-Next_nrTask:
-
-            Next t
-
-        End If
-
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If DescExport = True Then
-                    ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
-                End If
-
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
-
-                If CAID3_Used = True And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = False Then
-                    outputStr = ACTarray(i).CAID1 & "," & outputStr
-                End If
-                
-                If subprojectIDs Then 'v3.4.3
-                    outputStr = ACTarray(i).SubProject & "," & outputStr
-                End If
-                
-                Print #1, outputStr
-
-            Next i
-        End If
-
-        Close #1
-
     Else
-
-        ACTfilename = destFolder & "\WhatIf ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-        RESfilename = destFolder & "\WhatIf RES_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
-
-        Open ACTfilename For Output As #1
-        Open RESfilename For Output As #2
+    
+        Set exportProj = curProj
         
-        'v3.4.3 - refactored header output code
-        headerStr = ",CAM,WP,ID,Milestone,Milestone Weight,Description,Baseline Start Date,Baseline Finish Date,Progress Technique,"
-        
-        If CAID3_Used = True And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & "," & fCAID3t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = True Then
-            headerStr = fCAID1t & "," & fCAID2t & headerStr
-        End If
-        If CAID3_Used = False And CAID2_Used = False Then
-            headerStr = fCAID1t & headerStr
-        End If
-        
-        If subprojectIDs Then 'v3.4.3
-            headerStr = "Project," & headerStr
-        End If
-        
-        Print #1, headerStr
+    End If
 
-        Print #2, "Cobra ID,Resource,Amount,From Date,To Date"
-
-        X = 1
-        ActFound = False
-
-        If curProj.Subprojects.Count > 0 Then
-
-            Set subProjs = curProj.Subprojects
-
-            For Each subProj In subProjs
-
-                FileOpen Name:=subProj.Path, ReadOnly:=True
-                Set curSProj = ActiveProject
-
-                For Each t In curSProj.Tasks
-
-                    If Not t Is Nothing Then
-
-                        If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-                        
-                            If ((t.BaselineWork > 0 Or t.BaselineCost > 0) And _
-                            (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D")) _
-                            Or _
-                            ((t.Work > 0 Or t.Cost > 0) And _
-                            (t.GetField(FieldNameToFieldConstant(fWhatIf)) = "R" Or t.GetField(FieldNameToFieldConstant(fWhatIf)) = "r")) Then
-
-                                CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                                If subprojectIDs Then 'v3.4.3
-                                    ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                                End If
-                                If CAID3_Used = True Then
-                                    CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                                End If
-                                WP = t.GetField(FieldNameToFieldConstant(fWP))
-                                EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                                If CAID2_Used = True Then
-                                    CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                                End If
-                                CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                                If CAID3_Used = True And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = True Then
-                                    ID = CAID1 & "/" & CAID2 & "/" & WP
-                                End If
-                                If CAID3_Used = False And CAID2_Used = False Then
-                                    ID = CAID1 & "/" & WP
-                                End If
-
-                                If Milestones_Used = True Then
-                                    UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                    MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                                End If
-
-                                If EVT = "B" And Milestones_Used = False Then
-                                    ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                    err.Raise 1
-                                End If
-
-                                If BCRxport = True Then
-                                    If IsInArray(WP, BCR_WP) = False Then
-                                        GoTo Next_SProj_Task
-                                    End If
-                                End If
-
-                                'store ACT info
-                                'WP Data
-                                If X = 1 Then
-
-                                    'create new WP line in ACTarrray
-                                    ReDim ACTarray(1 To X)
-                                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                        ACTarray(X).BFinish = t.BaselineFinish
-                                        ACTarray(X).BStart = t.BaselineStart
-                                    Else
-                                        ACTarray(X).BFinish = t.Finish
-                                        ACTarray(X).BStart = t.Start
-                                    End If
-                                    If CAID3_Used = True Then
-                                        ACTarray(X).CAID3 = CAID3
-                                    End If
-                                    ACTarray(X).ID = ID
-                                    ACTarray(X).CAM = CAM
-                                    ACTarray(X).CAID1 = CAID1
-                                    ACTarray(X).EVT = EVT
-                                    ACTarray(X).FFinish = t.Finish
-                                    ACTarray(X).FStart = t.Start
-                                    If CAID2_Used = True Then
-                                        ACTarray(X).CAID2 = CAID2
-                                    End If
-                                    If subprojectIDs Then 'v3.4.3
-                                        ACTarray(X).SubProject = ProjID
-                                    End If
-                                    ACTarray(X).WP = WP
-                                    'v3.3.5 - check for ID length limit
-                                    If Len(ID) > 58 Then
-                                        ActIDCounter = ActIDCounter + 1
-                                        ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                        ShortID = ACTarray(X).ShortID
-                                    Else
-                                        ACTarray(X).ShortID = ACTarray(X).ID
-                                        ShortID = ACTarray(X).ShortID 'v3.3.6
-                                    End If
-
-                                    X = X + 1
-                                    ActFound = True
-
-                                    GoTo WP_Match
-
-                                End If
-
-                                For i = 1 To UBound(ACTarray)
-                                    If ACTarray(i).ID = ID Then
-                                        ShortID = ACTarray(i).ShortID
-                                        'Found an existing matching WP line
-                                        If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                            If ACTarray(i).BStart > t.BaselineStart Then
-                                                ACTarray(i).BStart = t.BaselineStart
-                                            End If
-                                            If ACTarray(i).BFinish < t.BaselineFinish Then
-                                                ACTarray(i).BFinish = t.BaselineFinish
-                                            End If
-                                        Else
-                                            If ACTarray(i).BStart > t.Start Then
-                                                ACTarray(i).BStart = t.Start
-                                            End If
-                                            If ACTarray(i).BFinish < t.Finish Then
-                                                ACTarray(i).BFinish = t.Finish
-                                            End If
-
-                                        End If
-                                        If ACTarray(i).FStart > t.Start Then
-                                            ACTarray(i).FStart = t.Start
-                                        End If
-                                        If ACTarray(i).FFinish < t.Finish Then
-                                            ACTarray(i).FFinish = t.Finish
-                                        End If
-
-                                        GoTo WP_Match
-                                    End If
-                                Next i
-
-                                'No match found, create new WP line in ACTarrray
-                                ReDim Preserve ACTarray(1 To X)
-                                If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                    ACTarray(X).BStart = t.BaselineStart
-                                Else
-                                    ACTarray(X).BFinish = t.Finish
-                                    ACTarray(X).BStart = t.Start
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                'v3.3.5 - check for ID length limit
-                                If Len(ID) > 58 Then
-                                    ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                    ShortID = ACTarray(X).ShortID
-                                Else
-                                    ACTarray(X).ShortID = ACTarray(X).ID
-                                    ShortID = ACTarray(X).ShortID 'v3.3.6
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                'Milestone Data
-WP_Match:
-
-                                If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                                    'v3.4.3 - refactored data output code
-                                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                        
-                                        outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-                                        
-                                        If CAID3_Used = True And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = False Then
-                                            outputStr = CAID1 & "," & outputStr
-                                        End If
-                                        
-                                        If subprojectIDs Then 'v3.4.3
-                                            outputStr = ProjID & "," & outputStr
-                                        End If
-                                        
-                                        Print #1, outputStr
-                                        
-                                    Else
-                                        
-                                        outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
-                                        
-                                        If CAID3_Used = True And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = True Then
-                                            outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                        End If
-                                        If CAID3_Used = False And CAID2_Used = False Then
-                                            outputStr = CAID1 & "," & outputStr
-                                        End If
-                                        
-                                        If subprojectIDs Then 'v3.4.3
-                                            outputStr = ProjID & "," & outputStr
-                                        End If
-                                        
-                                        Print #1, outputStr
-                                        
-                                    End If
-                                End If
-
-                                Set tAss = t.Assignments
-
-                                For Each tAssign In tAss
-
-                                    If (tAssign.BaselineWork <> 0 Or tAssign.BaselineCost <> 0) And _
-                                    (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R") Then
-
-                                        If TimeScaleExport = True Then
-
-                                            ExportTimeScaleResources ShortID, t, tAssign, 2, "BCWS"
-
-                                        Else
-
-                                            Select Case tAssign.ResourceType
-
-                                                Case pjResourceTypeWork
-
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                                Case pjResourceTypeCost
-
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineCost & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                                Case pjResourceTypeMaterial
-
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                            End Select
-
-                                        End If
-                                    Else
-                                    
-                                        If (tAssign.Work <> 0 Or tAssign.Cost <> 0) And _
-                                        (t.GetField(FieldNameToFieldConstant(fWhatIf)) = "r" Or t.GetField(FieldNameToFieldConstant(fWhatIf)) = "R") Then
-
-                                            If TimeScaleExport = True Then
+Export_Project_Data:
     
-                                                ExportTimeScaleResources ShortID, t, tAssign, 2, "ETC"
-    
-                                            Else
-    
-                                                Select Case tAssign.ResourceType
-    
-                                                    Case pjResourceTypeWork
-    
-                                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-    
-                                                    Case pjResourceTypeCost
-    
-                                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Cost & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-    
-                                                    Case pjResourceTypeMaterial
-    
-                                                        Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-    
-                                                End Select
-    
-                                            End If
-                                            
-                                        End If
-                                        
-                                    End If
+    For Each t In exportProj.Tasks
 
-                                Next tAssign
+        If Not t Is Nothing Then
 
-                            End If
+            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
 
+                If (ResourceLoaded And ((t.BaselineWork > 0 Or t.BaselineCost > 0) And _
+                (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D")) _
+                Or _
+                ((t.Work > 0 Or t.Cost > 0) And _
+                (t.GetField(FieldNameToFieldConstant(fWhatIf)) = "R" Or t.GetField(FieldNameToFieldConstant(fWhatIf)) = "r"))) _
+                Or _
+                (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d") Then
+
+                    ReadTaskFields t, CAID1, CAID2, CAID3, WP, EVT, CAM, ID, ProjID
+                    If Milestones_Used = True Then
+                        UID = t.GetField(FieldNameToFieldConstant(fMilestone))
+                        MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
+                    End If
+
+                    ValidateEVTB EVT
+
+                    If BCRxport = True Then
+                        If IsInArray(WP, BCR_WP) = False Then
+                            GoTo Next_Task
                         End If
+                    End If
+
+                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then 'v3.5.0
+                        BStartVal = t.BaselineStart
+                        BFinishVal = t.BaselineFinish
+                    Else
+                        BStartVal = t.Start
+                        BFinishVal = t.Finish
+                    End If
+
+                    'store ACT info
+                    'WP Data
+                    If X = 1 Then
+
+                        'create new WP line in ACTarrray
+                        ReDim ACTarray(1 To X)
+                        InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, BStartVal, BFinishVal
+                        AssignShortID ACTarray, X, ShortID
+
+                        X = X + 1
+                        ActFound = True
+
+                        GoTo WP_Match_B
 
                     End If
-Next_SProj_Task:
 
-                Next t
-
-                FileClose pjDoNotSave
-
-            Next subProj
-
-        Else
-
-            For Each t In curProj.Tasks
-
-                If Not t Is Nothing Then
-
-                    If t.Active = True And t.Summary = False And t.ExternalTask = False Then
-
-                        If ((t.BaselineWork > 0 Or t.BaselineCost > 0) And _
-                        (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D")) _
-                        Or _
-                        ((t.Work > 0 Or t.Cost > 0) And _
-                        (t.GetField(FieldNameToFieldConstant(fWhatIf)) = "R" Or t.GetField(FieldNameToFieldConstant(fWhatIf)) = "r")) Then
-
-                            CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If subprojectIDs Then 'v3.4.3
-                                ProjID = t.GetField(FieldNameToFieldConstant(fProject))
-                            End If
-                            If CAID3_Used = True Then
-                                CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-
-                            If CAID2_Used = True Then
-                                CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
-                            If CAID3_Used = True And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = True Then
-                                ID = CAID1 & "/" & CAID2 & "/" & WP
-                            End If
-                            If CAID3_Used = False And CAID2_Used = False Then
-                                ID = CAID1 & "/" & WP
-                            End If
-
-                            If Milestones_Used = True Then
-                                UID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                MSWeight = CleanNumber(t.GetField(FieldNameToFieldConstant(fMilestoneWeight)))
-                            End If
-
-                            If EVT = "B" And Milestones_Used = False Then
-                                ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-                                err.Raise 1
-                            End If
-
-                            If BCRxport = True Then
-                                If IsInArray(WP, BCR_WP) = False Then
-                                    GoTo next_task
-                                End If
-                            End If
-
-                            'store ACT info
-                            'WP Data
-                            If X = 1 Then
-
-                                'create new WP line in ACTarrray
-                                ReDim ACTarray(1 To X)
-                                If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                    ACTarray(X).BFinish = t.BaselineFinish
-                                    ACTarray(X).BStart = t.BaselineStart
-                                Else
-                                    ACTarray(X).BFinish = t.Finish
-                                    ACTarray(X).BStart = t.Start
-                                End If
-                                If CAID3_Used = True Then
-                                    ACTarray(X).CAID3 = CAID3
-                                End If
-                                ACTarray(X).ID = ID
-                                ACTarray(X).CAM = CAM
-                                ACTarray(X).CAID1 = CAID1
-                                ACTarray(X).EVT = EVT
-                                ACTarray(X).FFinish = t.Finish
-                                ACTarray(X).FStart = t.Start
-                                If CAID2_Used = True Then
-                                    ACTarray(X).CAID2 = CAID2
-                                End If
-                                If subprojectIDs Then 'v3.4.3
-                                    ACTarray(X).SubProject = ProjID
-                                End If
-                                ACTarray(X).WP = WP
-                                'v3.3.5 - check for ID length limit
-                                If Len(ID) > 58 Then
-                                    ActIDCounter = ActIDCounter + 1
-                                    ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                    ShortID = ACTarray(X).ShortID
-                                Else
-                                    ACTarray(X).ShortID = ACTarray(X).ID
-                                    ShortID = ACTarray(X).ShortID 'v3.3.6
-                                End If
-
-                                X = X + 1
-                                ActFound = True
-
-                                GoTo WP_Match_B
-
-                            End If
-
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = ID Then
-                                    ShortID = ACTarray(i).ShortID
-                                    'Found an existing matching WP line
-                                    If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                        If ACTarray(i).BStart > t.BaselineStart Then
-                                            ACTarray(i).BStart = t.BaselineStart
-                                        End If
-                                        If ACTarray(i).BFinish < t.BaselineFinish Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
-                                        End If
-                                    Else
-                                        If ACTarray(i).BStart > t.Start Then
-                                            ACTarray(i).BStart = t.Start
-                                        End If
-                                        If ACTarray(i).BFinish < t.Finish Then
-                                            ACTarray(i).BFinish = t.Finish
-                                        End If
-
-                                    End If
-                                    If ACTarray(i).FStart > t.Start Then
-                                        ACTarray(i).FStart = t.Start
-                                    End If
-                                    If ACTarray(i).FFinish < t.Finish Then
-                                        ACTarray(i).FFinish = t.Finish
-                                    End If
-                                    GoTo WP_Match_B
-                                End If
-                            Next i
-
-                            'No match found, create new WP line in ACTarrray
-                            ReDim Preserve ACTarray(1 To X)
+                    For i = 1 To UBound(ACTarray)
+                        If ACTarray(i).ID = ID Then
+                            ShortID = ACTarray(i).ShortID
+                            'Found an existing matching WP line
                             If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                ACTarray(X).BFinish = t.BaselineFinish
-                                ACTarray(X).BStart = t.BaselineStart
+                                If ACTarray(i).BStart > t.BaselineStart Then
+                                    ACTarray(i).BStart = t.BaselineStart
+                                End If
+                                If ACTarray(i).BFinish < t.BaselineFinish Then
+                                    ACTarray(i).BFinish = t.BaselineFinish
+                                End If
                             Else
-                                ACTarray(X).BFinish = t.Finish
-                                ACTarray(X).BStart = t.Start
-                            End If
-                            If CAID3_Used = True Then
-                                ACTarray(X).CAID3 = CAID3
-                            End If
-                            ACTarray(X).CAM = CAM
-                            ACTarray(X).CAID1 = CAID1
-                            ACTarray(X).EVT = EVT
-                            ACTarray(X).ID = ID
-                            ACTarray(X).FFinish = t.Finish
-                            ACTarray(X).FStart = t.Start
-                            If CAID2_Used = True Then
-                                ACTarray(X).CAID2 = CAID2
-                            End If
-                            If subprojectIDs Then 'v3.4.3
-                                ACTarray(X).SubProject = ProjID
-                            End If
-                            ACTarray(X).WP = WP
-                            'v3.3.5 - check for ID length limit
-                            If Len(ID) > 58 Then
-                                ActIDCounter = ActIDCounter + 1
-                                ACTarray(X).ShortID = ACTarray(X).WP & " (" & ActIDCounter & ")"
-                                ShortID = ACTarray(X).ShortID
-                            Else
-                                ACTarray(X).ShortID = ACTarray(X).ID
-                                ShortID = ACTarray(X).ShortID 'v3.3.6
-                            End If
+                                If ACTarray(i).BStart > t.Start Then
+                                    ACTarray(i).BStart = t.Start
+                                End If
+                                If ACTarray(i).BFinish < t.Finish Then
+                                    ACTarray(i).BFinish = t.Finish
+                                End If
 
-                            X = X + 1
-                            ActFound = True
+                            End If
+                            If ACTarray(i).FStart > t.Start Then
+                                ACTarray(i).FStart = t.Start
+                            End If
+                            If ACTarray(i).FFinish < t.Finish Then
+                                ACTarray(i).FFinish = t.Finish
+                            End If
+                            GoTo WP_Match_B
+                        End If
+                    Next i
 
-                            'Milestone Data
+                    'No match found, create new WP line in ACTarrray
+                    ReDim Preserve ACTarray(1 To X)
+                    InitACTArrayRow ACTarray, X, t, CAID1, CAID2, CAID3, WP, CAM, ID, EVT, ProjID, BStartVal, BFinishVal
+                    AssignShortID ACTarray, X, ShortID
+
+                    X = X + 1
+                    ActFound = True
+
+                    'Milestone Data
 WP_Match_B:
 
-                            If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
-                                'v3.4.3 - refactored data output code
-                                If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                        
-                                    outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
-                                        
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-                                    
-                                Else
-                                    
-                                    outputStr = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
-                                    
-                                    If CAID3_Used = True And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & CAID3 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = True Then
-                                        outputStr = CAID1 & "," & CAID2 & "," & outputStr
-                                    End If
-                                    If CAID3_Used = False And CAID2_Used = False Then
-                                        outputStr = CAID1 & "," & outputStr
-                                    End If
-                                    
-                                    If subprojectIDs Then 'v3.4.3
-                                        outputStr = ProjID & "," & outputStr
-                                    End If
-                                    
-                                    Print #1, outputStr
-                                    
-                                End If
-                            End If
-
-                            Set tAss = t.Assignments
-
-                            For Each tAssign In tAss
-
-                                If (tAssign.BaselineWork <> 0 Or tAssign.BaselineCost <> 0) And _
-                                (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R") Then
-
-                                    If TimeScaleExport = True Then
-
-                                        ExportTimeScaleResources ShortID, t, tAssign, 2, "BCWS"
-
-                                    Else
-
-                                        Select Case tAssign.ResourceType
-
-                                            Case pjResourceTypeWork
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                            Case pjResourceTypeCost
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineCost & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                            Case pjResourceTypeMaterial
-
-                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
-
-                                        End Select
-
-                                    End If
-                                    
-                                Else
-                                    
-                                    If (tAssign.Work <> 0 Or tAssign.Cost <> 0) And _
-                                    (t.GetField(FieldNameToFieldConstant(fWhatIf)) = "r" Or t.GetField(FieldNameToFieldConstant(fWhatIf)) = "R") Then
-
-                                        If TimeScaleExport = True Then
-    
-                                            ExportTimeScaleResources ShortID, t, tAssign, 2, "ETC"
-    
-                                        Else
-    
-                                            Select Case tAssign.ResourceType
-    
-                                                Case pjResourceTypeWork
-    
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-    
-                                                Case pjResourceTypeCost
-    
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Cost & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-    
-                                                Case pjResourceTypeMaterial
-    
-                                                    Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
-    
-                                            End Select
-    
-                                        End If
-                                    
-                                    End If
-
-                                End If
-
-                            Next tAssign
-
+                    If (EVT = "B" Or EVT = "B Milestone") And ExportMilestones Then
+                        'v3.4.3 - refactored data output code
+                        If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
+                                
+                            outputStr = createMilestoneStr(WhatIf, CAM, WP, UID, t, MSWeight, CAID2_Used, CAID3_Used, subprojectIDs, CAID1, CAID2, CAID3, ProjID, False)
+                                
+                            Print #1, outputStr
+                            
+                        Else
+                            
+                            outputStr = createMilestoneStr(WhatIf, CAM, WP, UID, t, MSWeight, CAID2_Used, CAID3_Used, subprojectIDs, CAID1, CAID2, CAID3, ProjID, True)
+                            
+                            Print #1, outputStr
+                            
                         End If
+                    End If
+                    
+                    If ResourceLoaded Then
 
+                        Set tAss = t.Assignments
+    
+                        For Each tAssign In tAss
+    
+                            If (tAssign.BaselineWork <> 0 Or tAssign.BaselineCost <> 0) And _
+                            (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R") Then
+    
+                                If TimeScaleExport = True Then
+    
+                                    ExportTimeScaleResources ShortID, t, tAssign, 2, "BCWS"
+    
+                                Else
+    
+                                    Select Case tAssign.ResourceType
+    
+                                        Case pjResourceTypeWork
+    
+                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+    
+                                        Case pjResourceTypeCost
+    
+                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineCost & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+    
+                                        Case pjResourceTypeMaterial
+    
+                                            Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.BaselineWork & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+    
+                                    End Select
+    
+                                End If
+                                
+                            Else
+                                
+                                If (tAssign.Work <> 0 Or tAssign.Cost <> 0) And _
+                                (t.GetField(FieldNameToFieldConstant(fWhatIf)) = "r" Or t.GetField(FieldNameToFieldConstant(fWhatIf)) = "R") Then
+    
+                                    If TimeScaleExport = True Then
+    
+                                        ExportTimeScaleResources ShortID, t, tAssign, 2, "ETC"
+    
+                                    Else
+    
+                                        Select Case tAssign.ResourceType
+    
+                                            Case pjResourceTypeWork
+    
+                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+    
+                                            Case pjResourceTypeCost
+    
+                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Cost & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+    
+                                            Case pjResourceTypeMaterial
+    
+                                                Print #2, ShortID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tAssign.Work & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+    
+                                        End Select
+    
+                                    End If
+                                
+                                End If
+    
+                            End If
+    
+                        Next tAssign
+                        
                     End If
 
                 End If
-next_task:
 
-            Next t
+            End If
 
         End If
+Next_Task:
 
-        If ActFound = True Then
-            For i = 1 To UBound(ACTarray)
-
-                If DescExport = True Then
-                    ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
-                End If
-
-                'v3.4.3 - refactored data output code
-                
-                outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
-
-                If CAID3_Used = True And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & ACTarray(i).CAID3 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = True Then
-                    outputStr = ACTarray(i).CAID1 & "," & ACTarray(i).CAID2 & "," & outputStr
-                End If
-                If CAID3_Used = False And CAID2_Used = False Then
-                    outputStr = ACTarray(i).CAID1 & "," & outputStr
-                End If
-                
-                If subprojectIDs Then 'v3.4.3
-                    outputStr = ACTarray(i).SubProject & "," & outputStr
-                End If
-                
-                Print #1, outputStr
-
-            Next i
-        End If
-
-        Close #1
-        Close #2
-
+    Next t
+    
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    
+    If ActFound = True Then
+        For i = 1 To UBound(ACTarray)
+    
+            If DescExport = True Then
+                ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
+            End If
+    
+            'v3.4.3 - refactored data output code
+            
+            outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
+    
+            outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+            
+            Print #1, outputStr
+    
+        Next i
     End If
+    
+    Close #1
+    If ResourceLoaded Then Close #2
         
 End Sub
 
@@ -6451,7 +2640,7 @@ Private Sub Get_WP_Descriptions(ByVal curProj As Project)
     '<issue47>
     Dim subProjs As Subprojects
     Dim subProj As SubProject
-    Dim curSProj As Project
+    Dim cursproj As Project
     Dim t As Task '</issue47>
 
     WPDescCount = 0
@@ -6466,9 +2655,9 @@ Private Sub Get_WP_Descriptions(ByVal curProj As Project)
 
             FileOpen Name:=subProj.Path, ReadOnly:=True
 
-            Set curSProj = ActiveProject
+            Set cursproj = ActiveProject
 
-            For Each t In curSProj.Tasks '<issue47>
+            For Each t In cursproj.Tasks '<issue47>
 
                 If Not t Is Nothing Then
 
@@ -6641,7 +2830,7 @@ Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal 
     Dim tempBCRstr As String
     Dim subProjs As Subprojects
     Dim subProj As SubProject
-    Dim curSProj As Project
+    Dim cursproj As Project
 
     i = 0
 
@@ -6653,9 +2842,9 @@ Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal 
 
             FileOpen Name:=subProj.Path, ReadOnly:=True
 
-            Set curSProj = ActiveProject
+            Set cursproj = ActiveProject
 
-            For Each t In curSProj.Tasks
+            For Each t In cursproj.Tasks
 
                 If Not t Is Nothing Then
                 
@@ -6880,7 +3069,7 @@ Private Function PercentfromString(ByVal inputStr As String) As Double
     PercentfromString = CDbl(tempDbl)
 
 End Function
-Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal tAssign As Assignment, ResFile As Integer, exportType As String)
+Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal tAssign As Assignment, ResFile As Integer, ExportType As String)
 
     Dim tsv As TimeScaleValue
     Dim tsvs As TimeScaleValues
@@ -6888,7 +3077,7 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
     Dim tsvA As TimeScaleValue
     Dim tempWork As Double
 
-    Select Case exportType
+    Select Case ExportType
 
         Case "ETC"
 
@@ -7552,3 +3741,200 @@ Private Function AssignmentResumeDate(ByVal tAssign As Assignment) As Variant 'v
            
 End Function
 
+Private Sub InitACTArrayRow(ByRef ACTarray() As ACTrowWP, ByVal idx As Integer, _
+    ByVal t As Task, ByVal CAID1 As String, ByVal CAID2 As String, ByVal CAID3 As String, _
+    ByVal WP As String, ByVal CAM As String, ByVal ID As String, ByVal EVT As String, ByVal ProjID As String, _
+    Optional ByVal BStartVal As Variant, Optional ByVal BFinishVal As Variant, _
+    Optional ByVal AStartVal As Variant, Optional ByVal AFinishVal As Variant)
+'v3.5.0 - extracted from repeated ACTarray new row initialization pattern
+
+    ACTarray(idx).ID = ID
+    ACTarray(idx).CAM = CAM
+    ACTarray(idx).CAID1 = CAID1
+    ACTarray(idx).EVT = EVT
+    ACTarray(idx).FFinish = t.Finish
+    ACTarray(idx).FStart = t.Start
+    ACTarray(idx).WP = WP
+    If CAID2_Used = True Then ACTarray(idx).CAID2 = CAID2
+    If CAID3_Used = True Then ACTarray(idx).CAID3 = CAID3
+    If subprojectIDs Then ACTarray(idx).SubProject = ProjID
+    If Not IsMissing(BStartVal) Then If BStartVal <> "NA" Then ACTarray(idx).BStart = BStartVal
+    If Not IsMissing(BFinishVal) Then If BFinishVal <> "NA" Then ACTarray(idx).BFinish = BFinishVal
+    If Not IsMissing(AStartVal) Then If AStartVal <> "NA" Then ACTarray(idx).AStart = AStartVal
+    If Not IsMissing(AFinishVal) Then If AFinishVal <> "NA" Then ACTarray(idx).AFinish = AFinishVal
+
+End Sub
+
+Private Function BuildCompositeID(ByVal CAID1 As String, ByVal CAID2 As String, ByVal CAID3 As String, ByVal WP As String) As String
+'v3.5.0 - extracted from repeated ID construction pattern
+
+    If CAID3_Used = True And CAID2_Used = True Then
+        BuildCompositeID = CAID1 & "/" & CAID2 & "/" & CAID3 & "/" & WP
+    End If
+    If CAID3_Used = False And CAID2_Used = True Then
+        BuildCompositeID = CAID1 & "/" & CAID2 & "/" & WP
+    End If
+    If CAID3_Used = False And CAID2_Used = False Then
+        BuildCompositeID = CAID1 & "/" & WP
+    End If
+
+End Function
+
+Private Sub ReadTaskFields(ByVal t As Task, ByRef CAID1 As String, ByRef CAID2 As String, ByRef CAID3 As String, ByRef WP As String, ByRef EVT As String, ByRef CAM As String, ByRef ID As String, ByRef ProjID As String)
+'v3.5.0 - extracted from repeated task field extraction pattern
+
+    CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
+    If subprojectIDs Then ProjID = t.GetField(FieldNameToFieldConstant(fProject))
+    If CAID3_Used = True Then CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
+    WP = t.GetField(FieldNameToFieldConstant(fWP))
+    EVT = t.GetField(FieldNameToFieldConstant(fEVT))
+    If CAID2_Used = True Then CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
+    CAM = CleanCamName(t.GetField(FieldNameToFieldConstant(fCAM)))
+    ID = BuildCompositeID(CAID1, CAID2, CAID3, WP)
+
+End Sub
+
+Private Sub OpenExportFiles(ByVal curProj As Project, ByVal prefix As String, ByVal eType As ExportType, ByVal includeRES As Boolean)
+'v3.5.0 - extracted from repeated export file setup pattern
+
+    ACTfilename = destFolder & "\" & prefix & " ACT_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
+    Open ACTfilename For Output As #1
+    Print #1, createHeaderStr(eType, CAID3_Used, CAID2_Used, subprojectIDs)
+
+    If includeRES And ResourceLoaded Then
+        RESfilename = destFolder & "\" & prefix & " RES_" & RemoveIllegalCharacters(curProj.ProjectSummaryTask.Project) & "_" & Format(Now, "YYYYMMDD HHMM") & ".csv"
+        Open RESfilename For Output As #2
+        Print #2, "Cobra ID,Resource,Amount,From Date,To Date"
+    End If
+
+End Sub
+
+Private Sub AssignShortID(ByRef ACTarray() As ACTrowWP, ByVal idx As Integer, ByRef ShortID As String)
+'v3.5.0 - extracted from repeated ShortID length check pattern
+
+    If Len(ACTarray(idx).ID) > 58 Then
+        ActIDCounter = ActIDCounter + 1
+        ACTarray(idx).ShortID = ACTarray(idx).WP & " (" & ActIDCounter & ")"
+    Else
+        ACTarray(idx).ShortID = ACTarray(idx).ID
+    End If
+    ShortID = ACTarray(idx).ShortID
+
+End Sub
+
+Private Function PrependCAIDPrefix(ByVal baseStr As String, ByVal CAID1 As String, ByVal CAID2 As String, ByVal CAID3 As String, ByVal ProjID As String) As String
+'v3.5.0 - extracted from repeated CAID prefix prepend pattern
+'To add fields to an output row, extend the baseStr passed to this function.
+'The CAID prefix and SubProject column scaffolding are handled here automatically.
+
+    Dim result As String
+    result = baseStr
+
+    If CAID3_Used = True And CAID2_Used = True Then
+        result = CAID1 & "," & CAID2 & "," & CAID3 & "," & result
+    End If
+    If CAID3_Used = False And CAID2_Used = True Then
+        result = CAID1 & "," & CAID2 & "," & result
+    End If
+    If CAID3_Used = False And CAID2_Used = False Then
+        result = CAID1 & "," & result
+    End If
+
+    If subprojectIDs Then result = ProjID & "," & result
+
+    PrependCAIDPrefix = result
+
+End Function
+
+Private Sub ValidateEVTB(ByVal EVT As String)
+'v3.5.0 - extracted from repeated EVT=B milestone field validation pattern
+
+    If EVT = "B" And Milestones_Used = False Then
+        ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
+        err.Raise 1
+    End If
+
+End Sub
+
+Private Function createHeaderStr(ByVal eType As ExportType, ByVal caid3inUse As Boolean, ByVal caid2inUse As Boolean, ByVal projIDinUse As Boolean) As String
+'v3.5.0
+
+    Dim tempHstr As String
+
+    Select Case eType
+
+        Case BCWP
+
+            tempHstr = ",WP,Milestone,Forecast Start Date,Forecast Finish Date,Actual Start Date,Actual Finish Date,Percent Complete,Resource,"
+
+        Case BCWS
+
+            tempHstr = ",CAM,WP,ID,Milestone,Milestone Weight,Description,Baseline Start Date,Baseline Finish Date,Progress Technique,"
+
+        Case ETC
+
+            tempHstr = ",CAM,WP,ID,Forecast Start Date,Forecast Finish Date,"
+
+        Case WhatIf
+
+            tempHstr = ",CAM,WP,ID,Milestone,Milestone Weight,Description,Baseline Start Date,Baseline Finish Date,Progress Technique,"
+
+        Case Else
+
+    End Select
+
+    If caid3inUse And caid2inUse Then tempHstr = fCAID1t & "," & fCAID2t & "," & fCAID3t & tempHstr
+    
+    If Not caid3inUse And caid2inUse Then tempHstr = fCAID1t & "," & fCAID2t & tempHstr
+    
+    If Not caid3inUse And Not caid2inUse Then tempHstr = fCAID1t & tempHstr
+    
+    If projIDinUse Then tempHstr = "Project," & tempHstr
+
+    createHeaderStr = tempHstr
+
+End Function
+
+Private Function createMilestoneStr(ByVal eType As ExportType, ByVal CAM As String, ByVal WP As String, ByVal UID As String, ByVal t As Task, ByVal MSWeight As String, _
+ByVal caid2inUse As Boolean, ByVal caid3inUse As Boolean, ByVal projIDinUse As Boolean, ByVal CAID1 As String, Optional ByVal CAID2 As String, Optional ByVal CAID3 As String, _
+Optional ByVal ProjID As String, Optional ByVal whatifRevision As Boolean = False) As String
+
+    Dim tempString As String
+    
+    Select Case eType
+    
+        Case BCWP
+        
+            tempString = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
+        
+        Case BCWS
+        
+            tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
+        
+        Case WhatIf
+        
+            If whatifRevision Then
+            
+                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
+            
+            Else
+            
+                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
+        
+            End If
+        
+        Case Else
+    
+    End Select
+    
+    If CAID3_Used = True And CAID2_Used = True Then tempString = CAID1 & "," & CAID2 & "," & CAID3 & "," & tempString
+    
+    If CAID3_Used = False And CAID2_Used = True Then tempString = CAID1 & "," & CAID2 & "," & tempString
+    
+    If CAID3_Used = False And CAID2_Used = False Then tempString = CAID1 & "," & tempString
+    
+    If subprojectIDs Then tempString = ProjID & "," & tempString
+    
+    createMilestoneStr = tempString
+
+End Function
