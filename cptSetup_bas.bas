@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.13.0</cpt_version>
+'<cpt_version>v1.13.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptSetup_bas"
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
