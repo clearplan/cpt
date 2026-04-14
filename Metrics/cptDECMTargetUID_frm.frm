@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v8.1.1</cpt_version>
+'<cpt_version>v8.1.2</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptDECMTargetUID_frm"
 Public lngTargetTaskUID As Long
 
 Private Sub cmdCancel_Click()

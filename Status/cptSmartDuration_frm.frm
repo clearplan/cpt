@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptSmartDuration_frm 
    Caption         =   "Smart Duration"
-   ClientHeight    =   2190
+   ClientHeight    =   2430
    ClientLeft      =   105
    ClientTop       =   450
    ClientWidth     =   3750
@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v2.1.1</cpt_version>
+'<cpt_version>v2.2.0</cpt_version>
 Public dateError As Boolean
 Public finDate As Date
 Public StartDate As Date
@@ -25,6 +25,11 @@ End Sub
 
 Private Sub chkMarkOnTrack_Click()
   cptSaveSetting "SmartDuration", "chkMarkOnTrack", IIf(Me.chkMarkOnTrack, 1, 0)
+End Sub
+
+Private Sub chkNewFF_Click()
+  cptSaveSetting "SmartDuration", "chkNewFF", IIf(Me.chkNewFF, 1, 0)
+  cptUpdateSmartDurationForm Me
 End Sub
 
 Private Sub chkRetainETC_Click()

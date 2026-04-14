@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptSaveMarked_bas"
-'<cpt_version>v1.0.10</cpt_version>
+'<cpt_version>v1.1.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptSaveMarked_bas"
 
 Sub cptShowSaveMarked_frm()
   'objects
@@ -16,9 +17,12 @@ Sub cptShowSaveMarked_frm()
   'variants
   'dates
   
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+  
   'prevent spawning
   If Not cptGetUserForm("cptSaveMarked_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   Set mySaveMarked_frm = New cptSaveMarked_frm
@@ -39,6 +43,7 @@ Sub cptShowSaveMarked_frm()
       .cboProjects.Enabled = False
     End If
     .lblDir.Caption = "%UserProfile%\cpt-backup\settings\cpt-marked.adtg; cpt-marked-details.adtg"
+    .cmdForget.Enabled = False
     .Show False
   End With
 

@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.12.3</cpt_version>
+'<cpt_version>v1.13.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptSetup_bas"
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
 Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() lives in cptCore_bas
 #If Win64 And VBA7 Then
@@ -15,9 +16,9 @@ Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() l
                                                                         ByVal dwReserved As Long) As Long
 #End If
 #If VBA7 Then
-    Private Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+  Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
 #Else
-    Private Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+  Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 #End If
 
 Sub cptSetup()
@@ -371,7 +372,7 @@ Public Function cptBuildRibbonTab()
 
   'common tools
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""custom_view"" label=""View"" visible=""true"">"
-
+  
   ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:OutlineSymbolsShow"" visible=""true""/>"
   ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:SummaryTasks"" visible=""true""/>"
   ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:NameIndent"" visible=""true""/>"
@@ -524,12 +525,14 @@ Public Function cptBuildRibbonTab()
     End If
     If cptModuleExists("cptSaveMarked_bas") And cptModuleExists("cptSaveMarked_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mMarked"" label=""Marking"" imageMso=""ApproveApprovalRequest"" visible=""true"" size=""large"" >"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bMarkSelected"" label=""Mark"" imageMso=""ApproveApprovalRequest"" onAction=""cptMarkSelected"" visible=""true"" supertip=""Mark selected task(s)"" />" 'size=""large""
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bSaveMarked"" label=""Save"" imageMso=""Archive"" onAction=""cptSaveMarked"" visible=""true"" supertip=""Save currently marked tasks for later import."" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bImportMarked"" label=""Import"" imageMso=""ApproveApprovalRequest"" onAction=""cptShowSaveMarked_frm"" visible=""true"" supertip=""Import saved sets of marked tasks."" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bMarkedApply"" label=""Filter Marked"" imageMso=""FilterToggleFilter"" onAction=""cptMarked"" visible=""true"" supertip=""Filter Marked Tasks"" />" 'size=""large""
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bUnmarkAll"" label=""Unmark All"" imageMso=""RejectApprovalRequest"" onAction=""cptClearMarked"" visible=""true"" supertip=""Unmark all currently marked tasks."" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bUnmark"" label=""Unmark"" imageMso=""RejectApprovalRequest"" onAction=""cptUnmarkSelected"" visible=""true"" supertip=""Unmark selected task(s)"" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
@@ -656,7 +659,7 @@ Public Function cptBuildRibbonTab()
   End If
   ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   If cptModuleExists("cptIMSCobraExport_bas") And cptModuleExists("cptIMSCobraExport_frm") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCOBRA"" label=""COBRA Export Tool"" imageMso=""Export"" onAction=""Export_IMS"" visible=""true"" supertip=""Validate that your IMS is ready for integration; create CSV transaction files for COBRA. Baseline, forecast, status, etc."" />"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCOBRA"" label=""COBRA Export Tool"" imageMso=""Export"" onAction=""Export_IMS"" visible=""true"" size=""large"" supertip=""Validate that your IMS is ready for integration; create CSV transaction files for COBRA. Baseline, forecast, status, etc."" />"
   End If
   If cptModuleExists("cptCheckAssignments_bas") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignments"" label=""Check Assignments"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
@@ -845,6 +848,7 @@ Function cptGetLatest(strModule As String) As String
 
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
   Set xmlNode = Nothing
   Set xmlDoc = Nothing
   Set oFile = Nothing
@@ -868,7 +872,8 @@ Function cptGetVersion(strModule As String) As String
   Else
     Set vbComponent = ThisProject.VBProject.VBComponents(strModule)
     If vbComponent.CodeModule.Find("<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
+      'strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
+      strVersion = cptRxMatch(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
       strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
     End If
     cptGetVersion = strVersion
@@ -881,7 +886,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   'objects
   Dim oLink As MSProject.TaskDependency
   Dim oTask As MSProject.Task
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oProfile As MSProject.Profile
   Dim oShell As Object
   'strings
@@ -1011,21 +1016,22 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
     strMsg = strMsg & "Master Project: " & Format(ActiveProject.Tasks.Count, "#,##0") & " tasks; " & Format(ActiveProject.ResourceCount, "#,##0") & " resources" & vbCrLf
     lngTotalTasks = ActiveProject.Tasks.Count
     lngTotalResources = ActiveProject.ResourceCount
-    For Each oSubproject In ActiveProject.Subprojects
-      strMsg = strMsg & "- Subproject " & oSubproject.Index & ": " & Format(oSubproject.SourceProject.Tasks.Count, "#,##0") & " tasks; " & Format(oSubproject.SourceProject.ResourceCount, "#,##0") & " resources" & vbCrLf
-      lngTotalTasks = lngTotalTasks + oSubproject.SourceProject.Tasks.Count
-      lngTotalResources = lngTotalResources + oSubproject.SourceProject.ResourceCount
-    Next oSubproject
+    For Each oSubProject In ActiveProject.Subprojects
+      strMsg = strMsg & "- Subproject " & oSubProject.Index & ": " & Format(oSubProject.SourceProject.Tasks.Count, "#,##0") & " tasks; " & Format(oSubProject.SourceProject.ResourceCount, "#,##0") & " resources" & vbCrLf
+      lngTotalTasks = lngTotalTasks + oSubProject.SourceProject.Tasks.Count
+      lngTotalResources = lngTotalResources + oSubProject.SourceProject.ResourceCount
+    Next oSubProject
     strMsg = strMsg & "Total: " & Format(lngTotalTasks, "#,##0") & " tasks; " & Format(lngTotalResources, "#,##0") & " resources" & vbCrLf
   Else
     strMsg = strMsg & "Tasks: " & Format(ActiveProject.Tasks.Count, "#,##0") & vbCrLf
     strMsg = strMsg & "Resources: " & Format(ActiveProject.ResourceCount, "#,##0") & vbCrLf
   End If
   strMsg = strMsg & "Baselined: " & IsDate(ActiveProject.BaselineSavedDate(pjBaseline)) & vbCrLf
+  strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)"
   blnResourceLoaded = False
   If blnMaster Then
-    For Each oSubproject In ActiveProject.Subprojects
-      For Each oTask In oSubproject.SourceProject.Tasks
+    For Each oSubProject In ActiveProject.Subprojects
+      For Each oTask In oSubProject.SourceProject.Tasks
         If oTask Is Nothing Then GoTo next_task_master
         If oTask.Assignments.Count > 0 Then
           blnResourceLoaded = True
@@ -1033,7 +1039,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
         End If
 next_task_master:
       Next oTask
-    Next oSubproject
+    Next oSubProject
   Else
     If ActiveProject.ResourceCount > 0 Then
       For Each oTask In ActiveProject.Tasks
@@ -1049,8 +1055,8 @@ next_task_single:
   strMsg = strMsg & "Resource Loaded: " & blnResourceLoaded & vbCrLf
   blnCPL = False
   If blnMaster Then
-    For Each oSubproject In ActiveProject.Subprojects
-      For Each oTask In oSubproject.SourceProject.Tasks
+    For Each oSubProject In ActiveProject.Subprojects
+      For Each oTask In oSubProject.SourceProject.Tasks
         If Not oTask Is Nothing Then
           For Each oLink In oTask.TaskDependencies
             If oLink.To = oTask Then
@@ -1070,7 +1076,7 @@ next_task_single:
         End If
       Next oTask
       If blnCPL Then Exit For
-    Next oSubproject
+    Next oSubProject
   Else
     For Each oTask In ActiveProject.Tasks
       If Not oTask Is Nothing Then
@@ -1147,8 +1153,8 @@ next_task_single:
     End If
   ElseIf Application.Edition = pjEditionStandard Then 'check for inactive tasks
     If blnMaster Then
-      For Each oSubproject In ActiveProject.Subprojects
-        For Each oTask In oSubproject.SourceProject.Tasks
+      For Each oSubProject In ActiveProject.Subprojects
+        For Each oTask In oSubProject.SourceProject.Tasks
           If Not oTask Is Nothing Then
             If Not oTask.Active Then
               blnInactive = True
@@ -1156,7 +1162,7 @@ next_task_single:
             End If
           End If
         Next oTask
-      Next oSubproject
+      Next oSubProject
     Else
       If ActiveProject.ResourceCount > 0 Then
         For Each oTask In ActiveProject.Tasks
@@ -1230,7 +1236,7 @@ exit_here:
   Set oLink = Nothing
   Application.StatusBar = ""
   Set oTask = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oShell = Nothing
   Set oProfile = Nothing
 

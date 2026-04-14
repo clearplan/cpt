@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptBackbone_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptBackbone_bas"
 
 Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
   'objects
@@ -1113,8 +1114,9 @@ Sub cptShowBackbone_frm()
   End With
   
   'get latest 881 dictionary version (if possible)
+  strFileName = cptDir & "\cpt-mil-std-881.adtg"
   Set xmlHttpDoc = CreateObject("Microsoft.XMLHTTP")
-  strURL = "https://github.com/clearplan/cpt/blob/master/Backbone/cpt-mil-std-881.adtg"
+  strURL = "https://raw.githubusercontent.com/clearplan/cpt/master/Backbone/cpt-mil-std-881.adtg"
   xmlHttpDoc.Open "GET", strURL, False
   xmlHttpDoc.Send
   If xmlHttpDoc.Status = 200 And xmlHttpDoc.readyState = 4 Then
@@ -1134,7 +1136,6 @@ Sub cptShowBackbone_frm()
     .AddItem "From MSP Server Outline Code Export"
     .AddItem "From Existing Tasks"
     'add options for mil-std-881
-    strFileName = cptDir & "/cpt-mil-std-881.adtg"
     If Dir(strFileName) <> vbNullString Then
       Set oDict = CreateObject("Scripting.Dictionary")
       Set oRecordset = CreateObject("ADODB.Recordset")

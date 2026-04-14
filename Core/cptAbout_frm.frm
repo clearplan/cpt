@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.12.3</cpt_version>
+'<cpt_version>v1.13.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptAbout_frm"
 
 Private Sub cmdClose_Click()
   Unload Me
@@ -40,13 +41,19 @@ Private Sub lblScoreBoard_Click()
   
   'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b7" 'EWR > SAV '6/3/22 = 7
   'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b8" 'EWR > SAV '6/5/22 = 8
-  strScoreboard = strScoreboard & "2022-06-03 EWR > SAV" & vbTab & "WIN " & vbTab & "t0" & vbTab & "b7" & vbCrLf
+  strScoreboard = strScoreboard & "2022-06-03 EWR > SAV" & vbTab & "WIN" & vbTab & "t0" & vbTab & "b7" & vbCrLf
   strScoreboard = strScoreboard & "2022-06-05 SAV > EWR" & vbTab & "WIN" & vbTab & "t0" & vbTab & "b8" & vbCrLf
   
-  'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b9" 'EWR > DFW '5/16/25
-  'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b10" 'DFW > EWR '5/18/25
+  'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b9" 'EWR > DFW '5/16/25 = 9
+  'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b10" 'DFW > EWR '5/18/25 = 10
   strScoreboard = strScoreboard & "2025-05-16 EWR > DFW" & vbTab & "WIN" & vbTab & "t0" & vbTab & "b9" & vbCrLf
   strScoreboard = strScoreboard & "2025-05-18 DFR > EWR" & vbTab & "WIN" & vbTab & "t0" & vbTab & "b10" & vbCrLf
+  
+  'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b11" 'EWR > SLC '5/16/25 = 11
+  'myAbout_frm.lblScoreBoard.Caption = "t0" & vbtab & "b12" 'SLC > EWR '5/18/25 = 12
+  strScoreboard = strScoreboard & "2026-04-10 EWR > SLC" & vbTab & "WIN" & vbTab & "t0" & vbTab & "b11" & vbCrLf
+  strScoreboard = strScoreboard & "2026-04-12 SLC > EWR" & vbTab & "WIN" & vbTab & "t0" & vbTab & "b12" & vbCrLf
+  
   MsgBox strScoreboard, vbOKOnly, "#Winning"
 
 End Sub
@@ -55,7 +62,7 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink ("http://" & Me.lblURL.Caption)
+  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
 
 exit_here:
   On Error Resume Next
