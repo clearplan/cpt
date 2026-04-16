@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.6.2</cpt_version>
+'<cpt_version>v1.7.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptText_bas"
 
 Sub cptBulkAppend()
   'objects
@@ -220,7 +221,7 @@ next_task:
     rstReplaced.MoveFirst
     FilterEdit "cptMyReplace", True, True, True, False, , "Unique ID", , "equals", rstReplaced(0), "Or", True
     Do While Not rstReplaced.EOF
-      FilterEdit "cptMyReplace", TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID", test:="equals", Value:=rstReplaced(0), operation:="Or", ShowInMenu:=True
+      FilterEdit "cptMyReplace", TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID", Test:="equals", Value:=rstReplaced(0), Operation:="Or", ShowInMenu:=True
       rstReplaced.MoveNext
     Loop
     FilterApply "cptMyReplace", True
@@ -257,7 +258,7 @@ Sub cptFindDuplicateTaskNames()
   'objects
   Dim oTask As MSProject.Task
   Dim oDict As Scripting.Dictionary
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oShell As Object
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
@@ -300,27 +301,27 @@ Sub cptFindDuplicateTaskNames()
   If blnMaster Then
     If MsgBox("Load and expand all subprojects?", vbQuestion + vbYesNo, "Please confirm:") = vbNo Then GoTo exit_here
     lngItems = ActiveProject.Subprojects.Count
-    For Each oSubproject In ActiveProject.Subprojects
+    For Each oSubProject In ActiveProject.Subprojects
       lngItem = lngItem + 1
-      Application.StatusBar = "Loading " & oSubproject.InsertedProjectSummary.Name & "..."
-      EditGoTo oSubproject.InsertedProjectSummary.ID
+      Application.StatusBar = "Loading " & oSubProject.InsertedProjectSummary.Name & "..."
+      EditGoTo oSubProject.InsertedProjectSummary.ID
       Application.OutlineShowSubTasks
-      Application.StatusBar = "Loading " & oSubproject.InsertedProjectSummary.Name & "...(" & Format(lngItem / lngItems, "0%") & ")"
-    Next oSubproject
+      Application.StatusBar = "Loading " & oSubProject.InsertedProjectSummary.Name & "...(" & Format(lngItem / lngItems, "0%") & ")"
+    Next oSubProject
     Application.StatusBar = "Loading subprojects...done."
-    Set oSubproject = Nothing
+    Set oSubProject = Nothing
   End If
   
   blnIgnoreSummaryTasks = MsgBox("Ignore Summary Tasks?", vbQuestion + vbYesNo, "Please Confrim") = vbYes
   'first, build the filter
   strFilter = "cptDuplicateTaskNames Filter"
   If Edition = pjEditionProfessional Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Active", test:="equals", Value:="Yes"
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Active", Test:="equals", Value:="Yes"
   ElseIf Edition = pjEditionStandard Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Name", test:="does not contain", Value:="absolute_gibberish"
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Name", Test:="does not contain", Value:="absolute_gibberish"
   End If
   If blnIgnoreSummaryTasks Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", test:="equals", Value:="No", operation:="And", Parenthesis:=False
+    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", Test:="equals", Value:="No", Operation:="And", Parenthesis:=False
   End If
   strRestoreFilter = ActiveProject.CurrentFilter
   FilterApply strFilter
@@ -338,7 +339,7 @@ Sub cptFindDuplicateTaskNames()
 analyze_next:
   Next oTask
   If blnIgnoreExternal Then
-    FilterEdit strFilter, TaskFilter:=True, NewFieldName:="External Task", test:="equals", Value:="No", operation:="And", Parenthesis:=False
+    FilterEdit strFilter, TaskFilter:=True, NewFieldName:="External Task", Test:="equals", Value:="No", Operation:="And", Parenthesis:=False
   End If
   FilterEdit strFilter, TaskFilter:=True, ShowSummaryTasks:=Not blnIgnoreSummaryTasks
   FilterApply strFilter
@@ -346,17 +347,17 @@ analyze_next:
   
   'then build the map
   strMap = "cptDuplicateTaskNames Map"
-  MapEdit Name:=strMap, Create:=True, OverwriteExisting:=True, datacategory:=0, categoryenabled:=True, TableName:="cptDuplicateTaskNames", FieldName:="Unique ID", ExternalFieldName:="Unique_ID", ExportFilter:=strFilter, ImportMethod:=0, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(9), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
+  MapEdit Name:=strMap, Create:=True, OverwriteExisting:=True, DataCategory:=0, CategoryEnabled:=True, TableName:="cptDuplicateTaskNames", FieldName:="Unique ID", ExternalFieldName:="Unique_ID", ExportFilter:=strFilter, ImportMethod:=0, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(9), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
   If blnMaster Then
-    MapEdit Name:=strMap, datacategory:=0, FieldName:="Project", ExternalFieldName:="Project"
+    MapEdit Name:=strMap, DataCategory:=0, FieldName:="Project", ExternalFieldName:="Project"
   End If
   If Not blnIgnoreExternal Then
-    MapEdit Name:=strMap, datacategory:=0, FieldName:="External Task", ExternalFieldName:="External Task"
+    MapEdit Name:=strMap, DataCategory:=0, FieldName:="External Task", ExternalFieldName:="External Task"
   End If
   If Not blnIgnoreSummaryTasks Then
-    MapEdit Name:=strMap, datacategory:=0, FieldName:="Summary", ExternalFieldName:="Summary"
+    MapEdit Name:=strMap, DataCategory:=0, FieldName:="Summary", ExternalFieldName:="Summary"
   End If
-  MapEdit Name:=strMap, datacategory:=0, FieldName:="Name", ExternalFieldName:="Name", ExportFilter:=strFilter, ImportMethod:=0, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(9), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
+  MapEdit Name:=strMap, DataCategory:=0, FieldName:="Name", ExternalFieldName:="Name", ExportFilter:=strFilter, ImportMethod:=0, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(9), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
   
   'perform the analysis
   Set oDict = CreateObject("Scripting.Dictionary")
@@ -458,7 +459,7 @@ exit_here:
   Application.StatusBar = ""
   Set oDict = Nothing
   Set oTask = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oShell = Nothing
   Set oWorkbook = Nothing
   Set oWorksheet = Nothing
@@ -560,9 +561,12 @@ Sub cptShowText_frm()
   'variants
   'dates
   
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+  
   'prevent spawning
   If Not cptGetUserForm("cptText_frm") Is Nothing Then Exit Sub
-
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
@@ -776,6 +780,8 @@ Sub cptCheckAnnoyances()
   Dim strTimesList As String
   Dim strDurations As String
   Dim strDurationsList As String
+  Dim strSplit As String
+  Dim strSplitList As String
   Dim strFilter As String
   'longs
   Dim lngItem As Long
@@ -837,12 +843,16 @@ Sub cptCheckAnnoyances()
       strDurations = strDurations & oTask.UniqueID & "," & oTask.DurationText & vbCrLf
       If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
-    If Left(cptRegEx(oTask.DurationText, "[A-z]{1,}"), 1) = "e" Then
+    If cptRegEx(oTask.DurationText, "[A-z]") = "e" Then
       strElapsedList = strElapsedList & oTask.UniqueID & vbTab
       strElapsed = strElapsed & oTask.UniqueID & "," & oTask.DurationText & vbCrLf
       If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
-    'todo: Assignments without work
+    If oTask.SplitParts.Count > 1 Then
+      strSplitList = strSplitList & oTask.UniqueID & vbTab
+      strSplit = strSplit & oTask.UniqueID & "," & oTask.SplitParts.Count & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+    End If
 next_task:
     lngTask = lngTask + 1
     Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")"
@@ -876,40 +886,61 @@ next_task:
       lngFile = FreeFile
       strFileName = Environ("tmp") & "\annoyances.txt"
       Open strFileName For Output As lngFile
+      Print #lngFile, "===== ODD TIMES ARE ANNOYING ====="
       If Len(strTimes) > 0 Then
-        Print #lngFile, "===== ODD TIMES ARE ANNOYING ====="
         Print #lngFile, "UID,START,FINISH"
         Print #lngFile, strTimes
         Print #lngFile, "UID LIST: " & Replace(strTimesList, vbTab, ",")
-        Print #lngFile, vbCrLf
+      Else
+        Print #lngFile, "...but you don't have any--nice job."
       End If
+      Print #lngFile, vbCrLf
+      Print #lngFile, "===== FRACTIONAL DURATIONS ARE ANNOYING ====="
       If Len(strDurations) > 0 Then
-        Print #lngFile, "===== FRACTIONAL DURATIONS ARE ANNOYING ====="
         Print #lngFile, "UID,DURATION"
         Print #lngFile, strDurations
         Print #lngFile, "UID LIST: " & Replace(strDurationsList, vbTab, ",")
-        Print #lngFile, vbCrLf
+      Else
+        Print #lngFile, "...but you don't have any--well done."
       End If
+      Print #lngFile, vbCrLf
+      Print #lngFile, "===== ELAPSED DURATIONS ARE ANNOYING ====="
       If Len(strElapsed) > 0 Then
-        Print #lngFile, "===== ELAPSED DURATIONS ARE ANNOYING ====="
         Print #lngFile, "UID,DURATION"
         Print #lngFile, strElapsed
         Print #lngFile, "UID LIST: " & Replace(strElapsedList, vbTab, ",")
-        Print #lngFile, vbCrLf
+      Else
+        Print #lngFile, "...but I didn't find any--good job."
       End If
-      If blnProjectStandard And Len(strInactive) > 0 Then
+      Print #lngFile, vbCrLf
+      Print #lngFile, "===== SPLIT TASKS CAN BE ANNOYING ====="
+      If Len(strSplitList) > 0 Then
+        Print #lngFile, "UID,SplitParts"
+        Print #lngFile, strSplit
+        Print #lngFile, "UID LIST: " & Replace(strSplitList, vbTab, ",")
+      Else
+        Print #lngFile, "...none found, phew!"
+      End If
+      Print #lngFile, vbCrLf
+      If blnProjectStandard Then
         Print #lngFile, "===== INACTIVE TASKS IN PROJECT STANDARD ARE ANNOYING ====="
         Print #lngFile, "===== AND WILL PROBABLY LEAD TO ANOMALOUS CALCULATIONS ===="
-        Print #lngFile, "UID,ACTIVE"
-        Print #lngFile, strInactive
-        Print #lngFile, "UID LIST: " & Replace(strInactiveList, vbTab, ",")
-        Print #lngFile, vbCrLf
+        If Len(strInactive) > 0 Then
+          Print #lngFile, "UID,ACTIVE"
+          Print #lngFile, strInactive
+          Print #lngFile, "UID LIST: " & Replace(strInactiveList, vbTab, ",")
+        Else
+          Print #lngFile, "...but not on your watch! Well done."
+        End If
       End If
+      Print #lngFile, vbCrLf
       strFilter = ""
       For lngItem = 0 To oDict.Count - 1
         strFilter = strFilter & oDict.Keys(lngItem) & ","
       Next lngItem
       Print #lngFile, "COMBINED UID LIST: " & Replace(strFilter, vbTab, ",")
+      Print #lngFile, vbCrLf
+      Print #lngFile, "HINT: Copy list(s) of UIDs, then paste into FilterByClipboard to review and fix."
       Close #lngFile
       ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     End If
@@ -926,4 +957,5 @@ err_here:
   Call cptHandleErr("cptText_bas", "cptCheckAnnoyances", Err, Erl)
   Resume exit_here
 End Sub
+
 
