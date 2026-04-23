@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.1.2</cpt_version>
+'<cpt_version>v1.1.3</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCostRateTables_frm"
 
 Private Sub cboStatusField_AfterUpdate()
   cptSaveSetting "CostRateTables", "cboStatusField", Me.cboStatusField.Value
@@ -53,7 +54,9 @@ Private Sub cmdGo_Click()
   End If
   'save user settings
   cptSaveSetting "CostRateTables", "txtCostRateTables", Me.txtCostRateTables.Text
-  cptSaveSetting "CostRateTables", "cboStatusField", Me.cboStatusField.Value
+  If Not IsNull(Me.cboStatusField.Value) Then
+    cptSaveSetting "CostRateTables", "cboStatusField", Me.cboStatusField.Value
+  End If
   cptSaveSetting "CostRateTables", "chkAddNew", IIf(Me.chkAddNew, "1", "0")
   cptSaveSetting "CostRateTables", "chkOverwrite", IIf(Me.chkOverwrite, "1", "0")
 

@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptCostRateTables_bas"
-'<cpt_version>v1.1.2</cpt_version>
+'<cpt_version>v1.1.3</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCostRateTables_bas"
 
 Sub cptShowCostRateTables_frm()
   'objects
@@ -18,6 +19,9 @@ Sub cptShowCostRateTables_frm()
   'booleans
   'variants
   'dates
+  
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
   
   'prevent spawning
   If Not cptGetUserForm("cptCostRateTables_frm") Is Nothing Then Exit Sub
