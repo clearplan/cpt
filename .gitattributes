@@ -16,8 +16,8 @@
 # VBA files are text, but fragile when normalized.
 # Treat them as binary to avoid EOL churn,
 # but allow readable diffs.
-*.bas binary diff=text
-*.cls binary diff=text
+*.bas text eol=crlf
+*.cls text diff=crlf
 *.frm binary diff=text
 
 # ----------------------------------------------------------------------
