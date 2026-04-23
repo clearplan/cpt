@@ -1,27 +1,5 @@
-# ----------------------------------------------------------------------
-# Global default
-# ----------------------------------------------------------------------
-# Let Git auto-detect text vs binary for everything else
 * text=auto
-
-# ----------------------------------------------------------------------
-# SQL files (Deltek COBRA requirement)
-# ----------------------------------------------------------------------
-# SQL must ALWAYS be CRLF
 *.sql text eol=crlf
-
-# ----------------------------------------------------------------------
-# VBA source files
-# ----------------------------------------------------------------------
-# VBA files are text, but fragile when normalized.
-# Treat them as binary to avoid EOL churn,
-# but allow readable diffs.
-*.bas text eol=crlf
-*.cls text diff=crlf
+*.cls binary diff=text
 *.frm binary diff=text
-
-# ----------------------------------------------------------------------
-# VBA binary resources
-# ----------------------------------------------------------------------
-# True binary – never normalize or diff
 *.frx binary
