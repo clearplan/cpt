@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.2</cpt_version>
+'<cpt_version>v1.7.3</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -866,7 +866,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
         DoEvents
         'must close before attaching to email
         oWorkbook.Close True
-        oExcel.Wait Now + TimeValue("00:00:02")
+        Sleep 2000
         oExcel.Quit
         Set oExcel = Nothing
         cptSendStatusSheet myStatusSheet_frm, strFileName
@@ -879,7 +879,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
           oWorkbook.Activate
         Else
           oWorkbook.Close True
-          oExcel.Wait Now + TimeValue("00:00:002")
+          Sleep 2000
         End If
       End If 'blnEmail
       
@@ -992,7 +992,7 @@ next_worksheet:
         DoEvents
         'must close before attaching
         oWorkbook.Close True
-        oExcel.Wait Now + TimeValue("00:00:02")
+        Sleep 2000
         oExcel.Quit
         Set oExcel = Nothing
         cptSendStatusSheet myStatusSheet_frm, strFileName
@@ -1005,7 +1005,7 @@ next_worksheet:
           oWorkbook.Activate
         Else
           oWorkbook.Close True
-          oExcel.Wait Now + TimeValue("00:00:002")
+          Sleep 2000
         End If
       End If 'blnEmail
       
@@ -1105,7 +1105,7 @@ next_worksheet:
             DoEvents
             'must close before attaching to email
             oWorkbook.Close True
-            oExcel.Wait Now + TimeValue("00:00:02")
+            Sleep 2000
             oExcel.Quit
             Set oExcel = Nothing
             cptSendStatusSheet myStatusSheet_frm, strFileName, strItem
@@ -1118,7 +1118,7 @@ next_worksheet:
               oWorkbook.Activate
             Else
               oWorkbook.Close True
-              oExcel.Wait Now + TimeValue("00:00:002")
+              Sleep 2000
             End If
           End If 'blnEmail
         End If '.lboItems.Selected(lngItem)
@@ -1266,7 +1266,7 @@ filter_only:
   Application.StatusBar = "Resetting the cptStatusSheet Filter..."
   FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Actual Finish", test:="equals", Value:="NA", ShowInMenu:=False, ShowSummaryTasks:=True
   If myStatusSheet_frm.chkHide And IsDate(myStatusSheet_frm.txtHideCompleteBefore) Then
-    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", test:="is greater than or equal to", Value:=myStatusSheet_frm.txtHideCompleteBefore, operation:="Or", ShowSummaryTasks:=True
+    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", test:="is greater than or equal to", Value:=FormatDateTime(myStatusSheet_frm.txtHideCompleteBefore, vbShortDate), operation:="Or", ShowSummaryTasks:=True
   End If
   If Edition = pjEditionProfessional Then
     FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True, Parenthesis:=True
@@ -1440,17 +1440,17 @@ try_again:
   SelectAll
   EditCopy
   DoEvents
-  oWorksheet.Application.Wait 5000
+  Sleep 5000
   On Error Resume Next
   oWorksheet.Paste oWorksheet.Cells(lngHeaderRow, 1), False
   If Err.Number = 1004 Then 'try again
     EditCopy
-    oWorksheet.Application.Wait 5000
+    Sleep 5000
     oWorksheet.Paste oWorksheet.Cells(lngHeaderRow, 1), False
-    oWorksheet.Application.Wait 5000
+    Sleep 5000
   End If
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  oWorksheet.Application.Wait 5000
+  Sleep 5000
   oWorksheet.Cells.WrapText = False
   oWorksheet.Application.ActiveWindow.Zoom = 85
   oWorksheet.Cells.Font.Name = "Calibri"
@@ -2596,7 +2596,7 @@ Function cptSaveStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef
     'create the status date directory
     If Dir(strDir, vbDirectory) = vbNullString Then
       MkDir strDir
-      oWorkbook.Application.Wait Now + TimeValue("00:00:03")
+      Sleep 3000
     End If
     strFileName = .txtFileName.Value & ".xlsx"
     strFileName = Replace(strFileName, "[yyyy-mm-dd]", Format(dtStatus, "yyyy-mm-dd"))
@@ -2619,7 +2619,7 @@ Function cptSaveStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef
     On Error Resume Next
     If Dir(strDir & strFileName) <> vbNullString Then
       Kill strDir & strFileName
-      oWorkbook.Application.Wait Now + TimeValue("00:00:02")
+      Sleep 2000
       DoEvents
     End If
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -2630,10 +2630,10 @@ Function cptSaveStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef
       strMsg = strMsg & vbCrLf & "The file you are now creating will be named '" & strFileName & "'"
       MsgBox strMsg, vbExclamation + vbOKOnly, "NOTA BENE"
       oWorkbook.SaveAs strDir & strFileName, 51
-      oWorkbook.Application.Wait Now + TimeValue("00:00:02")
+      Sleep 2000
     Else
       oWorkbook.SaveAs strDir & strFileName, 51
-      oWorkbook.Application.Wait Now + TimeValue("00:00:02")
+      Sleep 2000
     End If
   End With
 
