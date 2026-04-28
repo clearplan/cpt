@@ -13,6 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 '<cpt_version>v1.7.3</cpt_version>
 Option Explicit
 Private Const lngForeColorValid As Long = -2147483630
