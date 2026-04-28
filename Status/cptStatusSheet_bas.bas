@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.2</cpt_version>
+'<cpt_version>v1.7.3</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -879,7 +879,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
           oWorkbook.Activate
         Else
           oWorkbook.Close True
-          oExcel.Wait Now + TimeValue("00:00:002")
+          oExcel.Wait Now + TimeValue("00:00:02")
         End If
       End If 'blnEmail
       
@@ -1005,7 +1005,7 @@ next_worksheet:
           oWorkbook.Activate
         Else
           oWorkbook.Close True
-          oExcel.Wait Now + TimeValue("00:00:002")
+          oExcel.Wait Now + TimeValue("00:00:02")
         End If
       End If 'blnEmail
       
@@ -1118,7 +1118,7 @@ next_worksheet:
               oWorkbook.Activate
             Else
               oWorkbook.Close True
-              oExcel.Wait Now + TimeValue("00:00:002")
+              oExcel.Wait Now + TimeValue("00:00:02")
             End If
           End If 'blnEmail
         End If '.lboItems.Selected(lngItem)
@@ -1266,7 +1266,7 @@ filter_only:
   Application.StatusBar = "Resetting the cptStatusSheet Filter..."
   FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Actual Finish", test:="equals", Value:="NA", ShowInMenu:=False, ShowSummaryTasks:=True
   If myStatusSheet_frm.chkHide And IsDate(myStatusSheet_frm.txtHideCompleteBefore) Then
-    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", test:="is greater than or equal to", Value:=myStatusSheet_frm.txtHideCompleteBefore, operation:="Or", ShowSummaryTasks:=True
+    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", test:="is greater than or equal to", Value:=FormatDateTime(myStatusSheet_frm.txtHideCompleteBefore, vbShortDate), operation:="Or", ShowSummaryTasks:=True
   End If
   If Edition = pjEditionProfessional Then
     FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True, Parenthesis:=True

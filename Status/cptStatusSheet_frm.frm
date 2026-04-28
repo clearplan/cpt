@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.7.2</cpt_version>
+'<cpt_version>v1.7.3</cpt_version>
 Option Explicit
 Private Const lngForeColorValid As Long = -2147483630
 Private Const lngBorderColorValid As Long = 8421504 '-2147483642
@@ -1377,9 +1377,9 @@ Private Sub txtHideCompleteBefore_Change()
   stxt = cptRegEx(Me.txtHideCompleteBefore.Text, "[0-9\/]*")
   Me.txtHideCompleteBefore.Text = stxt
   blnValid = False
-  If Len(Me.txtHideCompleteBefore.Text) > 0 Then
-    If IsDate(Me.txtHideCompleteBefore.Text) Then
-      dtLookahead = FormatDateTime(Me.txtHideCompleteBefore, vbShortDate)
+  If Len(stxt) > 0 Then
+    If IsDate(stxt) And Len(cptRegEx(stxt, "[0-9]{1,}\/[0-9]{1,}\/[0-9]{1,}")) > 0 Then
+      dtLookahead = FormatDateTime(stxt, vbShortDate)
       dtStatus = FormatDateTime(ActiveProject.StatusDate)
       If dtLookahead > #1/1/1984# And dtLookahead < dtStatus Then
         blnValid = True
@@ -1390,6 +1390,7 @@ Private Sub txtHideCompleteBefore_Change()
     Me.chkHide.ForeColor = lngForeColorValid
     Me.txtHideCompleteBefore.ForeColor = lngForeColorValid
     Me.txtHideCompleteBefore.BorderColor = lngBorderColorValid
+    Call cptRefreshStatusTable(Me, False, True)
   Else
     Me.chkHide.ForeColor = lngForeColorInvalid
     Me.txtHideCompleteBefore.ForeColor = lngForeColorInvalid
