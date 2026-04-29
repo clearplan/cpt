@@ -782,6 +782,8 @@ Sub cptCheckAnnoyances()
   Dim strDurationsList As String
   Dim strSplit As String
   Dim strSplitList As String
+  Dim strFixedCosts As String
+  Dim strFixedCostList As String
   Dim strFilter As String
   'longs
   Dim lngItem As Long
@@ -819,12 +821,19 @@ Sub cptCheckAnnoyances()
   
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_task
-    If oTask.Summary Then GoTo next_task
+    If oTask.Summary Then
+      If oTask.FixedCost <> 0 Then
+        strFixedCostList = strFixedCostList & oTask.UniqueID & vbTab
+        strFixedCosts = strFixedCosts & oTask.UniqueID & ",FIXED COST: " & oTask.FixedCost & vbCrLf
+        If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+      End If
+      GoTo next_task
+    End If
     If Not oTask.Active Then
       If blnProjectStandard Then
         lngInactive = lngInactive + 1
         strInactiveList = strInactiveList & oTask.UniqueID & vbTab
-        strInactive = strInactive & oTask.UniqueID & ",INACTIVE,"
+        strInactive = strInactive & oTask.UniqueID & ",INACTIVE" & vbCrLf
         If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
         GoTo next_task
       Else
@@ -853,12 +862,18 @@ Sub cptCheckAnnoyances()
       strSplit = strSplit & oTask.UniqueID & "," & oTask.SplitParts.Count & vbCrLf
       If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
+    If oTask.FixedCost <> 0 Then
+      strFixedCostList = strFixedCostList & oTask.UniqueID & vbTab
+      strFixedCosts = strFixedCosts & oTask.UniqueID & ",FIXED COST: " & oTask.FixedCost & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+    End If
+    
 next_task:
     lngTask = lngTask + 1
     Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")"
   Next oTask
   
-  strFilter = strTimesList & strDurationsList & strElapsedList & strInactiveList
+  strFilter = strTimesList & strDurationsList & strElapsedList & strFixedCostList & strInactiveList
   If Len(strFilter) = 0 Then
     MsgBox "No annoyances!", vbInformation + vbOKOnly, "Well Done"
   Else
@@ -920,6 +935,15 @@ next_task:
         Print #lngFile, "UID LIST: " & Replace(strSplitList, vbTab, ",")
       Else
         Print #lngFile, "...none found, phew!"
+      End If
+      Print #lngFile, vbCrLf
+      Print #lngFile, "===== FIXED COSTS ARE ANNOYING ====="
+      If Len(strFixedCosts) > 0 Then
+        Print #lngFile, "UID,Fixed Costs"
+        Print #lngFile, strFixedCosts
+        Print #lngFile, "UID LIST: " & Replace(strFixedCostList, vbTab, ",")
+      Else
+        Print #lngFile, "...but someone knows what they're doing. Nice."
       End If
       Print #lngFile, vbCrLf
       If blnProjectStandard Then
