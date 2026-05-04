@@ -6,6 +6,7 @@ Private Const THIS_MODULE As String = "cptCostRateTables_bas"
 Sub cptShowCostRateTables_frm()
   'objects
   Dim myCostRateTables_frm As cptCostRateTables_frm
+  Dim oComment As Excel.Comment
   'strings
   Dim strStatusField As String
   Dim strOverwrite As String
@@ -329,7 +330,11 @@ Sub cptImportCostRateTables(ByRef myCostRateTables_frm As cptCostRateTables_frm,
       Set oResource = ActiveProject.Resources(strResourceName)
       If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     Else
-      If Trim(oResource.Name) <> strResourceName Then
+      If oResource Is Nothing Then
+        On Error Resume Next
+        Set oResource = ActiveProject.Resources(strResourceName)
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      ElseIf Trim(oResource.Name) <> strResourceName Then
         Set oResource = Nothing
         On Error Resume Next
         Set oResource = ActiveProject.Resources(strResourceName)
@@ -352,7 +357,22 @@ Sub cptImportCostRateTables(ByRef myCostRateTables_frm As cptCostRateTables_frm,
         GoTo cost_rate_tables
       Else
         oWorksheet.Cells(lngRow, lngResourceNameCol).Style = "BAD"
-        oWorksheet.Cells(lngRow, lngResourceNameCol).AddComment "NOT FOUND"
+        On Error Resume Next
+        Set oComment = oWorksheet.Cells(lngRow, lngResourceNameCol).Comment
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        If oComment Is Nothing Then
+          oWorksheet.Cells(lngRow, lngResourceNameCol).AddComment "RESOURCE NOT FOUND"
+        Else
+          If InStr("RESOURCE NOT FOUND", oComment.Text) = 0 Then
+            oComment.Text "RESOURCE NOT FOUND" & vbCrLf & oComment.Text
+          End If
+        End If
+        If Not oUpdated.Exists(0 & "|" & strResourceName) Then
+          oUpdated.Add 0 & "|" & strResourceName, "RESOURCE NOT FOUND"
+        Else
+          oUpdated(0 & "|" & strResourceName) = "RESOURCE NOT FOUND"
+        End If
+        GoTo next_row
       End If
     Else
       If Not oUpdated.Exists(oResource.UniqueID & "|" & strResourceName) Then
@@ -401,21 +421,33 @@ cost_rate_tables:
     ElseIf vEffectiveDate >= #12/31/2149# Then
       oWorksheet.Cells(lngRow, lngEffectiveDateCol).Style = "Bad"
     Else
-      If oCostRateTable.PayRates.Count = 1 Then
-        If cptRegEx(oCostRateTable.PayRates(1).StandardRate, "[0-9]{1,}\.[0-9]{1,}") = 0 Then
-          Set oPayRate = oCostRateTable.PayRates(1)
+      If blnOverwrite Then
+        If oCostRateTable.PayRates.Count = 1 Then
+          If cptRegEx(oCostRateTable.PayRates(1).StandardRate, "[0-9]{1,}\.[0-9]{1,}") = 0 Then
+            Set oPayRate = oCostRateTable.PayRates(1)
+          Else
+            oCostRateTable.PayRates.Add vEffectiveDate
+            Set oPayRate = oCostRateTable.PayRates(oCostRateTable.PayRates.Count)
+          End If
         Else
           oCostRateTable.PayRates.Add vEffectiveDate
           Set oPayRate = oCostRateTable.PayRates(oCostRateTable.PayRates.Count)
         End If
       Else
-        oCostRateTable.PayRates.Add vEffectiveDate
-        Set oPayRate = oCostRateTable.PayRates(oCostRateTable.PayRates.Count)
+        Set oPayRate = Nothing
+        For Each oPayRate In oCostRateTable.PayRates
+          If oPayRate.EffectiveDate = vEffectiveDate Then Exit For
+        Next oPayRate
+        If oPayRate Is Nothing Then
+          oCostRateTable.PayRates.Add vEffectiveDate
+          Set oPayRate = oCostRateTable.PayRates(oCostRateTable.PayRates.Count)
+        End If
       End If
     End If
     oPayRate.StandardRate = vStdRate
     If Not IsEmpty(vOvtRate) And oResource.Type = pjResourceTypeWork Then oPayRate.OvertimeRate = vOvtRate
     If Not IsEmpty(vCostPerUse) Then oPayRate.CostPerUse = vCostPerUse
+next_row:
     Application.StatusBar = Format(lngRow, "#,##0") & "/" & Format(lngLastRow, "#,##0") & "...(" & Format(lngRow / lngLastRow, "0%") & ")"
     myCostRateTables_frm.lblStatus.Caption = Format(lngRow, "#,##0") & "/" & Format(lngLastRow, "#,##0") & "...(" & Format(lngRow / lngLastRow, "0%") & ")"
     myCostRateTables_frm.lblProgress.Width = (lngRow / lngLastRow) * myCostRateTables_frm.lblStatus.Width
@@ -452,6 +484,7 @@ exit_here:
   Set oPayRate = Nothing
   Set oCostRateTable = Nothing
   Set oResource = Nothing
+  Set oComment = Nothing
   Set oWorksheet = Nothing
   Set oWorkbook = Nothing
   Set oExcel = Nothing
