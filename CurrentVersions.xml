@@ -115,14 +115,14 @@
 	<Module>
 		<Name>cptCostRateTables_bas</Name>
 		<FileName>cptCostRateTables_bas.bas</FileName>
-		<Version>v1.1.3</Version>
+		<Version>v1.2.0</Version>
 		<Type>1</Type>
 		<Directory>CostRateTables</Directory>
 	</Module>
 	<Module>
 		<Name>cptCostRateTables_frm</Name>
 		<FileName>cptCostRateTables_frm.frm</FileName>
-		<Version>v1.1.3</Version>
+		<Version>v1.2.0</Version>
 		<Type>3</Type>
 		<Directory>CostRateTables</Directory>
 	</Module>
