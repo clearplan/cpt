@@ -6,7 +6,6 @@ Private Const THIS_MODULE As String = "cptCostRateTables_bas"
 Sub cptShowCostRateTables_frm()
   'objects
   Dim myCostRateTables_frm As cptCostRateTables_frm
-  Dim oComment As Excel.Comment
   'strings
   Dim strStatusField As String
   Dim strOverwrite As String
@@ -196,6 +195,7 @@ Sub cptImportCostRateTables(ByRef myCostRateTables_frm As cptCostRateTables_frm,
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
   Dim oWorksheet As Excel.Worksheet
+  Dim oComment As Excel.Comment
   'strings
   Dim strResourceName As String
   Dim strFileName As String
