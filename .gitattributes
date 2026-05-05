@@ -1,5 +1,6 @@
 * text=auto
-*.sql text eol=crlf
-*.cls binary diff=text
-*.frm binary diff=text
+*.bas text eol=crlf
+*.cls text eol=crlf
+*.frm text eol=crlf
 *.frx binary
+*.sql text eol=crlf
