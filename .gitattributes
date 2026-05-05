@@ -1,6 +1,6 @@
+# DO NOT EVER CHANGE THIS AGAIN
 * text=auto
-*.bas text eol=crlf
-*.cls text eol=crlf
-*.frm text eol=crlf
+*.cls binary diff=text 
+*.frm binary diff=text
 *.frx binary
 *.sql text eol=crlf
