@@ -1,0 +1,22 @@
+root = true
+
+# ----------------------------------------------------------------------
+# SQL (hard requirement: Deltek COBRA)
+# ----------------------------------------------------------------------
+[*.sql]
+end_of_line = crlf
+charset = utf-8
+indent_style = space
+indent_size = 4
+
+# ----------------------------------------------------------------------
+# VBA source files
+# ----------------------------------------------------------------------
+# Encourage CRLF but do NOT fight tooling.
+# Git ultimately controls normalization via .gitattributes.
+[*.{bas,cls,frm}]
+end_of_line = crlf
+charset = utf-8
+indent_style = space
+indent_size = 4
+

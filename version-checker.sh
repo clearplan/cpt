@@ -3,7 +3,7 @@
 declare -A files
 while read -r file; do
   files["$file"]=1
-done < <(git diff --name-only master | grep -E "(bas|cls|frm)$")
+done < <(git diff --name-only --ignore-cr-at-eol master | grep -E "(bas|cls|frm)$")
 
 if [[ "${#files[@]}" == 0 ]]; then
   echo "no diffs against branch master"

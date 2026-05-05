@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptBackbone_bas"
-'<cpt_version>v1.3.1</cpt_version>
+'<cpt_version>v1.3.2</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptBackbone_bas"
 
@@ -19,6 +19,8 @@ Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCo
   'strings
   Dim strMsg As String
   Dim strOutlineCode As String
+  Dim strValue As String
+  Dim strDescription As String
   'longs
   Dim lngItems As Long
   Dim lngOutlineLevel As Long
@@ -32,7 +34,7 @@ Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCo
     
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     
-  If MsgBox("Expected fields/column headers, in range [A1:C1], are CODE,LEVEL,DESCRIPTION and there should be no blank rows." & vbCrLf & vbCrLf & "Proceed?", vbQuestion + vbYesNo, "Confirm CWBS Import") = vbNo Then
+  If MsgBox("Expected fields/column headers, in range [A1:C1], are CODE,LEVEL,DESCRIPTION and there should be no blank rows. CODE should be unique and sorted properly." & vbCrLf & vbCrLf & "Proceed?", vbQuestion + vbYesNo, "Confirm CWBS Import") = vbNo Then
     'export a sample template
     If MsgBox("Would you like an example?", vbQuestion + vbYesNo, "A little help") = vbYes Then Call cptExportTemplate
   Else
@@ -111,20 +113,22 @@ Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCo
             lngItem = 0
             For Each c In oRange.Cells
               lngItem = lngItem + 1
-              If Len(c.Offset(0, 2).Value) > 0 Then
-                Set oTask = ActiveProject.Tasks.Add(Left(c.Offset(0, 2).Value, 255))
+              strValue = Trim(c.Value)
+              strDescription = Trim(c.Offset(0, 2).Value)
+              If Len(strDescription) > 0 Then
+                Set oTask = ActiveProject.Tasks.Add(Left(strDescription, 255))
               Else
                 Set oTask = ActiveProject.Tasks.Add("DELETE - PLACEHOLDER")
               End If
               oTask.OutlineLevel = 1
-              oTask.SetField lngOutlineCode, c.Value
+              oTask.SetField lngOutlineCode, strValue
               If oOutlineCode Is Nothing Then Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
               If oLookupTable Is Nothing Then Set oLookupTable = oOutlineCode.LookupTable
-              If Len(c.Offset(0, 2).Value) > 0 Then
-                oLookupTable.Item(lngItem).Description = Left(c.Offset(0, 2).Value, 255)
+              If Len(strDescription) > 0 Then
+                oLookupTable.Item(lngItem).Description = Left(strDescription, 255)
               End If
               If myBackbone_frm.chkAlsoCreateTasks Then
-                lngOutlineLevel = Len(c.Value) - Len(Replace(c.Value, ".", ""))
+                lngOutlineLevel = Len(strValue) - Len(Replace(strValue, ".", ""))
                 If lngOutlineLevel > 0 Then
                   oTask.OutlineLevel = lngOutlineLevel + 1
                 End If
@@ -1180,8 +1184,8 @@ Sub cptShowBackbone_frm()
   
   'pre-select Outline Code 1
   With myBackbone_frm
-    .cboOutlineCodes.ListIndex = 0
-    .txtNameIt = CustomFieldGetName(.cboOutlineCodes.List(0, 0))
+    '.cboOutlineCodes.ListIndex = 0
+    '.txtNameIt = CustomFieldGetName(.cboOutlineCodes.List(0, 0))
     .Caption = "Backbone (" & cptGetVersion("cptBackbone_frm") & ")"
     .cboOutlineCodes.SetFocus
     cptBackboneHideControls myBackbone_frm

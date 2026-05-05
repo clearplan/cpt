@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.13.1</cpt_version>
+'<cpt_version>v1.13.2</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptSetup_bas"
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
@@ -872,8 +872,8 @@ Function cptGetVersion(strModule As String) As String
   Else
     Set vbComponent = ThisProject.VBProject.VBComponents(strModule)
     If vbComponent.CodeModule.Find("<cpt_version>", 1, 1, vbComponent.CodeModule.CountOfLines, 25) = True Then
-      'strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
-      strVersion = cptRxMatch(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
+      strVersion = cptRegEx(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
+      'strVersion = cptRxMatch(vbComponent.CodeModule.Lines(1, vbComponent.CodeModule.CountOfLines), "<cpt_version>.*</cpt_version>")
       strVersion = Replace(Replace(strVersion, "<cpt_version>", ""), "</cpt_version>", "")
     End If
     cptGetVersion = strVersion

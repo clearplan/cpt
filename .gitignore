@@ -6,6 +6,7 @@
 *.docx
 *.exe
 *.json
+!.vscode/settings.json
 *.mpp
 *.pdf
 *.plx
