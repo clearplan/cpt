@@ -4,3 +4,4 @@
 *.frm binary diff=text
 *.frx binary
 *.sql text eol=crlf
+*.xml text eol=lf
