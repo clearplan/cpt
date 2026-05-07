@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.4</cpt_version>
+'<cpt_version>v1.5.5</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptMetrics_bas"
 
 Sub cptGetBAC()
   MsgBox Format(cptGetMetric("bac"), "#,##0.00h"), vbInformation + vbOKOnly, "Budget at Complete (BAC) - hours"
@@ -263,7 +264,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetCPLI", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetCPLI", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -442,7 +443,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGet", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGet", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -506,7 +507,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetHitTask", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetHitTask", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -681,7 +682,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetMetric", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetMetric", Err, Erl)
   Resume exit_here
 
 End Function
@@ -869,7 +870,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptCaptureWeek", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCaptureWeek", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1318,7 +1319,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptLateStartsFinishes", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptLateStartsFinishes", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1374,7 +1375,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptCaptureMetric", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCaptureMetric", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1535,7 +1536,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetSPIDetail", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetSPIDetail", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1759,7 +1760,11 @@ Sub cptGetTrend_CEI()
           For Each vHeader In Split(strMyHeaders, ",")
             If vHeader = "" Then Exit For
             lngCol = lngCol + 1
-            oListRow.Range(1, lngCol) = oTask.GetField(FieldNameToFieldConstant(vHeader))
+            If Not oTask Is Nothing Then
+              oListRow.Range(1, lngCol) = oTask.GetField(FieldNameToFieldConstant(vHeader))
+            Else
+              oListRow.Range(1, lngCol) = "'-"
+            End If
           Next vHeader
           If Not oTask Is Nothing Then
             oListRow.Range(1, lngCol + 1) = oTask.Name
@@ -2157,7 +2162,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetTrend_CEI", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetTrend_CEI", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2444,7 +2449,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetTrend", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetTrend", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2580,7 +2585,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptExportMetricsData", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportMetricsData", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3004,7 +3009,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetEarnedSchedule", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetEarnedSchedule", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3023,7 +3028,7 @@ Sub cptShowMetricsData_frm()
   'booleans
   'variants
   'dates
-  
+    
   'prevent spawning
   If Not cptGetUserForm("cptMetricsData_frm") Is Nothing Then Exit Sub
   
@@ -3098,6 +3103,6 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptShowMetricsData_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowMetricsData_frm", Err, Erl)
   Resume exit_here
 End Sub
