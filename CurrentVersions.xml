@@ -276,7 +276,7 @@
 	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
-		<Version>v1.5.4</Version>
+		<Version>v1.5.5</Version>
 		<Type>1</Type>
 		<Directory>Metrics</Directory>
 	</Module>
