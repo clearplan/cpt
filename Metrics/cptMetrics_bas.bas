@@ -25,7 +25,7 @@ Sub cptGetBCWR()
   strMsg = "BCWR = (BAC - BCWP)" & vbCrLf
   strMsg = strMsg & "BCWR = (" & Format(dblBAC, "#,##0.0") & " - " & Format(dblBCWP, "#,##0.0") & ")" & vbCrLf & vbCrLf
   strMsg = strMsg & "BCWR = " & Format(dblBAC - dblBCWP, "#,##0.0") & "h"
-  MsgBox strMsg, vbInformation + vbOKOnly, "Budgeted Cost of Work Remainning (BCWR) - hours"
+  MsgBox strMsg, vbInformation + vbOKOnly, "Budgeted Cost of Work Remaining (BCWR) - hours"
   
 End Sub
 
