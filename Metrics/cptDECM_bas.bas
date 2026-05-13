@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v8.1.2</cpt_version>
+'<cpt_version>v8.1.3</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECM_bas"
 Private strWBS As String
@@ -2325,6 +2325,8 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   lngY = oRecordset.RecordCount
   'start with this list - guilty until proven innocent
   Set oDict = CreateObject("Scripting.Dictionary")
+  If lngY > 0 Then
+  'todo: fix indentation
   With oRecordset
     .MoveFirst
     Do While Not .EOF
@@ -2332,6 +2334,7 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
       .MoveNext
     Loop
   End With
+  End If
   oRecordset.Close
   
   'now do predecessors - guilty until proven innocent
@@ -2340,15 +2343,17 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = strSQL & "WHERE t.SUMMARY='No' AND t.AF IS NULL AND (t.EVT<>'" & strLOE & "' OR t.EVT IS NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-    .MoveFirst
-    Do While Not .EOF
-      If oRecordset("UID") <> "" And (oRecordset("TYPE") = "SS" Or oRecordset("TYPE") = "FS") And oRecordset("DUR") > 0 Then
-        If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
-      ElseIf oRecordset("UID") <> "" And oRecordset("DUR") = 0 And Not IsNull(oRecordset("TYPE")) Then
-        If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
-      End If
-      .MoveNext
-    Loop
+    If Not .EOF Then
+      .MoveFirst
+      Do While Not .EOF
+        If oRecordset("UID") <> "" And (oRecordset("TYPE") = "SS" Or oRecordset("TYPE") = "FS") And oRecordset("DUR") > 0 Then
+          If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
+        ElseIf oRecordset("UID") <> "" And oRecordset("DUR") = 0 And Not IsNull(oRecordset("TYPE")) Then
+          If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
+        End If
+        .MoveNext
+      Loop
+    End If
   End With
   oRecordset.Close
   'extract the guilty to a string for later consolidation
@@ -2361,11 +2366,13 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = "SELECT * FROM [tasks.csv] WHERE AF IS NULL AND (EVT<>'" & strLOE & "' OR EVT IS NULL) AND SUMMARY='No'"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
-    .MoveFirst
-    Do While Not .EOF
-      oDict.Add CStr(oRecordset("UID")), CStr(oRecordset("UID"))
-      .MoveNext
-    Loop
+    If Not .EOF Then
+      .MoveFirst
+      Do While Not .EOF
+        oDict.Add CStr(oRecordset("UID")), CStr(oRecordset("UID"))
+        .MoveNext
+      Loop
+    End If
     .Close
   End With
   
@@ -2374,15 +2381,17 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = strSQL & "WHERE t.SUMMARY='No' AND t.AF IS NULL AND (t.EVT<>'" & strLOE & "' OR t.EVT IS NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-    .MoveFirst
-    Do While Not .EOF
-      If oRecordset("UID") <> "" And (oRecordset("TYPE") = "FF" Or oRecordset("TYPE") = "FS") And oRecordset("DUR") > 0 Then
-        If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
-      ElseIf oRecordset("UID") <> "" And oRecordset("DUR") = 0 And Not IsNull(oRecordset("TYPE")) Then
-        If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
-      End If
-      .MoveNext
-    Loop
+    If Not .EOF Then
+      .MoveFirst
+      Do While Not .EOF
+        If oRecordset("UID") <> "" And (oRecordset("TYPE") = "FF" Or oRecordset("TYPE") = "FS") And oRecordset("DUR") > 0 Then
+          If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
+        ElseIf oRecordset("UID") <> "" And oRecordset("DUR") = 0 And Not IsNull(oRecordset("TYPE")) Then
+          If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
+        End If
+        .MoveNext
+      Loop
+    End If
     .Close
   End With
   
@@ -2397,11 +2406,13 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = strSQL & "ORDER BY BLS"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-    .MoveFirst
-    Do While Not .EOF
-      If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
-      .MoveNext
-    Loop
+    If Not .EOF Then
+      .MoveFirst
+      Do While Not .EOF
+        If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
+        .MoveNext
+      Loop
+    End If
     .Close
   End With
   
@@ -2463,7 +2474,7 @@ Sub DECM_06A205a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'X = count of incomplete tasks/activities & milestones with at least one lag in the pred logic
   'Y = count of incomplete tasks/activities & milestones in the IMS
   'X/Y <=10%
-  'we already have lngY
+  'we already have lngY - we do? yes
   strSQL = "SELECT t.UID FROM [tasks.csv] t "
   strSQL = strSQL & "INNER JOIN (SELECT DISTINCT TO FROM [links.csv] WHERE LAG>0) p ON p.TO=t.UID " 'todo
   'todo: to include leads replace above with strSQL = strSQL & "INNER JOIN (SELECT DISTINCT TO FROM [links.csv] WHERE LAG<>0) p ON p.TO=t.UID "
@@ -4657,11 +4668,9 @@ End Sub
 
 Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   'objects
-  Dim oAssignment As MSProject.Assignment
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
   Dim oSubProject As MSProject.SubProject
-  'Dim oSubMap As Scripting.Dictionary
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
   Dim oExcel As Excel.Application
@@ -5017,7 +5026,6 @@ return_val:
 exit_here:
   On Error Resume Next
   'Set myDECM_frm = Nothing 'don't do this
-  Set oAssignment = Nothing
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
