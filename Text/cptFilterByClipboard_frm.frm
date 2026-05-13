@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.4.0</cpt_version>
+'<cpt_version>v1.4.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptFilterByClipboard_frm"
 
@@ -57,7 +57,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_frm", "lblURL", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -180,7 +180,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_frm", "lboFilter_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboFilter_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -343,7 +343,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_frm", "txtFilter_BeforeDropOrPaste", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtFilter_BeforeDropOrPaste", Err, Erl)
   Resume exit_here
 
 End Sub
