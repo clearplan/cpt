@@ -69,7 +69,7 @@ exit_here:
   Set oSubMap = Nothing
   Exit Sub
 err_here:
-  cptHandleErr "cptDECM_frm", "cmdDone_Click", Err, Erl
+  cptHandleErr THIS_MODULE, "cmdDone_Click", Err, Erl
   Resume exit_here
   
   
@@ -90,7 +90,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -327,7 +327,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_frm", "lboMetrics_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboMetrics_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -636,7 +636,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_frm", "txtTitle_BeforeDropOrPaste", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTitle_BeforeDropOrPaste", Err, Erl)
   Resume exit_here
 End Sub
 

@@ -4815,7 +4815,7 @@ next_mapping_task:
             Else
               dtDate = Application.DateAdd(oLink.From.Finish, lngLag, oCalendar)
             End If
-            If oLink.To.Finish < dtDate Or IsDate(oLink.To.ActualFinish) Then
+            If oLink.To.Finish < dtDate Then
               lngOOS = lngOOS + 1
               oOOS.Add oOOS.Count, lngFromUID & "," & lngToUID
               oWorksheet.Cells(lngLastRow, 1) = lngFromUID
@@ -4829,7 +4829,7 @@ next_mapping_task:
               oWorksheet.Cells(lngLastRow, 9) = oLink.To.Name
               oWorksheet.Cells(lngLastRow, 10) = oLink.To.Finish
               If IsDate(oLink.To.ActualFinish) Then
-                oWorksheet.Cells(lngLastRow, 11) = "Successor has Actual Finish"
+                oWorksheet.Cells(lngLastRow, 11) = "Successor Actual Finish < Predecessor Forecast Finish"
               Else
                 If IsDate(oLink.To.ConstraintDate) And ActiveProject.HonorConstraints Then
                   oWorksheet.Cells(lngLastRow, 11) = "Successor Finish < Predecessor Finish (has " & Choose(oLink.To.ConstraintType, "", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT") & " constraint)"
@@ -4851,7 +4851,7 @@ next_mapping_task:
               dtDate = Application.DateAdd(oLink.From.Finish, lngLag, oCalendar)
             End If
             'compare and report
-            If oLink.To.Start < dtDate Or IsDate(oLink.To.ActualStart) Then
+            If oLink.To.Start < dtDate Then
               lngOOS = lngOOS + 1
               oOOS.Add oOOS.Count, lngFromUID & "," & lngToUID
               oWorksheet.Cells(lngLastRow, 1) = lngFromUID
@@ -4865,7 +4865,7 @@ next_mapping_task:
               oWorksheet.Cells(lngLastRow, 9) = oLink.To.Name
               oWorksheet.Cells(lngLastRow, 10) = oLink.To.Start
               If IsDate(oLink.To.ActualStart) Then
-                oWorksheet.Cells(lngLastRow, 11) = "Successor has Actual Start"
+                oWorksheet.Cells(lngLastRow, 11) = "Successor Actual Start < Predecessor Forecast Finish"
               Else
                 If IsDate(oLink.To.ConstraintDate) And ActiveProject.HonorConstraints Then
                   oWorksheet.Cells(lngLastRow, 11) = "Successor Start < Predecessor Finish (has " & Choose(oLink.To.ConstraintType, "", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT") & " constraint)"
@@ -4887,7 +4887,8 @@ next_mapping_task:
               dtDate = Application.DateAdd(oLink.From.Start, lngLag, oCalendar)
             End If
             'compare and report
-            If IsDate(oLink.To.ActualStart) Or oLink.To.Start < dtDate Then 'should not be an issue if both have actual starts
+            'todo: add option to ignore leads and lags
+            If oLink.To.Start < dtDate Then 'should not be an issue if both have actual starts
               lngOOS = lngOOS + 1
               oOOS.Add oOOS.Count, lngFromUID & "," & lngToUID
               oWorksheet.Cells(lngLastRow, 1) = lngFromUID
@@ -4901,7 +4902,7 @@ next_mapping_task:
               oWorksheet.Cells(lngLastRow, 9) = oLink.To.Name
               oWorksheet.Cells(lngLastRow, 10) = oLink.To.Start
               If IsDate(oLink.To.ActualStart) Then
-                oWorksheet.Cells(lngLastRow, 11) = "Successor has Actual Start"
+                oWorksheet.Cells(lngLastRow, 11) = "Successor Actual Start < Predecessor Forecast Start"
               Else
                 If IsDate(oLink.To.ConstraintDate) And ActiveProject.HonorConstraints Then
                   oWorksheet.Cells(lngLastRow, 11) = "Successor Start < Predecessor Start (has " & Choose(oLink.To.ConstraintType, "", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT") & " constraint)"
@@ -4923,7 +4924,7 @@ next_mapping_task:
               dtDate = Application.DateAdd(oLink.From.Start, lngLag, oCalendar)
             End If
             'compare and report
-            If IsDate(oLink.To.ActualFinish) Or oLink.To.Finish < oLink.From.Start Then
+            If oLink.To.Finish < dtDate Then
               lngOOS = lngOOS + 1
               oOOS.Add oOOS.Count, lngFromUID & "," & lngToUID
               oWorksheet.Cells(lngLastRow, 1) = lngFromUID
@@ -4937,7 +4938,7 @@ next_mapping_task:
               oWorksheet.Cells(lngLastRow, 9) = oLink.To.Name
               oWorksheet.Cells(lngLastRow, 10) = oLink.To.Finish
               If IsDate(oLink.To.ActualFinish) Then
-                oWorksheet.Cells(lngLastRow, 11) = "Successor has Actual Finish"
+                oWorksheet.Cells(lngLastRow, 11) = "Successor Actual Finish < Predecessor Start"
               Else
                 If IsDate(oLink.To.ConstraintDate) And ActiveProject.HonorConstraints Then
                   oWorksheet.Cells(lngLastRow, 11) = "Successor Finish < Predecessor Start (has " & Choose(oLink.To.ConstraintType, "", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT") & " constraint)"

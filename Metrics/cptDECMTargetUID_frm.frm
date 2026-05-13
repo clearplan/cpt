@@ -86,7 +86,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECMTargetUID_frm", "txtTaskName_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTaskName_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -138,7 +138,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECMTargetUID_frm", "txtUID_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtUID_Change", Err, Erl)
   Resume exit_here
 End Sub
 
