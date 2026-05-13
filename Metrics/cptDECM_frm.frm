@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v8.1.2</cpt_version>
+'<cpt_version>v8.1.3</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECM_frm"
 
@@ -448,7 +448,9 @@ Private Sub txtTitle_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, By
     oFile.Close
     oRecordset.Close
     Kill strDir & "\wp-ev.csv"
+    Sleep 3000
     Name strDir & "\wp-ev-distinct.csv" As strDir & "\wp-ev.csv"
+    Sleep 3000
   Else
     'user pasted nothing
   End If
