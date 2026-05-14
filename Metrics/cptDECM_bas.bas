@@ -341,7 +341,7 @@ next_mapping_task:
   
   Set myDECM_frm = New cptDECM_frm
   With myDECM_frm
-    .Caption = "DECM v8.1 (cpt " & cptGetVersion("cptDECM_bas") & ")"
+    .Caption = "DECM v8.1 (cpt " & cptGetVersion(THIS_MODULE) & ")"
     .lboOOS.Visible = False
     lngItem = 0
     .lboHeader.Clear
@@ -1179,7 +1179,7 @@ exit_here:
   Exit Sub
 err_here:
  On Error Resume Next
- Call cptHandleErr("cptDECM_bas", "cptDECM_GET_DATA", Err, Erl)
+ Call cptHandleErr(THIS_MODULE, "cptDECM_GET_DATA", Err, Erl)
  Resume exit_here
 End Sub
 
@@ -1291,7 +1291,7 @@ exit_here:
   DoEvents
   Exit Function
 err_here:
-  Call cptHandleErr("cptDECM_bas", "DECM_CPT01", Err, Erl, "DECM_CPT01")
+  Call cptHandleErr(THIS_MODULE, "DECM_CPT01", Err, Erl, "DECM_CPT01")
   Resume exit_here
   
 End Function
@@ -1736,7 +1736,7 @@ exit_here:
   Set oExcel = Nothing
   Exit Sub
 err_here:
-  cptHandleErr "cptDECM_bas", "DECM_10A102a", Err, Erl
+  cptHandleErr THIS_MODULE, "DECM_10A102a", Err, Erl
   Resume exit_here
   
 End Sub
@@ -3470,6 +3470,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   Dim blnResourceAssignments As Boolean
   'variants
   Dim vSetting As Variant
+  Dim vLink As Variant
   'dates
   
   cptSpeed True
@@ -3582,21 +3583,11 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
               oWorksheet.[A4].CopyFromRecordset oRecordset
               oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
               oRecordset.Close
-              With oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
-                .Columns.AutoFit
-                .FormatConditions.Add xlCellValue, xlEqual, "=""MISSING"""
-                With .FormatConditions(1)
-                  .SetFirstPriority
-                  .Font.Color = -16383844
-                  .Font.TintAndShade = 0
-                  .Interior.PatternColorIndex = xlAutomatic
-                  .Interior.Color = 13551615
-                  .Interior.TintAndShade = 0
-                End With
-              End With
+              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
               cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
               cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
               cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+              FlagMissing oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             End If
           End If
         ElseIf strMetric = "05A101a" Then '1 CA : 1 OBS
@@ -3613,17 +3604,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            'highlight duplicates in col A
-            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
-            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
-              .DupeUnique = xlDuplicate
-              .SetFirstPriority
-              .Font.Color = -16383844
-              .Font.TintAndShade = 0
-              .Interior.PatternColorIndex = xlAutomatic
-              .Interior.Color = 13551615
-              .Interior.TintAndShade = 0
-            End With
+            FlagDuplicates oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp))
           End If
         ElseIf strMetric = "05A102a" Then '1 CA : 1 CAM
           If Len(oDECM(strMetric)) > 0 Then
@@ -3641,16 +3622,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddShading oWorksheet.[A3:B3]
             oWorksheet.[A3:B3].Font.Bold = True
             'highlight duplicates in col A
-            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
-            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
-              .DupeUnique = xlDuplicate
-              .SetFirstPriority
-              .Font.Color = -16383844
-              .Font.TintAndShade = 0
-              .Interior.PatternColorIndex = xlAutomatic
-              .Interior.Color = 13551615
-              .Interior.TintAndShade = 0
-            End With
+            FlagDuplicates oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp))
           End If
         ElseIf strMetric = "05A103a" Then '1 CA : 1 WBS
           If Len(oDECM(strMetric)) > 0 Then
@@ -3666,17 +3638,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3].End(xlDown), oWorksheet.[A3].End(xlToRight))
             cptAddBorders oWorksheet.[A3:C3]
             cptAddShading oWorksheet.[A3:C3]
-            'highlight duplicates in col A
-            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
-            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
-              .DupeUnique = xlDuplicate
-              .SetFirstPriority
-              .Font.Color = -16383844
-              .Font.TintAndShade = 0
-              .Interior.PatternColorIndex = xlAutomatic
-              .Interior.Color = 13551615
-              .Interior.TintAndShade = 0
-            End With
+            FlagDuplicates oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp))
           End If
         ElseIf strMetric = "CPT02" Then '1 WP : 1 CA
           If Len(oDECM(strMetric)) > 0 Then
@@ -3693,17 +3655,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            'conditional formatting - duplicates in col A
-            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
-            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
-              .DupeUnique = xlDuplicate
-              .SetFirstPriority
-              .Font.Color = -16383844
-              .Font.TintAndShade = 0
-              .Interior.PatternColorIndex = xlAutomatic
-              .Interior.Color = 13551615
-              .Interior.TintAndShade = 0
-            End With
+            FlagDuplicates oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp))
           End If
         ElseIf strMetric = "10A102a" Then '1 WP : 1 EVT
           If Len(oDECM(strMetric)) > 0 Then
@@ -3722,17 +3674,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[B3].End(xlDown).Offset(0, 1))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            'conditional formatting - duplicates in col A
-            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
-            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
-              .DupeUnique = xlDuplicate
-              .SetFirstPriority
-              .Font.Color = -16383844
-              .Font.TintAndShade = 0
-              .Interior.PatternColorIndex = xlAutomatic
-              .Interior.Color = 13551615
-              .Interior.TintAndShade = 0
-            End With
+            FlagDuplicates oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp))
           End If
         ElseIf strMetric = "10A103a" Then '0/100 in >1 fiscal period
           If Len(oDECM(strMetric)) > 0 Then
@@ -3990,7 +3932,6 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
           End If
-          'todo: dashboard X should be formulae so users can refine/correct
         ElseIf strMetric = "06A211a" Then 'High Float
           If Len(oDECM(strMetric)) > 0 Then
             strSQL = "SELECT UID,CAM,TASK_NAME,TS/480 FROM [tasks.csv] "
@@ -4008,30 +3949,33 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
           End If
         ElseIf strMetric = "06A212a" Then 'Out of Sequence
           If Len(oDECM(strMetric)) > 0 Then
+            'todo: get 06A212a.xlsm...?
             oWorksheet.[A3:I3] = Split("CAM,TYPE,LAG,UID,TASK NAME,FORECAST START,ACTUAL START,FORECAST FINISH,ACTUAL FINISH", ",")
+            oWorksheet.[A3:I3].Font.Bold = True
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = UBound(Split(oDECM(strMetric), ";"))
+            oWorksheet.[I2].HorizontalAlignment = xlCenter
+            oWorksheet.[I2].Style = "Bad"
+            cptAddBorders oWorksheet.[I2]
             cptAddBorders oWorksheet.[A3:I3]
             cptAddShading oWorksheet.[A3:I3]
-            Dim vLink As Variant
+            lngLastRow = 3
             For Each vLink In Split(oDECM(strMetric), ";")
               If vLink <> "" Then
                 strSQL = "SELECT CAM,'','',UID,TASK_NAME,FS,[AS],FF,AF FROM [tasks.csv] WHERE UID=" & Split(vLink, ",")(0)
                 oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-                lngLastRow = oWorksheet.[A1048576].End(xlUp).Row + 1
+                lngLastRow = lngLastRow + 1 'oWorksheet.[A1048576].End(xlUp).Row + 1
                 oWorksheet.Cells(lngLastRow, 1).CopyFromRecordset oRecordset
                 oRecordset.Close
                 cptAddShading oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 3)), True
                 strSQL = "SELECT CAM,'','',UID,TASK_NAME,FS,[AS],FF,AF FROM [tasks.csv] WHERE UID=" & Split(vLink, ",")(1)
                 oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-                lngLastRow = oWorksheet.[A1048576].End(xlUp).Row + 1
+                lngLastRow = lngLastRow + 1 'oWorksheet.[A1048576].End(xlUp).Row + 1
                 oWorksheet.Cells(lngLastRow, 1).CopyFromRecordset oRecordset
                 oRecordset.Close
                 strSQL = "SELECT DISTINCT TYPE,LAG/480 FROM [links.csv] WHERE [FROM]=" & Split(vLink, ",")(0) & " AND TO=" & Split(vLink, ",")(1)
                 oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
                 oWorksheet.Cells(lngLastRow, 2).CopyFromRecordset oRecordset
                 oRecordset.Close
-                'todo: highlight dates in conflict
-                'todo: if FS then Pred FF/AF and Succ AS/FS, etc.
                 cptAddBorders oWorksheet.Range(oWorksheet.Cells(lngLastRow - 1, 1), oWorksheet.Cells(lngLastRow, 9))
               End If
             Next vLink
@@ -4529,7 +4473,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_bas", "cptDECM_EXPORT", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptDECM_EXPORT", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -5060,7 +5004,7 @@ next_task:
     For lngItem = 0 To lngOOS - 1
       strOOS = strOOS & oOOS.Items(lngItem) & ";"
     Next lngItem
-    'todo: delete tmp\06A212a.xlsx on form close
+    'todo: delete tmp\06A212a.xlsm on form close
   End If
     
   With oExcel.ActiveWindow
@@ -5274,7 +5218,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptDECM_bas", "cptGetEVTAnalysis", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetEVTAnalysis", Err, Erl)
   Resume exit_here
 End Function
 
@@ -5343,7 +5287,7 @@ exit_here:
   
   Exit Function
 err_here:
-  Call cptHandleErr("cptDECM_bas", "cptDECMGetTargetUID", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptDECMGetTargetUID", Err, Erl)
   Resume exit_here
 End Function
 
@@ -5527,4 +5471,31 @@ Sub cptWriteDECMDataBase()
   'THRESHOLD
   'todo: write csv
   'todo: enable diff (added, removed, changed)
+End Sub
+
+Sub FlagDuplicates(rng As Excel.Range)
+  rng.FormatConditions.Delete 'todo
+  rng.FormatConditions.AddUniqueValues
+  With rng.FormatConditions(1)
+    .DupeUnique = xlDuplicate
+    .SetFirstPriority
+    .Font.Color = -16383844
+    .Font.TintAndShade = 0
+    .Interior.PatternColorIndex = xlAutomatic
+    .Interior.Color = 13551615
+    .Interior.TintAndShade = 0
+  End With
+End Sub
+
+Sub FlagMissing(rng As Excel.Range)
+  rng.FormatConditions.Delete 'todo
+  rng.FormatConditions.Add xlCellValue, xlEqual, "=""MISSING"""
+  With .FormatConditions(1)
+    .SetFirstPriority
+    .Font.Color = -16383844
+    .Font.TintAndShade = 0
+    .Interior.PatternColorIndex = xlAutomatic
+    .Interior.Color = 13551615
+    .Interior.TintAndShade = 0
+  End With
 End Sub
