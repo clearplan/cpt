@@ -341,7 +341,7 @@ next_mapping_task:
   
   Set myDECM_frm = New cptDECM_frm
   With myDECM_frm
-    .Caption = "DECM v8.0 (cpt " & cptGetVersion("cptDECM_bas") & ")"
+    .Caption = "DECM v8.1 (cpt " & cptGetVersion("cptDECM_bas") & ")"
     .lboOOS.Visible = False
     lngItem = 0
     .lboHeader.Clear
