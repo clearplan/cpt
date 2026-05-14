@@ -432,7 +432,7 @@ next_mapping_task:
           strRecord = strRecord & Replace(cptRegEx(oTask.GetField(vField), "[0-9.,]{1,}"), ",", "") & ","
         End If
       Else
-        strRecord = strRecord & oTask.GetField(CLng(vField)) & ","
+        strRecord = strRecord & Trim(oTask.GetField(CLng(vField))) & ","
       End If
 next_field:
     Next vField
@@ -1323,7 +1323,7 @@ Sub DECM_05A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     .Close
   End With
   strSQL = "SELECT CA,COUNT(OBS) AS CountOfOBS "
-  strSQL = strSQL & "FROM (SELECT DISTINCT CA,OBS FROM [tasks.csv]) "
+  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(OBS IS NULL,'MISSING', OBS) AS [OBS] FROM [tasks.csv]) "
   strSQL = strSQL & "WHERE CA IS NOT NULL "
   strSQL = strSQL & "GROUP BY CA "
   strSQL = strSQL & "HAVING COUNT(OBS)>1"
@@ -1379,17 +1379,32 @@ Sub DECM_05A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'X = Count of CAs that have more than one CAM or no CAM assigned
   'Y = Total count of CAs
   'X/Y <= 5%
-   strSQL = "SELECT DISTINCT CA FROM tasks.csv WHERE CA IS NOT NULL"
+  strSQL = "SELECT DISTINCT CA FROM tasks.csv WHERE CA IS NOT NULL"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngY = .RecordCount
     .Close
   End With
-  strSQL = "SELECT CA,COUNT(CAM) AS CountOfCAM "
-  strSQL = strSQL & "FROM (SELECT DISTINCT CA,CAM FROM [tasks.csv]) "
-  strSQL = strSQL & "WHERE CA IS NOT NULL "
-  strSQL = strSQL & "GROUP BY CA "
-  strSQL = strSQL & "HAVING COUNT(CAM)>1"
+  strSQL = "SELECT " & vbCrLf
+  strSQL = strSQL & "    CA, " & vbCrLf
+  strSQL = strSQL & "    COUNT(CAM_) AS [_CAM] " & vbCrLf
+  strSQL = strSQL & "FROM " & vbCrLf
+  strSQL = strSQL & "    ( " & vbCrLf
+  strSQL = strSQL & "        SELECT DISTINCT " & vbCrLf
+  strSQL = strSQL & "            CA, " & vbCrLf
+  strSQL = strSQL & "            IIf(CAM IS NULL,'MISSING',CAM) AS [CAM_] " & vbCrLf
+  strSQL = strSQL & "        FROM " & vbCrLf
+  strSQL = strSQL & "            tasks.csv " & vbCrLf
+  strSQL = strSQL & "        WHERE " & vbCrLf
+  strSQL = strSQL & "            CA IS NOT NULL " & vbCrLf
+  strSQL = strSQL & "        ORDER BY " & vbCrLf
+  strSQL = strSQL & "            CA, " & vbCrLf
+  strSQL = strSQL & "            IIf(CAM IS NULL,'MISSING',CAM) " & vbCrLf
+  strSQL = strSQL & "    ) " & vbCrLf
+  strSQL = strSQL & "GROUP BY " & vbCrLf
+  strSQL = strSQL & "    CA " & vbCrLf
+  strSQL = strSQL & "HAVING " & vbCrLf
+  strSQL = strSQL & "    COUNT(CAM_) > 1 " & vbCrLf
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -1449,7 +1464,7 @@ Sub DECM_05A103a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     .Close
   End With
   strSQL = "SELECT CA,COUNT(WBS) AS CountOfWBS "
-  strSQL = strSQL & "FROM (SELECT DISTINCT CA,WBS FROM [tasks.csv]) "
+  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(WBS IS NULL,'MISSING', WBS) AS [WBS] FROM [tasks.csv]) "
   strSQL = strSQL & "WHERE CA IS NOT NULL "
   strSQL = strSQL & "GROUP BY CA "
   strSQL = strSQL & "HAVING COUNT(WBS)>1"
@@ -2326,14 +2341,13 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'start with this list - guilty until proven innocent
   Set oDict = CreateObject("Scripting.Dictionary")
   If lngY > 0 Then
-  'todo: fix indentation
-  With oRecordset
-    .MoveFirst
-    Do While Not .EOF
-      oDict.Add CStr(oRecordset("UID")), CStr(oRecordset("UID"))
-      .MoveNext
-    Loop
-  End With
+    With oRecordset
+      .MoveFirst
+      Do While Not .EOF
+        oDict.Add CStr(oRecordset("UID")), CStr(oRecordset("UID"))
+        .MoveNext
+      Loop
+    End With
   End If
   oRecordset.Close
   
@@ -3481,7 +3495,10 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   oWorksheet.Name = "DECM Dashboard"
   oWorksheet.[A1:I1] = myDECM_frm.lboHeader.List
   oWorksheet.Range(oWorksheet.[A2], oWorksheet.[A2].Offset(myDECM_frm.lboMetrics.ListCount - 1, myDECM_frm.lboMetrics.ColumnCount - 1)) = myDECM_frm.lboMetrics.List
+  'todo: capture DESCRIPTION (col h) in comments, or put next to metric title and collapse?
   oExcel.ActiveWindow.Zoom = 85
+  oWorksheet.[J1] = "NOTES"
+  oWorksheet.[J1].ColumnWidth = 40
   oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
   oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).HorizontalAlignment = xlLeft
   oWorksheet.[G1].Value = "RESULT"
@@ -3496,6 +3513,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   oWorksheet.Columns(2).HorizontalAlignment = xlLeft
   'oWorksheet.Columns(8).HorizontalAlignment = xlLeft
   oWorksheet.Columns("H:I").Delete
+  
   With oWorksheet.Range(oWorksheet.[G2], oWorksheet.[G1048576].End(xlUp))
     .Replace what:=strPass, Replacement:="2", lookat:=xlWhole, _
         SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
@@ -3527,6 +3545,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   Set oRecordset = CreateObject("ADODB.Recordset")
   If blnDetail Then
+    strLOE = cptGetSetting("Integration", "LOE")
     With myDECM_frm
       For lngItem = 0 To .lboMetrics.ListCount - 1
         .lboMetrics.Value = .lboMetrics.List(lngItem)
@@ -3553,7 +3572,6 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
         End If
         oExcel.ActiveWindow.Zoom = 85
         oExcel.ActiveWindow.DisplayGridlines = False
-        strLOE = cptGetSetting("Integration", "LOE")
         If strMetric = "CPT01" Then 'missing metadata
           If strResult = strFail Then
             If Dir(Environ("tmp") & "\decm-cpt01.adtg") <> vbNullString Then
@@ -3564,14 +3582,18 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
               oWorksheet.[A4].CopyFromRecordset oRecordset
               oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
               oRecordset.Close
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions.Add xlCellValue, xlEqual, "=""MISSING"""
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions(1).SetFirstPriority
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions(1).Font.Color = -16383844
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions(1).Font.TintAndShade = 0
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions(1).Interior.PatternColorIndex = xlAutomatic
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions(1).Interior.Color = 13551615
-              oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).FormatConditions(1).Interior.TintAndShade = 0
+              With oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
+                .Columns.AutoFit
+                .FormatConditions.Add xlCellValue, xlEqual, "=""MISSING"""
+                With .FormatConditions(1)
+                  .SetFirstPriority
+                  .Font.Color = -16383844
+                  .Font.TintAndShade = 0
+                  .Interior.PatternColorIndex = xlAutomatic
+                  .Interior.Color = 13551615
+                  .Interior.TintAndShade = 0
+                End With
+              End With
               cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
               cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
               cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
@@ -3579,11 +3601,11 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
           End If
         ElseIf strMetric = "05A101a" Then '1 CA : 1 OBS
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT CA,CAM,OBS FROM [tasks.csv] "
+            strSQL = "SELECT DISTINCT CA,IIF(OBS IS NULL,'MISSING',OBS),CAM FROM [tasks.csv] "
             strSQL = strSQL & "WHERE CA IN (" & Chr(34) & Replace(oDECM(strMetric), ",", Chr(34) & "," & Chr(34)) & Chr(34) & ") "
             strSQL = strSQL & "ORDER BY CA"
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-            oWorksheet.[A3:C3] = Split("CA,CAM,OBS", ",")
+            oWorksheet.[A3:C3] = Split("CA,OBS,CAM", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = .lboMetrics.List(lngItem, 3)
             oRecordset.Close
@@ -3591,10 +3613,21 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            'highlight duplicates in col A
+            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
+            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
+              .DupeUnique = xlDuplicate
+              .SetFirstPriority
+              .Font.Color = -16383844
+              .Font.TintAndShade = 0
+              .Interior.PatternColorIndex = xlAutomatic
+              .Interior.Color = 13551615
+              .Interior.TintAndShade = 0
+            End With
           End If
         ElseIf strMetric = "05A102a" Then '1 CA : 1 CAM
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT CA,CAM FROM [tasks.csv] "
+            strSQL = "SELECT DISTINCT CA,IIF(CAM IS NULL,'MISSING', CAM) FROM [tasks.csv] "
             strSQL = strSQL & "WHERE CA IN (" & Chr(34) & Replace(oDECM(strMetric), ",", Chr(34) & "," & Chr(34)) & Chr(34) & ") "
             strSQL = strSQL & "ORDER BY CA"
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
@@ -3602,29 +3635,52 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = .lboMetrics.List(lngItem, 3)
             oRecordset.Close
-            oWorksheet.Range(oWorksheet.[A2], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            oWorksheet.Range(oWorksheet.[A2], oWorksheet.[A2].End(xlDown).Offset(0, 1)).Columns.AutoFit
+            cptAddBorders oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
+            cptAddBorders oWorksheet.[A3:B3]
+            cptAddShading oWorksheet.[A3:B3]
+            oWorksheet.[A3:B3].Font.Bold = True
+            'highlight duplicates in col A
+            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
+            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
+              .DupeUnique = xlDuplicate
+              .SetFirstPriority
+              .Font.Color = -16383844
+              .Font.TintAndShade = 0
+              .Interior.PatternColorIndex = xlAutomatic
+              .Interior.Color = 13551615
+              .Interior.TintAndShade = 0
+            End With
           End If
         ElseIf strMetric = "05A103a" Then '1 CA : 1 WBS
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT CA,CAM,WBS FROM [tasks.csv] "
+            strSQL = "SELECT DISTINCT CA,IIF(WBS IS NULL,'MISSING', WBS),CAM FROM [tasks.csv] "
             strSQL = strSQL & "WHERE CA IN (" & Chr(34) & Replace(oDECM(strMetric), ",", Chr(34) & "," & Chr(34)) & Chr(34) & ") "
             strSQL = strSQL & "ORDER BY CA"
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-            oWorksheet.[A3:C3] = Split("CA,CAM,WBS", ",")
+            oWorksheet.[A3:C3] = Split("CA,WBS,CAM", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = .lboMetrics.List(lngItem, 3)
             oRecordset.Close
             oWorksheet.Range(oWorksheet.[A2], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            cptAddBorders oWorksheet.Range(oWorksheet.[A3].End(xlDown), oWorksheet.[A3].End(xlToRight))
+            cptAddBorders oWorksheet.[A3:C3]
+            cptAddShading oWorksheet.[A3:C3]
+            'highlight duplicates in col A
+            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
+            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
+              .DupeUnique = xlDuplicate
+              .SetFirstPriority
+              .Font.Color = -16383844
+              .Font.TintAndShade = 0
+              .Interior.PatternColorIndex = xlAutomatic
+              .Interior.Color = 13551615
+              .Interior.TintAndShade = 0
+            End With
           End If
         ElseIf strMetric = "CPT02" Then '1 WP : 1 CA
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT DISTINCT WP,CA,CAM "
+            strSQL = "SELECT DISTINCT WP,IIF(CA IS NULL,'MISSING',CA),CAM "
             strSQL = strSQL & "FROM [tasks.csv] "
             strSQL = strSQL & "WHERE WP IN (" & Chr(34) & Replace(oDECM(strMetric), ",", Chr(34) & "," & Chr(34)) & Chr(34) & ") "
             strSQL = strSQL & "ORDER BY WP"
@@ -3637,16 +3693,27 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            'conditional formatting - duplicates in col A
+            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
+            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
+              .DupeUnique = xlDuplicate
+              .SetFirstPriority
+              .Font.Color = -16383844
+              .Font.TintAndShade = 0
+              .Interior.PatternColorIndex = xlAutomatic
+              .Interior.Color = 13551615
+              .Interior.TintAndShade = 0
+            End With
           End If
         ElseIf strMetric = "10A102a" Then '1 WP : 1 EVT
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT DISTINCT CAM,WP,EVT "
+            strSQL = "SELECT DISTINCT WP,IIF(EVT IS NULL,'MISSING',EVT),CAM "
             strSQL = strSQL & "FROM [tasks.csv] "
             strSQL = strSQL & "WHERE WP IN (" & Chr(34) & Replace(oDECM(strMetric), ",", Chr(34) & "," & Chr(34)) & Chr(34) & ") "
             strSQL = strSQL & "AND SUMMARY='No' "
-            strSQL = strSQL & "ORDER BY CAM"
+            strSQL = strSQL & "ORDER BY CAM,WP"
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-            oWorksheet.[A3:C3] = Split("CAM,WP,EVT", ",")
+            oWorksheet.[A3:C3] = Split("WP,EVT,CAM", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = .lboMetrics.List(lngItem, 3)
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0).AddComment "Unique WPs"
@@ -3655,6 +3722,17 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[B3].End(xlDown).Offset(0, 1))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            'conditional formatting - duplicates in col A
+            oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions.AddUniqueValues
+            With oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A1048576].End(xlUp)).FormatConditions(1)
+              .DupeUnique = xlDuplicate
+              .SetFirstPriority
+              .Font.Color = -16383844
+              .Font.TintAndShade = 0
+              .Interior.PatternColorIndex = xlAutomatic
+              .Interior.Color = 13551615
+              .Interior.TintAndShade = 0
+            End With
           End If
         ElseIf strMetric = "10A103a" Then '0/100 in >1 fiscal period
           If Len(oDECM(strMetric)) > 0 Then
@@ -3977,6 +4055,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A4].End(xlDown), oWorksheet.[A4].End(xlToRight))
             cptAddBorders oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A4].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A4].End(xlToRight))
+            oWorkbook.Worksheets("DECM Dashboard").Cells(oWorkbook.Worksheets("DECM Dashboard").Columns(1).Find(strMetric).Row, 8) = oWorksheet.[A3] & " [" & oWorksheet.[B3] & "] " & oWorksheet.[C3]
           End If
         ElseIf strMetric = "06A501a" Then 'Baselines
           If Len(oDECM(strMetric)) > 0 Then
@@ -4150,8 +4229,8 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
     Next oCell
   End If
   
-  Set oBorders = oWorksheet.Range(oWorksheet.[A2], oWorksheet.[A1].End(xlToRight).End(xlDown))
-  Set oShading = oWorksheet.[A1:G1]
+  Set oBorders = oWorksheet.Range(oWorksheet.[A1].End(xlDown), oWorksheet.[A1].End(xlToRight))
+  Set oShading = oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
   
   'get general stats
   oExcel.WindowState = xlNormal
@@ -4165,7 +4244,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   blnResourceAssignments = Not oRecordset.EOF
   oRecordset.Close
   If blnResourceAssignments Then
-    strSQL = "SELECT T1.CAM,SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
+    strSQL = "SELECT IIF(T1.CAM IS NULL,'MISSING',T1.CAM),SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
     strSQL = strSQL & "FROM ("
     strSQL = strSQL & "SELECT T1.CAM,T1.CA,IIF(AVG(T1.EVP)<100,1,0) AS [INCOMPLETE],IIF(AVG(T1.EVP)=100,1,0) AS [COMPLETE] "
     strSQL = strSQL & "FROM [tasks.csv] T1 "
@@ -4173,7 +4252,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
     strSQL = strSQL & "GROUP BY T1.CAM,T1.CA "
     strSQL = strSQL & "HAVING SUM(T2.BLW)>0 OR SUM(T2.BLC)>0) GROUP BY T1.CAM "
   Else
-    strSQL = "SELECT T1.CAM,SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
+    strSQL = "SELECT IIF(T1.CAM IS NULL,'MISSING',T1.CAM),SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
     strSQL = strSQL & "FROM ("
     strSQL = strSQL & "SELECT T1.CAM,T1.CA,IIF(AVG(T1.EVP)<100,1,0) AS [INCOMPLETE],IIF(AVG(T1.EVP)=100,1,0) AS [COMPLETE] "
     strSQL = strSQL & "FROM [tasks.csv] T1 "
@@ -4223,7 +4302,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   'count of complete, incomplete, total WP, by CAM *only includes WPs in the IMS
   'first try to limit by PMB tasks (assuming resource assignments)
   If blnResourceLoaded Then
-    strSQL = "SELECT T1.CAM,SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
+    strSQL = "SELECT IIF(T1.CAM IS NULL,'MISSING',T1.CAM),SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
     strSQL = strSQL & "FROM ("
     strSQL = strSQL & "SELECT T1.CAM,T1.WP,IIF(AVG(T1.EVP)<100,1,0) AS [INCOMPLETE],IIF(AVG(T1.EVP)=100,1,0) AS [COMPLETE] "
     strSQL = strSQL & "FROM [tasks.csv] T1 "
@@ -4233,7 +4312,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
     strSQL = strSQL & "HAVING SUM(T2.BLW)>0 OR SUM(T2.BLC)>0) "
     strSQL = strSQL & "GROUP BY T1.CAM"
   Else
-    strSQL = "SELECT T1.CAM,SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
+    strSQL = "SELECT IIF(T1.CAM IS NULL,'MISSING',T1.CAM),SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
     strSQL = strSQL & "FROM ("
     strSQL = strSQL & "SELECT T1.CAM,T1.WP,IIF(AVG(T1.EVP)<100,1,0) AS [INCOMPLETE],IIF(AVG(T1.EVP)=100,1,0) AS [COMPLETE] "
     strSQL = strSQL & "FROM [tasks.csv] T1 "
@@ -4285,7 +4364,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   'count of complete, incomplete, total PMB tasks, by CAM
   'first try to limit by PMB tasks (assumes resource assignments)
   If blnResourceLoaded Then
-    strSQL = "SELECT CAM,SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
+    strSQL = "SELECT IIF(CAM IS NULL,'MISSING', CAM),SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
     strSQL = strSQL & "FROM [tasks.csv] t INNER JOIN "
     strSQL = strSQL & "("
     strSQL = strSQL & "SELECT T1.UID,IIF(T1.AF IS NULL,1,0) AS [INCOMPLETE],IIF(T1.AF IS NOT NULL,1,0) AS [COMPLETE], SUM(T2.BLW),SUM(T2.BLC) "
@@ -4296,7 +4375,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
     strSQL = strSQL & "WHERE t.EVT IS NOT NULL AND t.EVT<>'" & strLOE & "' "
     strSQL = strSQL & "GROUP BY CAM"
   Else
-    strSQL = "SELECT CAM,SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
+    strSQL = "SELECT IIF(CAM IS NULL,'MISSING', CAM),SUM(INCOMPLETE) AS [_INCOMPLETE],SUM(COMPLETE) AS [_COMPLETE] "
     strSQL = strSQL & "FROM [tasks.csv] T INNER JOIN "
     strSQL = strSQL & "("
     strSQL = strSQL & "SELECT T1.UID,IIF(T1.AF IS NULL,1,0) AS [INCOMPLETE],IIF(T1.AF IS NOT NULL,1,0) AS [COMPLETE] "
@@ -4367,12 +4446,17 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
     Set oBorders = oExcel.Union(oBorders, oWorksheet.Range(oWorksheet.[N1048576].End(xlUp), oWorksheet.[N1048576].End(xlUp).Offset(0, 2).End(xlUp).Offset(-1, 0)))
   End If
   oRecordset.Close
-  
+  'todo: convert to named ranges
+  oWorksheet.Columns(9).Insert
+  oWorksheet.Range(oWorksheet.[H2], oWorksheet.[A1].End(xlDown).Offset(0, 7)).HorizontalAlignment = xlLeft
+  oWorksheet.Range(oWorksheet.[H2], oWorksheet.[A1].End(xlDown).Offset(0, 7)).Columns.AutoFit
   cptAddBorders oBorders
   cptAddBorders oShading
   cptAddShading oShading
   
-  oWorksheet.[A1:G1].Insert xlShiftDown
+  'conditional formatting
+  'columns I,N
+  oWorksheet.[A1:H1].Insert xlShiftDown
   oWorksheet.[A1:A2].EntireRow.Insert xlShiftDown
   If InStr(ActiveProject.Name, "/") > 0 Then
     oWorksheet.[A1].Value = cptRegEx(ActiveProject.Name, "[^/]*.mpp")
@@ -4392,35 +4476,37 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   oWorksheet.[B3].Value = Application.UserName
   
   'dump out the integration settings used
-  oWorksheet.[S4:U4].Merge True
-  oWorksheet.[S4].Value = "INTEGRATION SETTINGS"
-  oWorksheet.[S4].HorizontalAlignment = xlCenter
-  oWorksheet.[S4].Font.Bold = True
+  oWorksheet.[T4:V4].Merge True
+  oWorksheet.[T4].Value = "INTEGRATION SETTINGS"
+  oWorksheet.[T4].HorizontalAlignment = xlCenter
+  oWorksheet.[T4].Font.Bold = True
   
   For Each vSetting In Split("WBS,OBS,CA,CAM,WP,EVP,EVT,LOE,PP", ",")
-    lngLastRow = oWorksheet.[S1048576].End(xlUp).Row + 1
-    oWorksheet.Cells(lngLastRow, 19).Value = vSetting
+    lngLastRow = oWorksheet.[T1048576].End(xlUp).Row + 1
+    oWorksheet.Cells(lngLastRow, 20).Value = vSetting
     If vSetting = "LOE" Then
-      oWorksheet.Cells(lngLastRow, 20) = FieldConstantToFieldName(Split(cptGetSetting("Integration", "EVT"), "|")(0))
-      oWorksheet.Cells(lngLastRow, 21) = "EVT='" & cptGetSetting("Integration", CStr(vSetting)) & "'"
+      oWorksheet.Cells(lngLastRow, 21) = FieldConstantToFieldName(Split(cptGetSetting("Integration", "EVT"), "|")(0))
+      oWorksheet.Cells(lngLastRow, 22) = "EVT='" & cptGetSetting("Integration", CStr(vSetting)) & "'"
     ElseIf vSetting = "PP" Then
-      oWorksheet.Cells(lngLastRow, 20) = FieldConstantToFieldName(Split(cptGetSetting("Integration", "EVT"), "|")(0))
-      oWorksheet.Cells(lngLastRow, 21) = "EVT='" & cptGetSetting("Integration", CStr(vSetting)) & "'"
+      oWorksheet.Cells(lngLastRow, 21) = FieldConstantToFieldName(Split(cptGetSetting("Integration", "EVT"), "|")(0))
+      oWorksheet.Cells(lngLastRow, 22) = "EVT='" & cptGetSetting("Integration", CStr(vSetting)) & "'"
     Else
       lngField = CLng(Split(cptGetSetting("Integration", CStr(vSetting)), "|")(0))
-      oWorksheet.Cells(lngLastRow, 20).Value = FieldConstantToFieldName(lngField)
+      oWorksheet.Cells(lngLastRow, 21).Value = FieldConstantToFieldName(lngField)
       If Len(CustomFieldGetName(lngField)) > 0 Then
-        oWorksheet.Cells(lngLastRow, 21).Value = CustomFieldGetName(lngField)
+        oWorksheet.Cells(lngLastRow, 22).Value = CustomFieldGetName(lngField)
       Else
-        oWorksheet.Cells(lngLastRow, 21).Value = FieldConstantToFieldName(lngField)
+        oWorksheet.Cells(lngLastRow, 22).Value = FieldConstantToFieldName(lngField)
       End If
     End If
   Next vSetting
-  cptAddShading oWorksheet.[S4]
-  cptAddBorders oWorksheet.Range(oWorksheet.[S4], oWorksheet.[S4].End(xlDown).Offset(0, 2))
-  cptAddBorders oWorksheet.[S4:U4]
-  oWorksheet.Range(oWorksheet.[S4], oWorksheet.[S4].End(xlDown).Offset(0, 2)).Columns.AutoFit
-  
+  cptAddShading oWorksheet.[T4]
+  cptAddBorders oWorksheet.Range(oWorksheet.[T4], oWorksheet.[T4].End(xlDown).Offset(0, 2))
+  cptAddBorders oWorksheet.[T4:V4]
+  oWorksheet.Range(oWorksheet.[T4], oWorksheet.[T4].End(xlDown).Offset(0, 2)).Columns.AutoFit
+  oWorksheet.Columns(9).ColumnWidth = 3
+  oWorksheet.Columns(14).ColumnWidth = 3
+  oWorksheet.Columns(19).ColumnWidth = 3
   oExcel.WindowState = xlMaximized
   oExcel.ActiveWindow.DisplayGridlines = False
   Application.ActivateMicrosoftApp pjMicrosoftExcel
