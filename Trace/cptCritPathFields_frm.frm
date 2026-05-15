@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptCritPathFields_frm 
    Caption         =   "cpt Driving Paths"
-   ClientHeight    =   3060
+   ClientHeight    =   3804
    ClientLeft      =   108
    ClientTop       =   456
    ClientWidth     =   4068
@@ -13,9 +13,12 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v3.4.2</cpt_version>
+'<cpt_version>v3.5.0</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptCritPathFields_frm"
+Private Const cptSettingFeature As String = "Driving Paths" 'v3.5.0
+Private Const cptViewSetting As String = "User View" 'v3.5.0
+Private Const cptGanttSetting As String = "Gantt Format" 'v3.5.0
 
 Private Sub RunBtn_Click()
         
@@ -24,7 +27,7 @@ Private Sub RunBtn_Click()
         Exit Sub
     End If
     
-    If Not IsNumeric(pathCnt_txtBox.Value) Then
+    If Not IsNumeric(pathCnt_txtBox.value) Then
         MsgBox "Please enter a valid Path Count number."
         Exit Sub
     End If
@@ -33,6 +36,8 @@ Private Sub RunBtn_Click()
     cptStoreCustomFieldName "Driving Path Group", "CP Driving Path Group ID", FieldNameToFieldConstant(GroupField_Combobox.Text)
     
     'Store Field Names
+    cptSaveSetting cptSettingFeature, cptViewSetting, UserView_Combobox.Text
+    cptSaveSetting cptSettingFeature, cptGanttSetting, ganttFormatCheckBox.value
     On Error GoTo Driving_FieldExists
     CustomFieldRename FieldID:=FieldNameToFieldConstant(PathField_Combobox.Text), NewName:="CP Driving Paths"
     
@@ -64,6 +69,25 @@ Group_FieldExists:
     
 End Sub
 
+Private Sub UserForm_Activate()
+
+    Dim settingTest As String
+    settingTest = cptGetSetting(cptSettingFeature, cptGanttSetting)
+    
+    If settingTest <> "" Then
+        ganttFormatCheckBox.value = CBool(settingTest)
+    Else
+        ganttFormatCheckBox.value = True
+    End If
+    
+    settingTest = cptGetSetting(cptSettingFeature, cptViewSetting)
+    
+    If settingTest <> "" Then
+        Me.UserView_Combobox.value = settingTest
+    End If
+
+End Sub
+
 Private Sub UserForm_Initialize()
 
     Dim drivingPathField As String
@@ -87,13 +111,13 @@ Private Sub DisplayUserCustomFields(ByVal drivingPathField As String, ByVal grou
     nameTest = FieldNameToFieldConstant(drivingPathField)
     
     If nameTest <> 0 Then
-        PathField_Combobox.Value = drivingPathField
+        PathField_Combobox.value = drivingPathField
     End If
 
     nameTest = FieldNameToFieldConstant(groupPathField)
     
     If nameTest <> 0 Then
-        GroupField_Combobox.Value = groupPathField
+        GroupField_Combobox.value = groupPathField
     End If
 
 End Sub
