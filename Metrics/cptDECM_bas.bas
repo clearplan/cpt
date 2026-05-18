@@ -1306,7 +1306,7 @@ Sub DECM_05A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   '05A101a - 1 CA : 1 OBS
   strMetric = "05A101a"
   myDECM_frm.lblStatus.Caption = "Getting " & strMetric & "..."
-  Application.StatusBar = "Getting EVMS: 05A101a..."
+  Application.StatusBar = myDECM_frm.lblStatus.Caption
   myDECM_frm.lboMetrics.AddItem
   myDECM_frm.lboMetrics.TopIndex = myDECM_frm.lboMetrics.ListCount - 1
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 0) = strMetric
@@ -1322,11 +1322,13 @@ Sub DECM_05A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     lngY = .RecordCount
     .Close
   End With
-  strSQL = "SELECT CA,COUNT(OBS) AS CountOfOBS "
-  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(OBS IS NULL,'MISSING', OBS) AS [OBS] FROM [tasks.csv]) "
-  strSQL = strSQL & "WHERE CA IS NOT NULL "
+  strSQL = "SELECT DISTINCT CA FROM ("
+  strSQL = strSQL & "SELECT CA,COUNT(OBS) AS CountOfOBS "
+  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(OBS IS NULL,'MISSING', OBS) AS [OBS] FROM [tasks.csv] "
+  strSQL = strSQL & "WHERE CA IS NOT NULL) "
   strSQL = strSQL & "GROUP BY CA "
-  strSQL = strSQL & "HAVING COUNT(OBS)>1"
+  strSQL = strSQL & "HAVING COUNT(OBS)>1 "
+  strSQL = strSQL & "UNION SELECT DISTINCT CA,OBS FROM [tasks.csv] WHERE CA IS NOT NULL AND OBS IS NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -1354,7 +1356,7 @@ Sub DECM_05A101a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'myDECM_Frm.lboMetrics.List(myDECM_Frm.lboMetrics.ListCount - 1, 8) = strList
   oDECM.Add strMetric, strList
   myDECM_frm.lblStatus.Caption = "Getting " & strMetric & "...done."
-  Application.StatusBar = "Getting " & strMetric & "...done."
+  Application.StatusBar = myDECM_frm.lblStatus.Caption
   DoEvents
 End Sub
 
@@ -1363,13 +1365,12 @@ Sub DECM_05A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   Dim strSQL As String
   Dim strList As String
   Dim lngX As Long
-  'Dim lngY As Long
   Dim dblScore As Double
   
   '05A102a - 1 CA : 1 CAM
   strMetric = "05A102a"
   myDECM_frm.lblStatus.Caption = "Getting " & strMetric & "..."
-  Application.StatusBar = "Getting " & strMetric & "..."
+  Application.StatusBar = myDECM_frm.lblStatus.Caption
   myDECM_frm.lboMetrics.AddItem
   myDECM_frm.lboMetrics.TopIndex = myDECM_frm.lboMetrics.ListCount - 1
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 0) = strMetric
@@ -1385,26 +1386,13 @@ Sub DECM_05A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     lngY = .RecordCount
     .Close
   End With
-  strSQL = "SELECT " & vbCrLf
-  strSQL = strSQL & "    CA, " & vbCrLf
-  strSQL = strSQL & "    COUNT(CAM_) AS [_CAM] " & vbCrLf
-  strSQL = strSQL & "FROM " & vbCrLf
-  strSQL = strSQL & "    ( " & vbCrLf
-  strSQL = strSQL & "        SELECT DISTINCT " & vbCrLf
-  strSQL = strSQL & "            CA, " & vbCrLf
-  strSQL = strSQL & "            IIf(CAM IS NULL,'MISSING',CAM) AS [CAM_] " & vbCrLf
-  strSQL = strSQL & "        FROM " & vbCrLf
-  strSQL = strSQL & "            tasks.csv " & vbCrLf
-  strSQL = strSQL & "        WHERE " & vbCrLf
-  strSQL = strSQL & "            CA IS NOT NULL " & vbCrLf
-  strSQL = strSQL & "        ORDER BY " & vbCrLf
-  strSQL = strSQL & "            CA, " & vbCrLf
-  strSQL = strSQL & "            IIf(CAM IS NULL,'MISSING',CAM) " & vbCrLf
-  strSQL = strSQL & "    ) " & vbCrLf
-  strSQL = strSQL & "GROUP BY " & vbCrLf
-  strSQL = strSQL & "    CA " & vbCrLf
-  strSQL = strSQL & "HAVING " & vbCrLf
-  strSQL = strSQL & "    COUNT(CAM_) > 1 " & vbCrLf
+  strSQL = "SELECT DISTINCT CA FROM("
+  strSQL = strSQL & "SELECT CA,COUNT(CAM) AS CountOfCAM "
+  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(CAM IS NULL,'MISSING', CAM) AS [CAM] FROM [tasks.csv] "
+  strSQL = strSQL & "WHERE CA IS NOT NULL) "
+  strSQL = strSQL & "GROUP BY CA "
+  strSQL = strSQL & "HAVING COUNT(CAM)>1 "
+  strSQL = strSQL & "UNION SELECT DISTINCT CA,CAM FROM [tasks.csv] WHERE CA IS NOT NULL AND WBS IS NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -1441,7 +1429,6 @@ Sub DECM_05A103a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   Dim strSQL As String
   Dim strList As String
   Dim lngX As Long
-  'Dim lngY As Long
   Dim dblScore As Double
   
   '05A103a - 1 CA : 1 WBS
@@ -1463,11 +1450,13 @@ Sub DECM_05A103a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     lngY = .RecordCount
     .Close
   End With
-  strSQL = "SELECT CA,COUNT(WBS) AS CountOfWBS "
-  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(WBS IS NULL,'MISSING', WBS) AS [WBS] FROM [tasks.csv]) "
-  strSQL = strSQL & "WHERE CA IS NOT NULL "
+  strSQL = "SELECT DISTINCT CA FROM("
+  strSQL = strSQL & "SELECT CA,COUNT(WBS) AS CountOfWBS "
+  strSQL = strSQL & "FROM (SELECT DISTINCT CA,IIF(WBS IS NULL,'MISSING', WBS) AS [WBS] FROM [tasks.csv] "
+  strSQL = strSQL & "WHERE CA IS NOT NULL) "
   strSQL = strSQL & "GROUP BY CA "
-  strSQL = strSQL & "HAVING COUNT(WBS)>1"
+  strSQL = strSQL & "HAVING COUNT(WBS)>1 "
+  strSQL = strSQL & "UNION SELECT DISTINCT CA,WBS FROM [tasks.csv] WHERE CA IS NOT NULL AND WBS IS NULL)"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset
     lngX = .RecordCount
@@ -1515,10 +1504,19 @@ Sub DECM_CPT02(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDECM_
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 1) = "1 WP : 1 CA"
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 2) = "X = 0"
   DoEvents
-  'X = count of incomplete WPs that have more than one CA or no CA assigned
   'Y = count of incomplete WPs
-  strSQL = "SELECT WP,COUNT(CA) AS CountOfCA "
-  strSQL = strSQL & "FROM (SELECT DISTINCT WP,CA FROM [tasks.csv] WHERE AF IS NULL) "
+  strSQL = "SELECT DISTINCT WP "
+  strSQL = strSQL & "FROM [tasks.csv] "
+  strSQL = strSQL & "WHERE WP IS NOT NULL AND AF IS NULL"
+  With oRecordset
+    .Open strSQL, strCon, adOpenKeyset
+    lngY = .RecordCount
+    If blnDumpToExcel Then DumpRecordsetToExcel oRecordset
+    .Close
+  End With
+  'X = count of incomplete WPs that have more than one CA or no CA assigned
+  strSQL = "SELECT WP,COUNT(CA) AS CountOfCA FROM ("
+  strSQL = strSQL & "SELECT DISTINCT WP,IIF(CA IS NULL,'MISSING',CA) AS CA FROM [tasks.csv] WHERE WP IS NOT NULL AND AF IS NULL) "
   strSQL = strSQL & "GROUP BY WP "
   strSQL = strSQL & "HAVING COUNT(CA)>1"
   With oRecordset
@@ -1532,15 +1530,6 @@ Sub DECM_CPT02(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDECM_
         .MoveNext
       Loop
     End If
-    If blnDumpToExcel Then DumpRecordsetToExcel oRecordset
-    .Close
-  End With
-  strSQL = "SELECT DISTINCT WP "
-  strSQL = strSQL & "FROM [tasks.csv] "
-  strSQL = strSQL & "WHERE WP IS NOT NULL AND AF IS NULL"
-  With oRecordset
-    .Open strSQL, strCon, adOpenKeyset
-    lngY = .RecordCount
     If blnDumpToExcel Then DumpRecordsetToExcel oRecordset
     .Close
   End With
@@ -3398,7 +3387,7 @@ Private Sub DumpRecordsetToExcel(ByRef oRecordset As ADODB.Recordset)
   Set oExcel = GetObject(, "Excel.Application")
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If oExcel Is Nothing Then
-    Set oExcel = CreateObject("Excel.APplication")
+    Set oExcel = CreateObject("Excel.Application")
   End If
   oExcel.Visible = True
   
@@ -5292,7 +5281,7 @@ err_here:
 End Function
 
 Function cptGetDECMDescription(strDECM As String) As String
-  'macro to create this macro is in "DCMA EVMS Compliance Metrics v6.0 20221205.xlsm"
+  'todo: macro to create this macro is in "DCMA EVMS Compliance Metrics v6.0 20221205.xlsm"
   Dim strDescription As String
   
   Select Case strDECM
@@ -5490,7 +5479,7 @@ End Sub
 Sub FlagMissing(rng As Excel.Range)
   rng.FormatConditions.Delete 'todo
   rng.FormatConditions.Add xlCellValue, xlEqual, "=""MISSING"""
-  With .FormatConditions(1)
+  With rng.FormatConditions(1)
     .SetFirstPriority
     .Font.Color = -16383844
     .Font.TintAndShade = 0
@@ -5499,3 +5488,43 @@ Sub FlagMissing(rng As Excel.Range)
     .Interior.TintAndShade = 0
   End With
 End Sub
+
+Function GetPriority(strDECM As String) As String
+  'for DECM 8.0/8.1 tiered
+  Dim oPriority As Scripting.Dictionary
+  Set oPriority = CreateObject("Scripting.Dictionary")
+  oPriority.Add "05A101a", "Low"
+  oPriority.Add "05A102a", "Low"
+  oPriority.Add "05A103a", "Low"
+  oPriority.Add "06A101a", "Standard"
+  oPriority.Add "06A204b", "Standard"
+  oPriority.Add "06A205a", "Low"
+  oPriority.Add "06A208a", "Low"
+  oPriority.Add "06A209a", "Low"
+  oPriority.Add "06A210a", "Standard"
+  oPriority.Add "06A211a", "Standard"
+  oPriority.Add "06A212a", "Conditional"
+  oPriority.Add "06A401a", "Standard"
+  oPriority.Add "06A501a", "Low"
+  oPriority.Add "06A504a", "Low"
+  oPriority.Add "06A504b", "Low"
+  oPriority.Add "06A505a", "Low"
+  oPriority.Add "06A505b", "Low"
+  oPriority.Add "06A506a", "Low"
+  oPriority.Add "06A506b", "Low"
+  oPriority.Add "06A506c", "Standard"
+  oPriority.Add "10A102a", "Low"
+  oPriority.Add "10A103a", "Low"
+  oPriority.Add "10A109b", "Standard"
+  oPriority.Add "10A302a", "Low"
+  oPriority.Add "10A302b", "Low"
+  oPriority.Add "10A303a", "Low"
+  oPriority.Add "11A101a", "Low"
+  oPriority.Add "29A601a", "Standard"
+  If Not oPriority.Exists(strDECM) Then
+    GetPriority = "n/a"
+  Else
+    GetPriority = oPriority(strDECM)
+  End If
+  Set oPriority = Nothing
+End Function

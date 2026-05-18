@@ -54,7 +54,7 @@ Private Sub cmdDone_Click()
     End If
     If Dir(strFileName) <> vbNullString Then Kill strFileName
   Next vFile
-  cptResetAll
+  cptResetAll 'todo: do something smarter here
 
   'git grep 'strGroup =' | grep -v "grep" | awk -F"strGroup = " '{ print $2}' | sed 's/"//g' | tr -s '\n' ','
   strGroups = "cpt 05A101a 1 CA : 1 OBS,cpt 05A102a 1 CA : 1 CAM,cpt 05A103a 1 CA : 1 WBS,cpt 1wp_1ca,cpt 10A102a 1 WP : 1 EVT,cpt 11A101a CA BAC = SUM(WP BAC),cpt 06A210a LOE driving Discrete"
@@ -71,8 +71,7 @@ exit_here:
 err_here:
   cptHandleErr THIS_MODULE, "cmdDone_Click", Err, Erl
   Resume exit_here
-  
-  
+    
 End Sub
 
 Private Sub cmdExport_Click()
