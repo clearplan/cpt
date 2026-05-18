@@ -69,7 +69,7 @@ exit_here:
   Set oSubMap = Nothing
   Exit Sub
 err_here:
-  cptHandleErr THIS_MODULE, "cmdDone_Click", Err, Erl
+  cptHandleErr THIS_MODULE, "cmdDone_Click", err, Erl
   Resume exit_here
     
 End Sub
@@ -78,18 +78,38 @@ Private Sub cmdExport_Click()
   cptDECM_EXPORT Me
 End Sub
 
-Private Sub lblURL_Click()
+Private Sub lblInfo_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "http://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.dcma.mil/HQ/EVMS/"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblInfo_Click", err, Erl)
+  Resume exit_here
+
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", err, Erl)
   Resume exit_here
 
 End Sub
@@ -145,7 +165,7 @@ Public Sub lboMetrics_AfterUpdate()
   Else
     strScore = "-"
   End If
-  strDescription = strMetric & vbCrLf
+  strDescription = strMetric & " (" & cptGetPriority(strMetric) & ")" & vbCrLf
   strDescription = strDescription & strTitle & vbCrLf & vbCrLf
   strDescription = strDescription & "TARGET: " & strTarget & vbCrLf
   strDescription = strDescription & "X: " & lngX & vbCrLf
@@ -218,7 +238,7 @@ Public Sub lboMetrics_AfterUpdate()
       strDescription = strDescription & vbCrLf & vbCrLf & "NOTE: filter shows both LOE pred and Non-LOE successor."
       strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "06A212a"
-      strDescription = strMetric & vbCrLf
+      strDescription = strMetric & " (" & cptGetPriority(strMetric) & ")" & vbCrLf
       strDescription = strDescription & strTitle & vbCrLf & vbCrLf
       strDescription = strDescription & "TARGET: " & strTarget & vbCrLf
       strDescription = strDescription & "X: " & lngX & vbCrLf & vbCrLf
@@ -250,13 +270,13 @@ Public Sub lboMetrics_AfterUpdate()
         strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
       End If
     Case "06A401a" 'critical path
-      strDescription = strMetric & vbCrLf
+      strDescription = strMetric & " (" & cptGetPriority(strMetric) & ")" & vbCrLf
       strDescription = strDescription & strTitle & vbCrLf & vbCrLf
       strDescription = strDescription & "TARGET: " & strTarget & vbCrLf
       strDescription = strDescription & "X: " & lngX & vbCrLf
       strDescription = strDescription & "SCORE: " & lngX & vbCrLf & vbCrLf
       strDescription = strDescription & "UID Targeted: " & Split(oDECM(strMetric), "|")(0) & vbCrLf
-      strDescription = strDescription & "NOTE: subtract # of tasks that *are* on the this schedule's critical path."
+      strDescription = strDescription & "NOTE: subtract # of tasks that *are* on this schedule's critical path."
       strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "06A504a"
       strDescription = strDescription & "SCORE: " & strScore
@@ -274,6 +294,7 @@ Public Sub lboMetrics_AfterUpdate()
       strDescription = strDescription & vbCrLf & vbCrLf & "...requires CPT > Status > Capture Week, two periods"
      strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "06A212a"
+      strDescription = strDescription & "SCORE: " & strScore
       strDescription = strDescription & vbCrLf & "...pairs exported to Excel" & vbCrLf & "...select to filter"
       strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "10A103a"
@@ -326,7 +347,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "lboMetrics_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboMetrics_AfterUpdate", err, Erl)
   Resume exit_here
 End Sub
 
@@ -635,7 +656,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "txtTitle_BeforeDropOrPaste", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTitle_BeforeDropOrPaste", err, Erl)
   Resume exit_here
 End Sub
 

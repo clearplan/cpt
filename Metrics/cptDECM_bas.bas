@@ -1021,6 +1021,7 @@ next_task:
   FilterClear
   GroupClear
   OptionsViewEx DisplaySummaryTasks:=True
+  Sort "ID", , , , , , False, True
   OutlineShowAllTasks
   FilterEdit "cpt DECM Filter - 06I201a", True, True, True, , , "Actual Finish", , "equals", "NA"
   If Application.Edition = pjEditionProfessional Then
@@ -5286,17 +5287,20 @@ Function cptGetDECMDescription(strDECM As String) As String
   
   Select Case strDECM
     Case "05A101a"
-      strDescription = "Does each control account have exactly one responsible organizational element assigned?" & vbCrLf
+      strDescription = "NOTIONAL ONLY: USE EV TOOL" & vbCrLf
+      strDescription = strDescription & "Does each control account have exactly one responsible organizational element assigned?" & vbCrLf
       strDescription = strDescription & "X = Count of CAs with more than one OBS element or no OBS elements assigned" & vbCrLf
       strDescription = strDescription & "Y = Total count of CAs"
     
     Case "05A102a"
-      strDescription = "Is each control account assigned to a single Control Account Manager (CAM)?" & vbCrLf
+      strDescription = "NOTIONAL ONLY: USE EV TOOL" & vbCrLf
+      strDescription = strDescription & "Is each control account assigned to a single Control Account Manager (CAM)?" & vbCrLf
       strDescription = strDescription & "X = Count of CAs that have more than one CAM or no CAM assigned" & vbCrLf
       strDescription = strDescription & "Y = Total count of CAs"
     
     Case "05A103a"
-      strDescription = "Does each control account have exactly one WBS element assigned?" & vbCrLf
+      strDescription = "NOTIONAL ONLY: USE EV TOOL" & vbCrLf
+      strDescription = strDescription & "Does each control account have exactly one WBS element assigned?" & vbCrLf
       strDescription = strDescription & "X = Count of CAs with more than one WBS element or no WBS elements assigned" & vbCrLf
       strDescription = strDescription & "Y = Total count of CAs"
     
@@ -5331,7 +5335,7 @@ Function cptGetDECMDescription(strDECM As String) As String
     
     Case "06A211a"
       strDescription = "Is high total float rationale/justification acceptable?" & vbCrLf
-      strDescription = "NOTE: X must be determined manually." & vbCrLf
+      strDescription = strDescription & "NOTE: X must be determined manually." & vbCrLf
       strDescription = strDescription & "X = Count of high total float (>44 days) non-LOE tasks/activities & milestones sampled with inadequate rationale" & vbCrLf
       strDescription = strDescription & "Y = Total count of high total float non-LOE tasks/activities & milestones sampled"
     
@@ -5489,7 +5493,7 @@ Sub FlagMissing(rng As Excel.Range)
   End With
 End Sub
 
-Function GetPriority(strDECM As String) As String
+Function cptGetPriority(strDECM As String) As String
   'for DECM 8.0/8.1 tiered
   Dim oPriority As Scripting.Dictionary
   Set oPriority = CreateObject("Scripting.Dictionary")
@@ -5522,9 +5526,9 @@ Function GetPriority(strDECM As String) As String
   oPriority.Add "11A101a", "Low"
   oPriority.Add "29A601a", "Standard"
   If Not oPriority.Exists(strDECM) Then
-    GetPriority = "n/a"
+    cptGetPriority = StrConv("n/a", vbUpperCase)
   Else
-    GetPriority = oPriority(strDECM)
+    cptGetPriority = StrConv(oPriority(strDECM), vbUpperCase)
   End If
   Set oPriority = Nothing
 End Function
