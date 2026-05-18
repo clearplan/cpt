@@ -1,10 +1,10 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptCritPathFields_frm 
    Caption         =   "cpt Driving Paths"
-   ClientHeight    =   3804
-   ClientLeft      =   108
-   ClientTop       =   456
-   ClientWidth     =   4068
+   ClientHeight    =   3810
+   ClientLeft      =   105
+   ClientTop       =   450
+   ClientWidth     =   4065
    OleObjectBlob   =   "cptCritPathFields_frm.frx":0000
    StartUpPosition =   2  'CenterScreen
 End
@@ -19,6 +19,59 @@ Private Const MODULE_NAME As String = "cptCritPathFields_frm"
 Private Const cptSettingFeature As String = "Driving Paths" 'v3.5.0
 Private Const cptViewSetting As String = "User View" 'v3.5.0
 Private Const cptGanttSetting As String = "Gantt Format" 'v3.5.0
+
+Private Sub GroupField_Combobox_Change()
+    If checkDuplicate(GroupField_Combobox) = True Then
+        MsgBox "Please select a unique IMS Field."
+        GroupField_Combobox.ListIndex = 0
+        Exit Sub
+    End If
+End Sub
+
+Private Sub PathField_Combobox_Change()
+    If checkDuplicate(PathField_Combobox) = True Then
+        MsgBox "Please select a unique IMS Field."
+        PathField_Combobox.ListIndex = 0
+        Exit Sub
+    End If
+End Sub
+
+Private Function checkDuplicate(ByVal cBoxTest As MSForms.ComboBox) As Boolean 'v3.5.0
+
+    If cBoxTest.value = "" Then
+    
+        checkDuplicate = False
+        Exit Function
+    
+    End If
+
+    Dim cBoxOther As MSForms.ComboBox 'v3.3.8
+    Dim formObj As MSForms.Control 'v3.3.8
+    
+    For Each formObj In Me.Controls
+    
+        If TypeName(formObj) = "ComboBox" Then
+        
+            Set cBoxOther = formObj
+            
+            If cBoxOther.Name <> cBoxTest.Name Then
+            
+                If cBoxOther.value = cBoxTest.value Then
+                
+                    checkDuplicate = True
+                    Exit Function
+                
+                End If
+            
+            End If
+        
+        End If
+    
+    Next formObj
+    
+    checkDuplicate = False
+
+End Function
 
 Private Sub RunBtn_Click()
         
