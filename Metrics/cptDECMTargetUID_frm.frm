@@ -31,7 +31,7 @@ Private Sub cmdSubmit_Click()
   Me.Hide
 End Sub
 
-Private Sub lboTasks_AfterUpdate()
+Sub lboTasks_AfterUpdate()
   If IsNull(Me.lboTasks.Value) Then Exit Sub
   If Me.lboTasks.Value > 0 Then
     Me.cmdSubmit.Caption = "Use " & Me.lboTasks.Value
@@ -79,6 +79,13 @@ Private Sub txtTaskName_Change()
     Loop
     .Close
   End With
+  
+  If Me.lboTasks.ListCount = 1 Then
+    Me.lboTasks.Value = Me.lboTasks.List(0, 0)
+    Me.lboTasks_AfterUpdate
+  Else
+    Me.lboTasks.Value = Null
+  End If
   
 exit_here:
   On Error Resume Next
@@ -131,7 +138,14 @@ Private Sub txtUID_Change()
     Loop
     .Close
   End With
-
+  
+  If Me.lboTasks.ListCount = 1 Then
+    Me.lboTasks.Value = Me.lboTasks.List(0, 0)
+    Me.lboTasks_AfterUpdate
+  Else
+    Me.lboTasks.Value = Null
+  End If
+  
 exit_here:
   On Error Resume Next
   Set oRecordset = Nothing
