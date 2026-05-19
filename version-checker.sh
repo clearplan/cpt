@@ -106,7 +106,7 @@ done
 echo -e "\r\033[K"
 
 {
-  echo "changed module,master,working_scr,working_xml"
+  echo "changed module,master,working_src,working_xml"
   echo -e "$result" | sort
 } | column -t -s ','
 echo
