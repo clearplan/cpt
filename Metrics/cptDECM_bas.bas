@@ -3047,10 +3047,10 @@ Sub DECM_06A505a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   myDECM_frm.lboMetrics.TopIndex = myDECM_frm.lboMetrics.ListCount - 1
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 0) = strMetric
   'myDECM_Frm.lboMetrics.Value = "06A505a"
-  myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 1) = "In-Progress Tasks w/o Actual Start"
+  myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 1) = "In-Progress Tasks w/o AS or w/AF"
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 2) = "X/Y <= 5%"
   DoEvents
-  'X = count of in-progress tasks/activities & milestones with no actual start date
+  'X = count of in-progress tasks/activities & milestones with no actual start date or an actual finish date
   'Y = count of in-progress tasks/activities & milestones
   'X/Y <= 5%
   strSQL = "SELECT UID,EVP,[AS] FROM [tasks.csv] "
@@ -3238,7 +3238,7 @@ Sub DECM_06A506b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 1) = "Invalid Forecast"
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 2) = "X = 0"
   DoEvents
-  'X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish before the status date
+  'X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish on or before the status date
   'X = 0
   strSQL = "SELECT UID,FS,FF FROM [tasks.csv] "
   strSQL = strSQL & "WHERE ((FS<=#" & dtStatus & "# AND [AS] IS NULL) "
@@ -4612,13 +4612,6 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
       End If
-    Case "10A302a" 'same as 29A601a
-      If Len(strList) > 0 Then
-        strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "contains", strList
-      Else
-        SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
-      End If
     
     Case "10A302b" 'same as 29A601a
       If Len(strList) > 0 Then
@@ -5282,107 +5275,113 @@ err_here:
 End Function
 
 Function cptGetDECMDescription(strDECM As String) As String
-  'todo: macro to create this macro is in "DCMA EVMS Compliance Metrics v6.0 20221205.xlsm"
+  'todo: macro to create this is in "DCMA EVMS Metrics Tracking and Data Artifact List v8_1.xlsm"
+  'todo: update CPT list: rg -o '[0-9]{1,}[A-Z][0-9]{1,}[a-z]' Metrics/cptDECM_bas.bas | sort | uniq
+  'todo: do not delete CPT0X at bottom
   Dim strDescription As String
-  
+  strDescription = ""
   Select Case strDECM
     Case "05A101a"
-      strDescription = "NOTIONAL ONLY: USE EV TOOL" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
       strDescription = strDescription & "Does each control account have exactly one responsible organizational element assigned?" & vbCrLf
       strDescription = strDescription & "X = Count of CAs with more than one OBS element or no OBS elements assigned" & vbCrLf
       strDescription = strDescription & "Y = Total count of CAs"
     
     Case "05A102a"
-      strDescription = "NOTIONAL ONLY: USE EV TOOL" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
       strDescription = strDescription & "Is each control account assigned to a single Control Account Manager (CAM)?" & vbCrLf
       strDescription = strDescription & "X = Count of CAs that have more than one CAM or no CAM assigned" & vbCrLf
       strDescription = strDescription & "Y = Total count of CAs"
     
     Case "05A103a"
-      strDescription = "NOTIONAL ONLY: USE EV TOOL" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
       strDescription = strDescription & "Does each control account have exactly one WBS element assigned?" & vbCrLf
       strDescription = strDescription & "X = Count of CAs with more than one WBS element or no WBS elements assigned" & vbCrLf
       strDescription = strDescription & "Y = Total count of CAs"
     
     Case "06A101a"
-      strDescription = "Does each discrete WP, PP, SLPP have task(s) represented in the IMS and EV Cost Tool?" & vbCrLf
-      strDescription = strDescription & "X = Count of incomplete discrete WPs, PPs, SLPPs in the EV Cost Tool that are not in the IMS + Count of incomplete discrete WPs, PPs, SLPPs in the IMS that are not in the EV Cost Tool" & vbCrLf
-      strDescription = strDescription & "Y = Total count of all incomplete discrete WPs, PPs, SLPPs in either the IMS or the EV Cost Tool"
+      strDescription = strDescription & "Does each non-LOE unique WP, PP, SLPP have task(s) represented in both the IMS and EV Cost Tool?" & vbCrLf
+      strDescription = strDescription & "X = Count of all PPs/SLPPs and incomplete non-LOE WPs in the EV Cost Tool that are not in the IMS and count of incomplete non-LOE WPs, PPs, SLPPs in the IMS that are not in the EV Cost Tool" & vbCrLf
+      strDescription = strDescription & "Y = Total count of all unique PP and SLPP, and incomplete, non-LOE WPs in the EV Cost Tool or the IMS"
     
     Case "06A204b"
-      strDescription = "Are there open starts or finishes ('dangling logic') in the schedule?" & vbCrLf
+      strDescription = strDescription & "Are there open starts or finishes (“dangling logic”) in the schedule?" & vbCrLf
       strDescription = strDescription & "X = Count of incomplete Non-LOE tasks/activities & milestones with open starts or finishes" & vbCrLf
       strDescription = strDescription & "Y = Total count of incomplete Non-LOE tasks/activities & milestones"
     
     Case "06A205a"
-      strDescription = "Are lags used in the schedule?" & vbCrLf
+      strDescription = strDescription & "Are lags used in the schedule?" & vbCrLf
       strDescription = strDescription & "X = Count of incomplete tasks/activities & milestones with at least one lag in the predecessor logic in the IMS" & vbCrLf
       strDescription = strDescription & "Y = Total count of incomplete tasks/activities & milestones in the IMS"
     
     Case "06A208a"
-      strDescription = "Do summary tasks/activities in the schedule have logic applied?" & vbCrLf
-      strDescription = strDescription & "X = Count of summary tasks/activities with logic applied (# predecessors > 0 or # successors > 0)"
+      strDescription = strDescription & "Do summary tasks/activities in the schedule have logic applied?" & vbCrLf
+      strDescription = strDescription & "X = Count of summary tasks/activities with logic applied (# predecessors > 0 or # successors > 0)" & vbCrLf
+      strDescription = strDescription & "n/a"
     
     Case "06A209a"
-      strDescription = "Are schedule network constraints limited?" & vbCrLf
+      strDescription = strDescription & "Are schedule network constraints limited?" & vbCrLf
       strDescription = strDescription & "X = Count of incomplete tasks/activities & milestones with hard constraints" & vbCrLf
       strDescription = strDescription & "Y = Total count of incomplete tasks/activities & milestones"
     
     Case "06A210a"
-      strDescription = "Do LOE tasks/activities have discrete successors?" & vbCrLf
+      strDescription = strDescription & "Do LOE tasks/activities have discrete successors?" & vbCrLf
       strDescription = strDescription & "X = Count of incomplete LOE tasks/activities in the IMS with at least one Non-LOE successor" & vbCrLf
       strDescription = strDescription & "Y = Total count of incomplete LOE tasks/activities in the IMS"
     
     Case "06A211a"
-      strDescription = "Is high total float rationale/justification acceptable?" & vbCrLf
+      strDescription = strDescription & "Is high total float rationale/justification acceptable?" & vbCrLf
       strDescription = strDescription & "NOTE: X must be determined manually." & vbCrLf
-      strDescription = strDescription & "X = Count of high total float (>44 days) non-LOE tasks/activities & milestones sampled with inadequate rationale" & vbCrLf
+      strDescription = strDescription & "X = Count of high total float non-LOE tasks/activities & milestones sampled with inadequate rationale" & vbCrLf
       strDescription = strDescription & "Y = Total count of high total float non-LOE tasks/activities & milestones sampled"
     
     Case "06A212a"
-      strDescription = "Are there out of sequence tasks/activities & milestones?" & vbCrLf
-      strDescription = strDescription & "X = Count of out of sequence conditions"
+      strDescription = strDescription & "Are there out of sequence tasks/activities & milestones?" & vbCrLf
+      strDescription = strDescription & "X = Count of out of sequence conditions" & vbCrLf
+      strDescription = strDescription & "n/a"
     
     Case "06A401a"
-      strDescription = "Does the schedule tool produce a critical path that represents the longest total duration with the least amount of total float?" & vbCrLf
-      strDescription = strDescription & "X = Count of tasks/activities & milestones on the constraint method critical path that are not on the contractor's critical path"
+      strDescription = strDescription & "Does the schedule tool produce a critical path that represents the longest total duration with the least amount of total float?" & vbCrLf
+      strDescription = strDescription & "X = Count of tasks/activities & milestones on the constraint method critical path that are not on the contractor’s critical path" & vbCrLf
+      strDescription = strDescription & "n/a"
     
     Case "06A501a"
-      strDescription = "In the IMS, do all of the tasks/activities & milestones have baseline start and baseline finish dates?" & vbCrLf
+      strDescription = strDescription & "In the IMS, do all of the tasks/activities & milestones have baseline start and baseline finish dates?" & vbCrLf
       strDescription = strDescription & "X = Count of tasks/activities & milestones without baseline dates" & vbCrLf
       strDescription = strDescription & "Y = Total count of tasks/activities & milestones"
     
     Case "06A504a"
-      strDescription = "Are actual start dates changed after first reported?" & vbCrLf
+      strDescription = strDescription & "Are actual start dates changed after first reported?" & vbCrLf
       strDescription = strDescription & "X = Count of tasks/activities & milestones where actual start date does not equal previously reported actual start date" & vbCrLf
       strDescription = strDescription & "Y = Total count of tasks/activities & milestones with actual start dates"
     
     Case "06A504b"
-      strDescription = "Are actual finish dates changed after first reported?" & vbCrLf
+      strDescription = strDescription & "Are actual finish dates changed after first reported?" & vbCrLf
       strDescription = strDescription & "X = Count of tasks/activities & milestones where actual finish date does not equal previously reported actual finish date" & vbCrLf
       strDescription = strDescription & "Y = Total count of tasks/activities & milestones with actual finish dates"
     
     Case "06A505a"
-      strDescription = "Do all in progress tasks/activities & milestones have actual start dates?" & vbCrLf
-      strDescription = strDescription & "X = Count of in progress tasks/activities & milestones with no actual start date" & vbCrLf
+      strDescription = strDescription & "Do all in progress tasks/activities & milestones have actual start dates and do not have an actual finish date?" & vbCrLf
+      strDescription = strDescription & "X = Count of in progress tasks/activities & milestones with no actual start date or an actual finish date" & vbCrLf
       strDescription = strDescription & "Y = Total count of in progress tasks/activities & milestones"
     
     Case "06A505b"
-      strDescription = "Do all complete tasks/activities & milestones have actual finish dates?" & vbCrLf
+      strDescription = strDescription & "Do all complete tasks/activities & milestones have actual finish dates?" & vbCrLf
       strDescription = strDescription & "X = Count of complete tasks/activities & milestones with no actual finish date" & vbCrLf
       strDescription = strDescription & "Y = Total count of complete tasks/activities & milestones"
     
     Case "06A506a"
-      strDescription = "Are actual start and actual finish dates valid for all tasks/activities & milestones in the IMS?" & vbCrLf
+      strDescription = strDescription & "Are actual start and actual finish dates valid for all tasks/activities & milestones in the IMS?" & vbCrLf
       strDescription = strDescription & "X = Count of tasks/activities & milestones with either actual start or actual finish after status date" & vbCrLf
       strDescription = strDescription & "Y = Total count of tasks/activities & milestones with an actual start date"
     
     Case "06A506b"
-      strDescription = "Are forecast start and finish dates valid for all tasks/activities & milestones in the IMS?" & vbCrLf
-      strDescription = strDescription & "X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish before the status date"
+      strDescription = strDescription & "Are forecast start and finish dates representative of the remaining work for all incomplete tasks/activities & milestones in the IMS?" & vbCrLf
+      strDescription = strDescription & "X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish on or before the status date" & vbCrLf
+      strDescription = strDescription & "n/a"
     
     Case "06A506c"
-      strDescription = "Are forecast start/finish dates riding the status date of the IMS for two consecutive months?" & vbCrLf
+      strDescription = strDescription & "Are forecast start/finish dates riding the status date of the IMS for two consecutive months?" & vbCrLf
       strDescription = strDescription & "X = Count of incomplete tasks/activities & milestones with either forecast start or forecast finish date riding the status date" & vbCrLf
       strDescription = strDescription & "Y = Total count of incomplete tasks/activities & milestones"
     
@@ -5403,27 +5402,31 @@ Function cptGetDECMDescription(strDECM As String) As String
       strDescription = strDescription & "Y = Total count of 0-100 EVT incomplete WPs"
     
     Case "10A109b"
-      strDescription = "Does each WP/PP/SLPPs have an assigned budget?" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
+      strDescription = strDescription & "Does each WP/PP/SLPPs have an assigned budget?" & vbCrLf
       strDescription = strDescription & "X = Count of WPs/PPs/SLPPs with BAC = 0" & vbCrLf
       strDescription = strDescription & "Y = Total count of WPs/PPs/SLPPs"
-    
+
     Case "10A302b"
-      strDescription = "Have PPs earned performance?" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
+      strDescription = strDescription & "Have PPs earned performance?" & vbCrLf
       strDescription = strDescription & "X = Count of PPs with BCWPCUM" & vbCrLf
       strDescription = strDescription & "Y = Total count of PPs"
     
     Case "10A303a"
-      strDescription = "Do all PPs have duration?" & vbCrLf
+      strDescription = strDescription & "Do all PPs have duration?" & vbCrLf
       strDescription = strDescription & "X = Count of PPs (tasks/activities & milestones level) with baseline duration less than or equal to one day" & vbCrLf
       strDescription = strDescription & "Y = Total count of PPs (tasks/activities & milestones level)"
     
     Case "11A101a"
-      strDescription = "For all CAs, does the BAC value for the CA equate to the sum of the WP and PP budgets within the CA?" & vbCrLf
-      strDescription = strDescription & "X = Sum of the absolute values of (CA BAC - the sum of its WP and PP budgets)" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
+      strDescription = strDescription & "For all CAs, does the BAC value for the CA equate to the sum of the WP and PP budgets within the CA?" & vbCrLf
+      strDescription = strDescription & "X = Sum of the absolute values of (CA BAC – the sum of its WP and PP budgets)" & vbCrLf
       strDescription = strDescription & "Y = Total program BAC"
     
     Case "29A601a"
-      strDescription = "Is all effort detailed planned within the current rolling wave/freeze period?" & vbCrLf
+      strDescription = "NOTIONAL ONLY: RUN IN EV COST TOOL" & vbCrLf
+      strDescription = strDescription & "Is all effort detailed planned within the current rolling wave/freeze period?" & vbCrLf
       strDescription = strDescription & "X = Count of PPs/SLPPs where baseline start precedes the next rolling wave cycle" & vbCrLf
       strDescription = strDescription & "Y = Total count of PPs/SLPPs"
     
@@ -5520,7 +5523,6 @@ Function cptGetPriority(strDECM As String) As String
   oPriority.Add "10A102a", "Low"
   oPriority.Add "10A103a", "Low"
   oPriority.Add "10A109b", "Standard"
-  oPriority.Add "10A302a", "Low"
   oPriority.Add "10A302b", "Low"
   oPriority.Add "10A303a", "Low"
   oPriority.Add "11A101a", "Low"
