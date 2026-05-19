@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.1.1</cpt_version>
+'<cpt_version>v1.0.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptIntegration_frm"
 Public blnValidIntegrationMap As Boolean
 
 Private Sub cboCA_Change()
@@ -82,7 +83,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "cboEVT_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboEVT_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -171,7 +172,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "cboEVT_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboEVT_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -352,7 +353,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "chkECF_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkECF_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -456,7 +457,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "chkSyncSettings_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkSyncSettings_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -551,6 +552,19 @@ Private Sub UpdateIntegrationSettings()
   If IsNull(Me.Controls(strControl).Value) Then GoTo exit_here
   lngField = Me.Controls(strControl).Value
   Me.Controls(strControl).BorderColor = -2147483642
+  strControl = Me.ActiveControl.Name
+  'first check the other controls
+  For Each vControl In Split("WBS,OBS,CA,CAM,WP,EVT", ",")
+    'skip activecontrol
+    If Me.Controls("cbo" & vControl).Name = Me.Controls(strControl).Name Then GoTo next_uniq
+    If Me.Controls("cbo" & vControl).Value = lngField Then
+      Me.Controls(strControl).BorderColor = 192 '-2147483642
+      MsgBox CustomFieldGetName(lngField) & " (" & FieldConstantToFieldName(lngField) & ") is already assigned to " & vControl & ".", vbExclamation + vbOKOnly, "Duplicate"
+      GoTo exit_here
+    End If
+next_uniq:
+  Next vControl
+  
   strControl = Replace(strControl, "cbo", "")
   strField = CustomFieldGetName(lngField)
   If Len(strField) = 0 Then strField = FieldConstantToFieldName(lngField)
@@ -607,7 +621,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "UpdateIntegrationSettings", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "UpdateIntegrationSettings", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -662,7 +676,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "txtRollingWave_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtRollingWave_Change", Err, Erl)
   Resume exit_here
 
 End Sub

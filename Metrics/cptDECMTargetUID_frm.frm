@@ -31,8 +31,9 @@ Private Sub cmdSubmit_Click()
   Me.Hide
 End Sub
 
-Private Sub lboTasks_AfterUpdate()
+Sub lboTasks_AfterUpdate()
   If IsNull(Me.lboTasks.Value) Then Exit Sub
+  If Me.lboTasks.Value = "" Then Exit Sub
   If Me.lboTasks.Value > 0 Then
     Me.cmdSubmit.Caption = "Use " & Me.lboTasks.Value
     Me.cmdSubmit.Enabled = True
@@ -80,13 +81,23 @@ Private Sub txtTaskName_Change()
     .Close
   End With
   
+  If Me.lboTasks.ListCount = 1 Then
+    Me.lboTasks.SetFocus
+    Me.lboTasks.Value = Me.lboTasks.List(0, 0)
+    Me.lboTasks_AfterUpdate
+  Else
+    Me.lboTasks.Value = Null
+    Me.cmdSubmit.Enabled = False
+    Me.cmdSubmit.Caption = "Use"
+  End If
+  
 exit_here:
   On Error Resume Next
   Set oRecordset = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECMTargetUID_frm", "txtTaskName_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTaskName_Change", err, Erl)
   Resume exit_here
 End Sub
 
@@ -131,14 +142,24 @@ Private Sub txtUID_Change()
     Loop
     .Close
   End With
-
+  
+  If Me.lboTasks.ListCount = 1 Then
+    Me.lboTasks.SetFocus
+    Me.lboTasks.Value = Me.lboTasks.List(0, 0)
+    Me.lboTasks_AfterUpdate
+  Else
+    Me.lboTasks.Value = Null
+    Me.cmdSubmit.Enabled = False
+    Me.cmdSubmit.Caption = "Use"
+  End If
+  
 exit_here:
   On Error Resume Next
   Set oRecordset = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECMTargetUID_frm", "txtUID_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtUID_Change", err, Erl)
   Resume exit_here
 End Sub
 
