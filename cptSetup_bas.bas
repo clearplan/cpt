@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.13.2</cpt_version>
+'<cpt_version>v1.13.3</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptSetup_bas"
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
@@ -16,9 +16,9 @@ Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() l
                                                                         ByVal dwReserved As Long) As Long
 #End If
 #If VBA7 Then
-  Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+  Declare PtrSafe Sub cptSleep Lib "kernel32" Alias "Sleep" (ByVal dwMilliseconds As LongPtr)
 #Else
-  Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+  Declare Sub cptSleep Lib "kernel32" Alias "Sleep" (ByVal dwMilliseconds As Long)
 #End If
 
 Sub cptSetup()
