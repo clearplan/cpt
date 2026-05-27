@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFiscal_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
 
 Sub cptShowFiscal_frm()
@@ -369,7 +369,7 @@ next_record:
   
   'kick out an error report
   If lngErrorCount > 0 Then
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
 exit_here:

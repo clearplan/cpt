@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.7.0</cpt_version>
+'<cpt_version>v1.7.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptText_bas"
 
@@ -966,7 +966,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "HINT: Copy list(s) of UIDs, then paste into FilterByClipboard to review and fix."
       Close #lngFile
-      ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+      cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     End If
   End If
   

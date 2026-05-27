@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.3</cpt_version>
+'<cpt_version>v1.7.5</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -693,7 +693,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
 
   'this boolean spits out a speed test to the immediate window
   blnPerformanceTest = False
-  If blnPerformanceTest Then tTotal = GetTickCount
+  If blnPerformanceTest Then tTotal = cptGetTickCount
 
   On Error Resume Next
   Set oTasks = ActiveProject.Tasks
@@ -716,7 +716,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   blnEmail = myStatusSheet_frm.chkSendEmails = True
   blnKeepOpen = myStatusSheet_frm.chkKeepOpen
   'get task count
-  If blnPerformanceTest Then t = GetTickCount
+  If blnPerformanceTest Then t = cptGetTickCount
   SelectAll
   On Error Resume Next
   Set oTasks = ActiveSelection.Tasks
@@ -732,7 +732,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   Application.StatusBar = "Setting up Workbook..."
   DoEvents
   'set up an excel Workbook
-  If blnPerformanceTest Then t = GetTickCount
+  If blnPerformanceTest Then t = cptGetTickCount
   Set oExcel = CreateObject("Excel.Application") 'do not use GetObject
   'oExcel.Visible = False
   oExcel.WindowState = xlMinimized
@@ -740,7 +740,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   If Not blnErrorTrapping Then oExcel.Visible = True
   '\=== debug ===/
   
-  If blnPerformanceTest Then Debug.Print "set up excel Workbook: " & (GetTickCount - t) / 1000
+  If blnPerformanceTest Then Debug.Print "set up excel Workbook: " & (cptGetTickCount - t) / 1000
 
   'get status date
   If ActiveProject.StatusDate = "NA" Then
@@ -796,21 +796,21 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
       oWorksheet.Name = "Status Sheet"
       
       'copy data
-      If blnPerformanceTest Then t = GetTickCount
+      If blnPerformanceTest Then t = cptGetTickCount
       .lblStatus.Caption = "Creating Workbook..."
       Application.StatusBar = .lblStatus.Caption
       DoEvents
       cptCopyData myStatusSheet_frm, oWorksheet, lngHeaderRow
-      If blnPerformanceTest Then Debug.Print "copy data: " & (GetTickCount - t) / 1000
+      If blnPerformanceTest Then Debug.Print "copy data: " & (cptGetTickCount - t) / 1000
       
       'add legend
-      If blnPerformanceTest Then t = GetTickCount
+      If blnPerformanceTest Then t = cptGetTickCount
       .lblStatus.Caption = "Building legend..."
       Application.StatusBar = .lblStatus.Caption
       cptAddLegend oWorksheet, dtStatus
       .lblStatus.Caption = "Building legend...done."
       Application.StatusBar = .lblStatus.Caption
-      If blnPerformanceTest Then Debug.Print "set up legend: " & (GetTickCount - t) / 1000
+      If blnPerformanceTest Then Debug.Print "set up legend: " & (cptGetTickCount - t) / 1000
       
       'final formatting
       .lblStatus.Caption = "Formatting..."
@@ -866,7 +866,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
         DoEvents
         'must close before attaching to email
         oWorkbook.Close True
-        Sleep 2000
+        cptSleep 2000
         oExcel.Quit
         Set oExcel = Nothing
         cptSendStatusSheet myStatusSheet_frm, strFileName
@@ -879,7 +879,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
           oWorkbook.Activate
         Else
           oWorkbook.Close True
-          Sleep 2000
+          cptSleep 2000
         End If
       End If 'blnEmail
       
@@ -908,21 +908,21 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
           oWorksheet.Name = strItem
 
           'copy data
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Creating Worksheet for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           DoEvents
           cptCopyData myStatusSheet_frm, oWorksheet, lngHeaderRow, strItem
-          If blnPerformanceTest Then Debug.Print "copy data: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "copy data: " & (cptGetTickCount - t) / 1000
 
           'add legend
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Building legend for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           cptAddLegend oWorksheet, dtStatus
           .lblStatus.Caption = "Building legend for " & strItem & "...done."
           Application.StatusBar = .lblStatus.Caption
-          If blnPerformanceTest Then Debug.Print "set up legend: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "set up legend: " & (cptGetTickCount - t) / 1000
           
           'final formatting
           .lblStatus.Caption = "Formatting " & strItem & "..."
@@ -992,7 +992,7 @@ next_worksheet:
         DoEvents
         'must close before attaching
         oWorkbook.Close True
-        Sleep 2000
+        cptSleep 2000
         oExcel.Quit
         Set oExcel = Nothing
         cptSendStatusSheet myStatusSheet_frm, strFileName
@@ -1005,7 +1005,7 @@ next_worksheet:
           oWorkbook.Activate
         Else
           oWorkbook.Close True
-          Sleep 2000
+          cptSleep 2000
         End If
       End If 'blnEmail
       
@@ -1035,21 +1035,21 @@ next_worksheet:
           oWorksheet.Name = "Status Request"
           
           'copy data
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Creating Workbook for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           DoEvents
           cptCopyData myStatusSheet_frm, oWorksheet, lngHeaderRow, strItem
-          If blnPerformanceTest Then Debug.Print "copy data: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "copy data: " & (cptGetTickCount - t) / 1000
           
           'add legend
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Building legend for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           cptAddLegend oWorksheet, dtStatus
           .lblStatus.Caption = "Building legend for " & strItem & "...done."
           Application.StatusBar = .lblStatus.Caption
-          If blnPerformanceTest Then Debug.Print "set up legend: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "set up legend: " & (cptGetTickCount - t) / 1000
           
           'final formatting
           .lblStatus.Caption = "Formatting " & strItem & "..."
@@ -1105,7 +1105,7 @@ next_worksheet:
             DoEvents
             'must close before attaching to email
             oWorkbook.Close True
-            Sleep 2000
+            cptSleep 2000
             oExcel.Quit
             Set oExcel = Nothing
             cptSendStatusSheet myStatusSheet_frm, strFileName, strItem
@@ -1118,7 +1118,7 @@ next_worksheet:
               oWorkbook.Activate
             Else
               oWorkbook.Close True
-              Sleep 2000
+              cptSleep 2000
             End If
           End If 'blnEmail
         End If '.lboItems.Selected(lngItem)
@@ -1440,17 +1440,17 @@ try_again:
   SelectAll
   EditCopy
   DoEvents
-  Sleep 5000
+  cptSleep 5000
   On Error Resume Next
   oWorksheet.Paste oWorksheet.Cells(lngHeaderRow, 1), False
   If Err.Number = 1004 Then 'try again
     EditCopy
-    Sleep 5000
+    cptSleep 5000
     oWorksheet.Paste oWorksheet.Cells(lngHeaderRow, 1), False
-    Sleep 5000
+    cptSleep 5000
   End If
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  Sleep 5000
+  cptSleep 5000
   oWorksheet.Cells.WrapText = False
   oWorksheet.Application.ActiveWindow.Zoom = 85
   oWorksheet.Cells.Font.Name = "Calibri"
@@ -2596,7 +2596,7 @@ Function cptSaveStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef
     'create the status date directory
     If Dir(strDir, vbDirectory) = vbNullString Then
       MkDir strDir
-      Sleep 3000
+      cptSleep 3000
     End If
     strFileName = .txtFileName.Value & ".xlsx"
     strFileName = Replace(strFileName, "[yyyy-mm-dd]", Format(dtStatus, "yyyy-mm-dd"))
@@ -2619,7 +2619,7 @@ Function cptSaveStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef
     On Error Resume Next
     If Dir(strDir & strFileName) <> vbNullString Then
       Kill strDir & strFileName
-      Sleep 2000
+      cptSleep 2000
       DoEvents
     End If
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -2630,10 +2630,10 @@ Function cptSaveStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm, ByRef
       strMsg = strMsg & vbCrLf & "The file you are now creating will be named '" & strFileName & "'"
       MsgBox strMsg, vbExclamation + vbOKOnly, "NOTA BENE"
       oWorkbook.SaveAs strDir & strFileName, 51
-      Sleep 2000
+      cptSleep 2000
     Else
       oWorkbook.SaveAs strDir & strFileName, 51
-      Sleep 2000
+      cptSleep 2000
     End If
   End With
 
@@ -3716,7 +3716,7 @@ Sub cptFindCompleteThrough()
 '  Print #lngFile, "TIP: if the graphical progress bar is causing confusion, set it to run from [Actual Start] through [Stop] instead of from [Actual Start] through [CompleteThrough]."
 '  Print #lngFile, String(20, "-")
   Close #lngFile
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -3842,7 +3842,7 @@ next_task:
     End If
     Print #lngFile, "NOTE: Resources can have the same name in MS Project. Confirm Resource Unique ID before deleting."
     Close #lngFile
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", Join(oDict.Keys, vbTab)
   Else
     MsgBox "There are ZERO assignments without remaining work!", vbInformation + vbOKOnly, "Well Done"
@@ -5106,7 +5106,7 @@ next_task:
           Print #lngFile, "ASSIGNMENT UNIQUE IDs: " & Left(strNotFixed, Len(strNotFixed) - 1)
           Print #lngFile, vbCrLf & "HINT: Use FilterByClipboard to find and fix (try it with the 'Filter' option unchecked)"
           Close #lngFile
-          ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+          cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
         End If
         blnValid = False
       Else

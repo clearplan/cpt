@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.3</cpt_version>
+'<cpt_version>v1.3.4</cpt_version>
 Option Explicit
 
 Private Sub cmdDone_Click()
@@ -29,7 +29,7 @@ Private Sub cmdEdit_Click()
   If MsgBox(strMsg, vbCritical + vbYesNo, "Do Not Attempt This...") = vbYes Then
     MsgBox "...you've been warned.", vbInformation + vbOKOnly, "OK"
     strFileName = cptDir & "\settings\cpt-settings.ini"
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
 End Sub
 

@@ -256,7 +256,7 @@ Private Sub cmdImport_Click()
           Application.StatusBar = "Backing up " & strOutlineCode & " pick-list...(" & Format(lngItem / lngItems, "0%") & ")"
         Next lngItem
         Close #lngFile
-        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         Application.StatusBar = ""
         
         'backup task data
@@ -280,7 +280,7 @@ next_task:
           Application.StatusBar = "Backing up task data...(" & Format(lngItem / lngItems, "0%") & ")"
         Next oTask
         Close #lngFile
-        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         Application.StatusBar = ""
         
         'delete lookup table and start fresh

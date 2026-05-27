@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
 
 Private Sub cboImportField_Change()
@@ -164,7 +164,7 @@ Private Sub cmdGetQuery_Click()
   Print #lngFile, String(40, "=")
   Close #lngFile
   
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
   strMsg = "The returned results will have all 20 available fiscal period labels." & vbCrLf & vbCrLf
   strMsg = strMsg & "Please pick one (preferably in YYYYMM format), and import only the 'fisc_end' and a single 'label' column." & vbCrLf & vbCrLf

@@ -666,7 +666,7 @@ next_task:
   cptGetMetric = dblResult
   If blnVerbose Then
     Close #lngFile
-    ShellExecute 0, "open", strVerbose, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strVerbose, vbNullString, vbNullString, 1
   End If
 
 exit_here:

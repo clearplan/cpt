@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.4.1</cpt_version>
+'<cpt_version>v1.4.2</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -1043,7 +1043,7 @@ exit_here:
   Set oTask = Nothing
   Reset 'closes all active files opened by the Open statement and writes the contents of all file buffers to disk.
   If Dir(strImportLog) <> vbNullString And blnImportLog Then 'open log in notepad
-    ShellExecute 0, "open", strImportLog, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strImportLog, vbNullString, vbNullString, 1
   End If
   If Dir(Environ("TEMP") & "\Schema.ini") <> vbNullString Then Kill Environ("TEMP") & "\Schema.ini"
   If Dir(Environ("TEMP") & "\imported.csv") <> vbNullString Then Kill Environ("TEMP") & "\imported.csv"
