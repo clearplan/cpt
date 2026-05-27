@@ -1137,7 +1137,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   Close #lngFile
   
   'open it in notepad
-  ShellExecute 0, "open", "notepad.exe", strDir & strFileName, vbNullString, 1
+  cptShellExecute 0, "open", "notepad.exe", strDir & strFileName, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -1266,7 +1266,7 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
 
   Close #lngFile
   
-  ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+  cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
 
 exit_here:
   On Error Resume Next
@@ -1341,7 +1341,7 @@ Sub cptExportAllCodes()
         End If
       Next lngItem
       Close #lngFile
-      ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+      cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
       Application.StatusBar = "Exporting Code file for " & strCFN & "...done."
       lngCodes = lngCodes + 1
     End If
@@ -1391,7 +1391,7 @@ Sub cptExportAllCodes()
           Print #lngFile, oCodes.Keys(lngListItem) & "," & Chr(34) & oCodes.Items(lngListItem) & Chr(34)
         Next lngListItem
         Close #lngFile
-        ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+        cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
         lngCodes = lngCodes + 1
       End If
       oCodes.RemoveAll

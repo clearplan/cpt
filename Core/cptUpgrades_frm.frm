@@ -487,7 +487,7 @@ Private Sub cptHandleErrUpgrade(strModule As String, strProcedure As String, obj
     Print #lngFile, "Line: " & lngErl
   End If
   Close #lngFile
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 
 End Sub
 

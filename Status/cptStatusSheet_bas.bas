@@ -3716,7 +3716,7 @@ Sub cptFindCompleteThrough()
 '  Print #lngFile, "TIP: if the graphical progress bar is causing confusion, set it to run from [Actual Start] through [Stop] instead of from [Actual Start] through [CompleteThrough]."
 '  Print #lngFile, String(20, "-")
   Close #lngFile
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -3842,7 +3842,7 @@ next_task:
     End If
     Print #lngFile, "NOTE: Resources can have the same name in MS Project. Confirm Resource Unique ID before deleting."
     Close #lngFile
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", Join(oDict.Keys, vbTab)
   Else
     MsgBox "There are ZERO assignments without remaining work!", vbInformation + vbOKOnly, "Well Done"
@@ -5106,7 +5106,7 @@ next_task:
           Print #lngFile, "ASSIGNMENT UNIQUE IDs: " & Left(strNotFixed, Len(strNotFixed) - 1)
           Print #lngFile, vbCrLf & "HINT: Use FilterByClipboard to find and fix (try it with the 'Filter' option unchecked)"
           Close #lngFile
-          ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+          cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
         End If
         blnValid = False
       Else

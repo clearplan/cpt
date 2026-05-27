@@ -3425,7 +3425,7 @@ End Sub
 
 Sub opencsv(strFileName As String)
   strFileName = Environ("tmp") & "\" & strFileName
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
 
 Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolean = False)

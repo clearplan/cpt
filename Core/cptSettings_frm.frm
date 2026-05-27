@@ -29,7 +29,7 @@ Private Sub cmdEdit_Click()
   If MsgBox(strMsg, vbCritical + vbYesNo, "Do Not Attempt This...") = vbYes Then
     MsgBox "...you've been warned.", vbInformation + vbOKOnly, "OK"
     strFileName = cptDir & "\settings\cpt-settings.ini"
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
 End Sub
 

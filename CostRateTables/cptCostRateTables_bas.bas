@@ -463,7 +463,7 @@ next_row:
       Print #lngFile, Split(oUpdated.Keys(lngItem), "|")(0) & "," & Chr(34) & Split(oUpdated.Keys(lngItem), "|")(1) & Chr(34) & "," & Chr(34) & oUpdated.Items(lngItem) & Chr(34)
     Next lngItem
     Close #lngFile
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
   With myCostRateTables_frm

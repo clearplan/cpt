@@ -203,7 +203,7 @@ Public Sub lboMetrics_AfterUpdate()
           oFile.Write strMsg
           oFile.Close
           strFileName = strDir & "\wp-ev-sql.txt"
-          ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+          cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
           GoTo exit_here
         ElseIf lngResponse = vbYes Then
           Me.txtTitle.Value = Me.txtTitle.Text & vbCrLf & "please paste data here (w/o headers):" & vbCrLf

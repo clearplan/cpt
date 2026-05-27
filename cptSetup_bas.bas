@@ -1227,7 +1227,7 @@ next_task_single:
   Print #lngFile, "-> The location of this file is " & strFileName & vbCrLf
   Print #lngFile, strMsg
   Close #lngFile
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   Application.StatusBar = "Opening https://clearplan.happyfox.com/new..."
   Application.FollowHyperlink "https://clearplan.happyfox.com/new/"
   

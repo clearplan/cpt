@@ -966,7 +966,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "HINT: Copy list(s) of UIDs, then paste into FilterByClipboard to review and fix."
       Close #lngFile
-      ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+      cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     End If
   End If
   

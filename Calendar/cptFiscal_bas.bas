@@ -369,7 +369,7 @@ next_record:
   
   'kick out an error report
   If lngErrorCount > 0 Then
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
 exit_here:
