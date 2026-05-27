@@ -8,30 +8,30 @@ Public Const WS_CAPTION = &HC00000
 Public Const WS_THICKFRAME = &H40000
 
 #If VBA7 Then
-    Public Declare PtrSafe Function GetWindowLong _
+    Public Declare PtrSafe Function cptGetWindowLong _
         Lib "user32" Alias "GetWindowLongA" ( _
         ByVal hwnd As Long, ByVal nIndex As Long) As Long
-    Public Declare PtrSafe Function SetWindowLong _
+    Public Declare PtrSafe Function cptSetWindowLong _
         Lib "user32" Alias "SetWindowLongA" ( _
         ByVal hwnd As Long, ByVal nIndex As Long, _
         ByVal dwNewLong As Long) As Long
-    Public Declare PtrSafe Function DrawMenuBar _
-        Lib "user32" (ByVal hwnd As Long) As Long
-    Public Declare PtrSafe Function FindWindowA _
-        Lib "user32" (ByVal lpClassName As String, _
+    Public Declare PtrSafe Function cptDrawMenuBar _
+        Lib "user32" Alias "DrawMenuBar" (ByVal hwnd As Long) As Long
+    Public Declare PtrSafe Function cptFindWindow _
+        Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, _
         ByVal lpWindowName As String) As Long
 #Else
-    Public Declare Function GetWindowLong _
+    Public Declare Function cptGetWindowLong _
         Lib "user32" Alias "GetWindowLongA" ( _
         ByVal hWnd As Long, ByVal nIndex As Long) As Long
-    Public Declare Function SetWindowLong _
+    Public Declare Function cptSetWindowLong _
         Lib "user32" Alias "SetWindowLongA" ( _
         ByVal hWnd As Long, ByVal nIndex As Long, _
         ByVal dwNewLong As Long) As Long
-    Public Declare Function DrawMenuBar _
-        Lib "user32" (ByVal hWnd As Long) As Long
-    Public Declare Function FindWindowA _
-        Lib "user32" (ByVal lpClassName As String, _
+    Public Declare Function cptDrawMenuBar _
+        Lib "user32" alias "DrawMenuBar" (ByVal hWnd As Long) As Long
+    Public Declare Function cptFindWindow _
+        Lib "user32" alias "FindWindowA" (ByVal lpClassName As String, _
         ByVal lpWindowName As String) As Long
 #End If
 '=====================================
@@ -44,8 +44,8 @@ Sub cptResizeWindowSettings(frm As Object, Show As Boolean)
   Dim windowHandle As Long
   
   'Get the references to window and style position within the Windows memory
-  windowHandle = FindWindowA(vbNullString, frm.Caption)
-  windowStyle = GetWindowLong(windowHandle, GWL_STYLE)
+  windowHandle = cptFindWindow(vbNullString, frm.Caption)
+  windowStyle = cptGetWindowLong(windowHandle, GWL_STYLE)
   
   'Determine the style to apply based
   If Show = False Then
@@ -55,10 +55,10 @@ Sub cptResizeWindowSettings(frm As Object, Show As Boolean)
   End If
   
   'Apply the new style
-  SetWindowLong windowHandle, GWL_STYLE, windowStyle
+  cptSetWindowLong windowHandle, GWL_STYLE, windowStyle
   
   'Recreate the UserForm window with the new style
-  DrawMenuBar windowHandle
+  cptDrawMenuBar windowHandle
 
 End Sub
 
@@ -555,7 +555,7 @@ next_task:
     cptSpeed True
     If Edition = pjEditionProfessional Then
       If Not cptFilterExists("Active Tasks") Then
-        FilterEdit Name:="Active Tasks", TaskFilter:=True, Create:=True, OverwriteExisting:=False, FieldName:="Active", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=True
+        FilterEdit Name:="Active Tasks", TaskFilter:=True, Create:=True, OverwriteExisting:=False, FieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=True
       End If
       FilterApply "Active Tasks"
     ElseIf Edition = pjEditionStandard Then
