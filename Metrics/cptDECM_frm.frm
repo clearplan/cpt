@@ -468,9 +468,9 @@ Private Sub txtTitle_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, By
     oFile.Close
     oRecordset.Close
     Kill strDir & "\wp-ev.csv"
-    Sleep 3000
+    cptSleep 3000
     Name strDir & "\wp-ev-distinct.csv" As strDir & "\wp-ev.csv"
-    Sleep 3000
+    cptSleep 3000
   Else
     'user pasted nothing
   End If
