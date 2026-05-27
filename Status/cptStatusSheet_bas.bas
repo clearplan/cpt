@@ -693,7 +693,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
 
   'this boolean spits out a speed test to the immediate window
   blnPerformanceTest = False
-  If blnPerformanceTest Then tTotal = GetTickCount
+  If blnPerformanceTest Then tTotal = cptGetTickCount
 
   On Error Resume Next
   Set oTasks = ActiveProject.Tasks
@@ -716,7 +716,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   blnEmail = myStatusSheet_frm.chkSendEmails = True
   blnKeepOpen = myStatusSheet_frm.chkKeepOpen
   'get task count
-  If blnPerformanceTest Then t = GetTickCount
+  If blnPerformanceTest Then t = cptGetTickCount
   SelectAll
   On Error Resume Next
   Set oTasks = ActiveSelection.Tasks
@@ -732,7 +732,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   Application.StatusBar = "Setting up Workbook..."
   DoEvents
   'set up an excel Workbook
-  If blnPerformanceTest Then t = GetTickCount
+  If blnPerformanceTest Then t = cptGetTickCount
   Set oExcel = CreateObject("Excel.Application") 'do not use GetObject
   'oExcel.Visible = False
   oExcel.WindowState = xlMinimized
@@ -740,7 +740,7 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   If Not blnErrorTrapping Then oExcel.Visible = True
   '\=== debug ===/
   
-  If blnPerformanceTest Then Debug.Print "set up excel Workbook: " & (GetTickCount - t) / 1000
+  If blnPerformanceTest Then Debug.Print "set up excel Workbook: " & (cptGetTickCount - t) / 1000
 
   'get status date
   If ActiveProject.StatusDate = "NA" Then
@@ -796,21 +796,21 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
       oWorksheet.Name = "Status Sheet"
       
       'copy data
-      If blnPerformanceTest Then t = GetTickCount
+      If blnPerformanceTest Then t = cptGetTickCount
       .lblStatus.Caption = "Creating Workbook..."
       Application.StatusBar = .lblStatus.Caption
       DoEvents
       cptCopyData myStatusSheet_frm, oWorksheet, lngHeaderRow
-      If blnPerformanceTest Then Debug.Print "copy data: " & (GetTickCount - t) / 1000
+      If blnPerformanceTest Then Debug.Print "copy data: " & (cptGetTickCount - t) / 1000
       
       'add legend
-      If blnPerformanceTest Then t = GetTickCount
+      If blnPerformanceTest Then t = cptGetTickCount
       .lblStatus.Caption = "Building legend..."
       Application.StatusBar = .lblStatus.Caption
       cptAddLegend oWorksheet, dtStatus
       .lblStatus.Caption = "Building legend...done."
       Application.StatusBar = .lblStatus.Caption
-      If blnPerformanceTest Then Debug.Print "set up legend: " & (GetTickCount - t) / 1000
+      If blnPerformanceTest Then Debug.Print "set up legend: " & (cptGetTickCount - t) / 1000
       
       'final formatting
       .lblStatus.Caption = "Formatting..."
@@ -908,21 +908,21 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
           oWorksheet.Name = strItem
 
           'copy data
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Creating Worksheet for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           DoEvents
           cptCopyData myStatusSheet_frm, oWorksheet, lngHeaderRow, strItem
-          If blnPerformanceTest Then Debug.Print "copy data: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "copy data: " & (cptGetTickCount - t) / 1000
 
           'add legend
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Building legend for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           cptAddLegend oWorksheet, dtStatus
           .lblStatus.Caption = "Building legend for " & strItem & "...done."
           Application.StatusBar = .lblStatus.Caption
-          If blnPerformanceTest Then Debug.Print "set up legend: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "set up legend: " & (cptGetTickCount - t) / 1000
           
           'final formatting
           .lblStatus.Caption = "Formatting " & strItem & "..."
@@ -1035,21 +1035,21 @@ next_worksheet:
           oWorksheet.Name = "Status Request"
           
           'copy data
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Creating Workbook for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           DoEvents
           cptCopyData myStatusSheet_frm, oWorksheet, lngHeaderRow, strItem
-          If blnPerformanceTest Then Debug.Print "copy data: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "copy data: " & (cptGetTickCount - t) / 1000
           
           'add legend
-          If blnPerformanceTest Then t = GetTickCount
+          If blnPerformanceTest Then t = cptGetTickCount
           .lblStatus.Caption = "Building legend for " & strItem & "..."
           Application.StatusBar = .lblStatus.Caption
           cptAddLegend oWorksheet, dtStatus
           .lblStatus.Caption = "Building legend for " & strItem & "...done."
           Application.StatusBar = .lblStatus.Caption
-          If blnPerformanceTest Then Debug.Print "set up legend: " & (GetTickCount - t) / 1000
+          If blnPerformanceTest Then Debug.Print "set up legend: " & (cptGetTickCount - t) / 1000
           
           'final formatting
           .lblStatus.Caption = "Formatting " & strItem & "..."
