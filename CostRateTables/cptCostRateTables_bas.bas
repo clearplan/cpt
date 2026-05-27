@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCostRateTables_bas"
-'<cpt_version>v1.2.0</cpt_version>
+'<cpt_version>v1.2.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptCostRateTables_bas"
 

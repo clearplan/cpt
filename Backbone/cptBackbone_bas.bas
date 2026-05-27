@@ -537,7 +537,7 @@ Sub cptExport81334D(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As L
   Dim oOutlineCode As MSProject.OutlineCode
   Dim wsDictionary As Excel.Worksheet
   Dim wsIndex As Excel.Worksheet
-  Dim oWorkbook As Excel.Workbok
+  Dim oWorkbook As Excel.Workbook
   Dim oExcel As Excel.Application
   Dim oStream As ADODB.Stream
   Dim oXMLHttpDoc As Object

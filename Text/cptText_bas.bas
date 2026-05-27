@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.7.0</cpt_version>
+'<cpt_version>v1.7.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptText_bas"
 

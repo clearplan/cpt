@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.4</cpt_version>
+'<cpt_version>v1.7.5</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
