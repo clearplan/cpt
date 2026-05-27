@@ -3,13 +3,13 @@ Attribute VB_Name = "cptCore_bas"
 Option Explicit
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
-  Private Declare PtrSafe Function GetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
-  Private Declare PtrSafe Function SetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+  Private Declare PtrSafe Function cptGetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
+  Private Declare PtrSafe Function cptSetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr '<issue53>
   Public Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #Else
-  Private Declare Function GetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
-  Private Declare Function SetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+  Private Declare Function cptGetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
+  Private Declare Function cptSetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As Long '<issue53>
   Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #End If
@@ -1729,7 +1729,7 @@ End Sub
 Function cptSaveSetting(strFeature As String, strKey As String, strValue As Variant) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
-  lngWorked = SetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
+  lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
   If lngWorked Then
     cptSaveSetting = True
   Else
@@ -1742,7 +1742,7 @@ Function cptGetSetting(strFeature As String, strKey As String) As String
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   strReturned = Space(255) 'this determines the length of the returned value, not the length of the stored value
   lngSize = Len(strReturned)
-  lngWorked = GetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
+  lngWorked = cptGetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
   If lngWorked Then
     cptGetSetting = Left$(strReturned, lngWorked)
   Else
@@ -1765,7 +1765,7 @@ End Function
 Function cptDeleteSetting(strFeature As String, strKey As String) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
-  lngWorked = SetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
+  lngWorked = cptSetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
   If lngWorked Then
     cptDeleteSetting = True
   Else
