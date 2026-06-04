@@ -1027,7 +1027,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
     strMsg = strMsg & "Resources: " & Format(ActiveProject.ResourceCount, "#,##0") & vbCrLf
   End If
   strMsg = strMsg & "Baselined: " & IsDate(ActiveProject.BaselineSavedDate(pjBaseline)) & vbCrLf
-  strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)"
+  strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)" & vbCrLf
   blnResourceLoaded = False
   If blnMaster Then
     For Each oSubProject In ActiveProject.Subprojects
