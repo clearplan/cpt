@@ -162,7 +162,6 @@ End Sub
 Sub cptMyReplace()
   'fields affected: Task Name, Text Fields, Outline Code Fields
   'objects
-  Dim rstReplaced As Object 'ADODB.Recordset
   Dim oTasks As MSProject.Tasks, oTask As MSProject.Task
   'strings
   Dim strMsg As String
@@ -195,10 +194,6 @@ Sub cptMyReplace()
   
   Application.OpenUndoTransaction "MyReplace"
 
-  Set rstReplaced = CreateObject("ADODB.Recordset")
-  rstReplaced.Fields.Append "UID", adBigInt
-  rstReplaced.Open
-
   For Each oTask In oTasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.ExternalTask Then GoTo next_task
@@ -207,8 +202,6 @@ Sub cptMyReplace()
       If Len(cptRegEx(FieldConstantToFieldName(vField), "Text|Name")) > 0 Then
         If InStr(oTask.GetField(vField), CStr(vFind)) > 0 Then
           oTask.SetField vField, Replace(oTask.GetField(vField), CStr(vFind), CStr(vReplace))
-          rstReplaced.AddNew Array("UID"), Array(oTask.UniqueID)
-          rstReplaced.Update
           strReplaced = strReplaced & oTask.UniqueID & ";"
           lngFound = lngFound + 1
         End If
@@ -220,49 +213,24 @@ next_task:
   If lngFound = 0 Then
     MsgBox "No instances of '" & CStr(vFind) & "' found in selected cells.", vbExclamation + vbOKOnly, "MyReplace"
   Else
-    If lngFound <= 120 Then
-      rstReplaced.MoveFirst
-      FilterEdit "cptMyReplace", True, True, True, False, , "Unique ID", , "equals", rstReplaced(0), "Or", True
-      Do While Not rstReplaced.EOF
-        FilterEdit "cptMyReplace", TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID", Test:="equals", Value:=rstReplaced(0), Operation:="Or", ShowInMenu:=True
-        rstReplaced.MoveNext
-      Loop
-      FilterApply "cptMyReplace", True
-      rstReplaced.MoveFirst
-      Application.Find "Unique ID", "equals", rstReplaced(0)
-      cptSpeed False
-      strMsg = "Replaced " & Format(lngFound, "#,##0") & " instance" & IIf(lngFound = 1, "", "s") & " of '" & CStr(vFind) & "' with '" & CStr(vReplace) & "'" & vbCrLf & vbCrLf
-      strMsg = strMsg & "- Highlight filter 'cptMyReplace' applied" & vbCrLf & vbCrLf
-      strMsg = strMsg & "Keep highlight filter 'cptMyReplace' applied?"
-      If MsgBox(strMsg, vbQuestion + vbYesNo, "cptMyReplace") = vbNo Then
-        cptSpeed True
-        FilterApply "All Tasks", True
-        Application.Find "Unique ID", "equals", rstReplaced(0)
-        cptSpeed False
-      End If
-    Else
-      strReplaced = Left(strReplaced, Len(strReplaced) - 1) 'trim trailing semi-colon
-      strReplaced = Replace(strReplaced, ";", vbTab) 'replace with vbTab
-      SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strReplaced
-      cptSpeed False
+    strReplaced = Left(strReplaced, Len(strReplaced) - 1) 'trim trailing semi-colon
+    strReplaced = Replace(strReplaced, ";", vbTab) 'replace with vbTab
+    SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strReplaced
+    cptSpeed False
+    Application.Find "Unique ID", "equals", Split(strReplaced, vbTab)(0)
+    strMsg = "Replaced " & Format(lngFound, "#,##0") & " instance" & IIf(lngFound = 1, "", "s") & " of '" & CStr(vFind) & "' with '" & CStr(vReplace) & "'" & vbCrLf & vbCrLf
+    strMsg = strMsg & "- AutoFilter applied to [Unique ID]" & vbCrLf & vbCrLf
+    strMsg = strMsg & "Keep AutoFilter applied to [Unique ID]?"
+    If MsgBox(strMsg, vbQuestion + vbYesNo, "cptMyReplace") = vbNo Then
+      cptSpeed True
+      SetAutoFilter "Unique ID", pjAutoFilterClear
       Application.Find "Unique ID", "equals", Split(strReplaced, vbTab)(0)
-      strMsg = "Replaced " & Format(lngFound, "#,##0") & " instance" & IIf(lngFound = 1, "", "s") & " of '" & CStr(vFind) & "' with '" & CStr(vReplace) & "'" & vbCrLf & vbCrLf
-      strMsg = strMsg & "- Highlight filter max (122) exceeded" & vbCrLf
-      strMsg = strMsg & "- AutoFilter applied to [Unique ID] instead" & vbCrLf & vbCrLf
-      strMsg = strMsg & "Keep AutoFilter applied to [Unique ID]?"
-      If MsgBox(strMsg, vbQuestion + vbYesNo, "cptMyReplace") = vbNo Then
-        cptSpeed True
-        SetAutoFilter "Unique ID", pjAutoFilterClear
-        Application.Find "Unique ID", "equals", Split(strReplaced, vbTab)(0)
-        cptSpeed False
-      End If
+      cptSpeed False
     End If
   End If
   
 exit_here:
   On Error Resume Next
-  If rstReplaced.State Then rstReplaced.Close
-  Set rstReplaced = Nothing
   Application.CloseUndoTransaction
   cptSpeed False
   Set oTasks = Nothing
