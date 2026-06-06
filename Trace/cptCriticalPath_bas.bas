@@ -1,8 +1,12 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.5.0</cpt_version>
+'<cpt_version>v3.5.1</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
+Private SubPathField As String 'v3.5.1 stores the subpath identification field
+Private SubPaths As Boolean 'v3.5.1 indicates if the user wants subpaths identified
+Private SubPathMax As Integer       'v3.5.1 running max of minted sub-path ids within the current path
+Private SubPathClaimed As Collection 'v3.5.1 successors that have already handed their sub-path to a first driving pred
 'Custom type used to store driving path vars
 Type DrivingPaths
     PrevFloat As Double 'previously evaluated path float
@@ -10,9 +14,14 @@ Type DrivingPaths
 End Type
 Private PathCount As Integer 'number of paths to analyze
 Private CurrentPath As Integer 'currently evaluated path
+Private curSubPath As Integer 'v3.5.1 Tracks sub-path IDs
 Private MaxPathsFound As Integer 'track the maximum number of paths found
-Private NextDrivers() As String 'Array of next drivers to be analyzed
-Private NextDriverCount As String 'count of next drivers to be analyzed
+Type NextDriver
+    UID As String
+    SubPath As Integer
+End Type
+Private NextDrivers() As NextDriver 'Array of next drivers to be analyzed
+Private NextDriverCount As Integer 'count of next drivers to be analyzed
 Private tDrivingPaths As DrivingPaths 'var to store DrivingPaths type
 Private AnalyzedTasks As Collection 'Collection of task relationships analyzied (From UID - To UID); unique to each path analysis
 'Custom type used to store Driving Task data
@@ -58,11 +67,7 @@ Sub DrivingPaths()
     Set curProj = ActiveProject 'v2.9.0 get active project before displaying field selection form
     
     'v3.0.0 - check for subprojects
-    If curProj.Subprojects.Count > 1 Then
-        masterProj = True
-    Else
-        masterProj = False
-    End If
+    masterProj = (curProj.Subprojects.Count > 1)
     
     'used to avoid code break during intial error checks
     On Error Resume Next
@@ -122,10 +127,12 @@ Sub DrivingPaths()
     
         For i = 1 To UBound(CustNumFields)
             .GroupField_Combobox.AddItem CustNumFields(i)
+            .SubPath_Combobox.AddItem CustNumFields(i)
         Next i
         For i = 1 To UBound(CustTextFields)
             .GroupField_Combobox.AddItem CustTextFields(i)
             .PathField_Combobox.AddItem CustTextFields(i)
+            .SubPath_Combobox.AddItem CustTextFields(i)
         Next i
         
         .pathCnt_txtBox.value = 3
@@ -164,6 +171,8 @@ Sub DrivingPaths()
         'v2.9.0 - get user field map
         CritField = .PathField_Combobox.Text
         GroupField = .GroupField_Combobox.Text
+        SubPathField = .SubPath_Combobox.Text
+        SubPaths = .SubPath_Checkbox.value
         PathCount = .pathCnt_txtBox.value
         userView = .UserView_Combobox.Text
         ganttFormatOverride = .ganttFormatCheckBox.value
@@ -177,15 +186,17 @@ Sub DrivingPaths()
     'v3.5.0 update to set custom fields in subproject schedule that align with the master project
     Dim origGroupField As Long
     Dim origCritField As Long
+    Dim origSubPathField As Long
     origGroupField = FieldNameToFieldConstant(GroupField)
     origCritField = FieldNameToFieldConstant(CritField)
+    origSubPathField = FieldNameToFieldConstant(SubPathField)
     
     If masterProj = True Then
         For Each subP In curProj.Subprojects
             FileOpenEx subP.Path, True
             Set tempproj = ActiveProject
             SetGroupCPFieldLookupTable FieldConstantToFieldName(origGroupField), _
-                FieldConstantToFieldName(origCritField), tempproj 'v3.5.0
+                FieldConstantToFieldName(origCritField), FieldConstantToFieldName(origSubPathField), SubPaths, tempproj 'v3.5.0
         Next subP
         curProj.Activate
     End If
@@ -193,7 +204,7 @@ Sub DrivingPaths()
     'v3.0.0 run no matter what the masterProj condition is
     'still need to update fields in Master Project file
     'in case tasks exist at top level
-    SetGroupCPFieldLookupTable GroupField, CritField, curProj
+    SetGroupCPFieldLookupTable GroupField, CritField, SubPathField, SubPaths, curProj
     
     'Erase previous Crit and Group field values
     CleanCritFlag curProj
@@ -221,6 +232,9 @@ Sub DrivingPaths()
     '********************************
     
     CurrentPath = 1
+    curSubPath = 1
+    SubPathMax = 1
+    Set SubPathClaimed = New Collection
     
     MaxPathsFound = CurrentPath
     
@@ -230,6 +244,7 @@ Sub DrivingPaths()
     'Note that selected task is visible on path 1
     t.SetField FieldNameToFieldConstant(CritField), "1"
     t.SetField FieldNameToFieldConstant(GroupField), "1"
+    If SubPaths Then t.SetField FieldNameToFieldConstant(SubPathField), "1"
     
     'Evlauate list of dependencies on selected analysis task
     For Each tdp In tdps
@@ -238,7 +253,7 @@ Sub DrivingPaths()
         firstTask = True
     
         'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-        evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
+        evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks, curSubPath
         
     Next tdp 'Next user selected analysis task dependency
     
@@ -263,18 +278,20 @@ Sub DrivingPaths()
         If NextDriverCount > 0 Then
         
             MaxPathsFound = CurrentPath
+            SubPathMax = NextDriverCount
+            Set SubPathClaimed = New Collection
         
             'iterate through list of secondary drivers
             For i = 1 To NextDriverCount
-            
-                'avoid evaluating outside of the array bounds
-                If i > NextDriverCount Then Exit For
                 
                 'store the current driving task
-                Set t = curProj.Tasks.UniqueID(NextDrivers(i))
+                Set t = curProj.Tasks.UniqueID(NextDrivers(i).UID)
+                
+                'v3.5.1 store the curSubPath
+                curSubPath = NextDrivers(i).SubPath
                 
                 'add the driving task to the analyzed tasks collection
-                AnalyzedTasks.Add t.UniqueID & "-" & t.UniqueID
+                AnalyzedTasks.Add t.UniqueID, t.UniqueID & "-" & t.UniqueID 'v3.5.1 - was missing key
                 
                 'If the task has not already been analyzed during previous path analysis,
                 'set the Crit and Group Field values
@@ -282,6 +299,7 @@ Sub DrivingPaths()
                     With t
                         .SetField FieldNameToFieldConstant(CritField), CurrentPath
                         .SetField FieldNameToFieldConstant(GroupField), CurrentPath
+                        If SubPaths Then .SetField FieldNameToFieldConstant(SubPathField), curSubPath
                     End With
                 Else
                 
@@ -299,8 +317,10 @@ Sub DrivingPaths()
                 'Evlauate list of dependencies on secondary driving task
                 For Each tdp In tdps
                 
+                    firstTask = True 'v3.5.1
+                
                     'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-                    evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks
+                    evaluateTaskDependencies tdp, t, curProj, AnalyzedTasks, curSubPath
                     
                 Next tdp 'Next secondary driver dependency
                 
@@ -318,6 +338,7 @@ Sub DrivingPaths()
         
         'Iterate through drivingtasks array to find next path driver
         FindNextDriver
+        curSubPath = 1
         
     Next CurrentPath
     
@@ -345,7 +366,6 @@ CleanUp:
     NextDriverCount = 0
     drivingTasksCount = 0
     PathCount = 0
-    Set AnalyzedTasks = Nothing
     
     'Enable calculations and screenupdating
     curProj.Application.Calculation = pjAutomatic
@@ -357,7 +377,7 @@ CleanUp:
 
 End Sub
 
-Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Task, ByVal curProj As Project, ByRef curAnalyzedTasks As Collection)
+Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Task, ByVal curProj As Project, ByRef curAnalyzedTasks As Collection, ByVal curSubPath As Integer)
 'Evaluate each task dependency, ignoring complete preds, then store as an analyzed relationship and evaluate criticality
 
     'v3.0.0 new variables
@@ -384,21 +404,9 @@ Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Tas
         'v3.0.0 account for master project condition
         If masterProj Then
         
-            If tdp.To.ExternalTask = True Then
-                subIndex = get_subProj_index(curProj, tdp.To.Project)
-                real_ToUID = get_tdp_MasterUID(tdp.To.UniqueID, subIndex)
-            Else
-                subIndex = get_subProj_index(curProj, curProj.Subprojects(tdp.To.Project).Path)
-                real_ToUID = get_tdp_MasterUID(tdp.To.UniqueID, subIndex)
-            End If
-            
-            If tdp.From.ExternalTask = True Then
-                subIndex = get_subProj_index(curProj, tdp.From.Project)
-                real_FromUID = get_tdp_MasterUID(tdp.From.UniqueID, subIndex)
-            Else
-                subIndex = get_subProj_index(curProj, curProj.Subprojects(tdp.From.Project).Path)
-                real_FromUID = get_tdp_MasterUID(tdp.From.UniqueID, subIndex)
-            End If
+            real_ToUID = ResolveMasterUID(curProj, tdp.To)
+        
+            real_FromUID = ResolveMasterUID(curProj, tdp.From)
             
         Else
         
@@ -412,17 +420,21 @@ Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Tas
             'If dependency has not been analyzed, add to analyzed tasks collection
             curAnalyzedTasks.Add real_FromUID, real_FromUID & "-" & real_ToUID 'v3.0.0 updated with real uid for master projects
             'Calculate True Float value and evaluate against list of driving tasks
-            CheckCritTask curProj, tdp
+            CheckCritTask curProj, tdp, curSubPath
         End If
     End If
     
 End Sub
 
-Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritField As String, ByVal currentProject As Project)
+Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritField As String, ByVal SubPathField As String, ByVal SubPaths As Boolean, ByVal currentProject As Project)
 'Set Crit and Group field names, assign lookup table to Group Field
     
     'v3.0.0 remove crit field attributes
     currentProject.Application.CustomFieldPropertiesEx FieldID:=FieldNameToFieldConstant(CritField), Attribute:=pjFieldAttributeNone, SummaryCalc:=pjCalcNone, GraphicalIndicators:=False, AutomaticallyRolldownToAssn:=False
+    'v3.5.1 SubPath Support
+    If SubPaths Then
+        currentProject.Application.CustomFieldPropertiesEx FieldID:=FieldNameToFieldConstant(SubPathField), Attribute:=pjFieldAttributeNone, SummaryCalc:=pjCalcNone, GraphicalIndicators:=False, AutomaticallyRolldownToAssn:=False
+    End If
     'currentProject.Application.CustomFieldRename FieldID:=FieldNameToFieldConstant(CritField), NewName:="CP Driving Paths"
     
     'Setup Lookup Table Properties
@@ -470,7 +482,10 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     'On Error Resume Next
     
     'Create CP Driving Path Group
-    curProj.TaskGroups.Add Name:="*ClearPlan Driving Path Group", FieldName:=GroupField
+    Dim cpGroup As Group
+    Set cpGroup = curProj.TaskGroups.Add(Name:="*ClearPlan Driving Path Group", FieldName:=GroupField)
+    
+    If SubPaths Then cpGroup.GroupCriteria.Add FieldName:=SubPathField, Ascending:=True
     
     'Create and apply CP Driving Path view if necessary
     If userView = "<Default>" Then
@@ -493,6 +508,8 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     
     curProj.Application.SelectRow 1
     
+    If SubPaths Then curProj.Application.SelectRow 2
+    
     'Iterate through each task in view and color the Gantt bars based on CP Group Code
     If ganttFormatOverride Then
         For Each t In ActiveProject.Tasks
@@ -503,6 +520,10 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
                 pathValue = t.GetField(FieldNameToFieldConstant(GroupField))
             
                 If pathValue = 0 Then
+                    GoTo NextTask
+                End If
+                
+                If t.Milestone = True Then
                     GoTo NextTask
                 End If
             
@@ -577,6 +598,7 @@ Private Sub CleanCritFlag(ByVal curProj As Project)
         
             'Reset values
             t.SetField FieldNameToFieldConstant(CritField), vbNullString
+            If SubPaths Then t.SetField FieldNameToFieldConstant(SubPathField), vbNullString 'v3.5.1
             'v3.0.0
             If t.Summary = False Then t.SetField FieldNameToFieldConstant(GroupField), "0"
             
@@ -607,49 +629,14 @@ Private Sub CleanViews(ByVal curProj As Project)
     'If the CPCritPathView is active, choose a different view
     curProj.Application.ViewApply Name:="Gantt Chart"
 
-    'Clean up Views
-    For Each cpView In allViews
-        If cpView.Name = "*ClearPlan Driving Path View" Then
-            cpView.Delete
-            Exit For
-        End If
-    Next cpView
-    
-    'Clean up Tables
-    For Each cpTable In allTables
-        If cpTable.Name = "*ClearPlan Driving Path Table" Then
-            cpTable.Delete
-            Exit For
-        End If
-    Next cpTable
-    
-    'Clean up Filters
-    For Each cpFilter In allFilters
-        If cpFilter.Name = "*ClearPlan Driving Path Filter" Then
-            cpFilter.Delete
-            Exit For
-        End If
-    Next cpFilter
-    
-    'Clean up Groups
-    For Each cpGroup In allGroups
-        If cpGroup.Name = "*ClearPlan Driving Path Group" Then
-            cpGroup.Delete
-            Exit For
-        End If
-    Next cpGroup
+    On Error Resume Next
+    curProj.Views("*ClearPlan Driving Path View").Delete
+    curProj.TaskTables("*ClearPlan Driving Path Table").Delete
+    curProj.TaskFilters("*ClearPlan Driving Path Filter").Delete
+    curProj.TaskGroups("*ClearPlan Driving Path Group").Delete
+    On Error GoTo 0
 
 End Sub
-Private Function alreadyFound(ByVal t As Task) As Boolean
-'Check for existing values in the Crit Field - if found, task has been evaluated previously
-
-    If t.GetField(FieldNameToFieldConstant(CritField)) <> vbNullString Then
-        alreadyFound = True
-    Else
-        alreadyFound = False
-    End If
-    
-End Function
 
 Private Sub FindNextDriver()
 'Iterate through Driving Tasks array to find driving tasks based on True Float value
@@ -687,7 +674,8 @@ Private Sub FindNextDriver()
                 If .tFloat = driverFloat Then
                     driverCount = driverCount + 1
                     ReDim Preserve NextDrivers(1 To driverCount)
-                    NextDrivers(driverCount) = .UID
+                    NextDrivers(driverCount).UID = .UID
+                    NextDrivers(driverCount).SubPath = driverCount
                 End If
             End With
         Next i 'Next Driving Task
@@ -717,7 +705,7 @@ Private Function FindInArray(UID As String) As Variant
 
 End Function
 
-Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
+Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency, ByVal curSubPath As Integer)
 'Compare current task dependency against full list of Driving Tasks and
 'add-to/create/replace list of Path Drivers if critical
 
@@ -775,43 +763,36 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
     'If not evaluating the last path, and the TrueFloat value is not 0
     'Evaluate total network float and store in Driving Tasks array
     If CurrentPath < PathCount And tempFloat <> 0 Then
-    
+        
         'If other Driving Tasks have been found, Evaluate further
+        i = Null
+        
         If drivingTasksCount > 0 Then
+        
+            i = FindInArray(CStr(realPredUID))
             
-            'Look for predecessor task in Driving Tasks Array
-            i = FindInArray(CStr(realPredUID)) 'v3.0.0
-    
-            'If the task exists in the Driving Tasks array, evaluate further
             If Not IsNull(i) Then
             
-                'if currently evaluating primary path, evaluate further
+                ' update existing — keep the lower float
+                Dim newFloat As Double
+                
+                newFloat = tempFloat + tDrivingPaths.CurrentFloat
+                
                 If CurrentPath = 1 Then
-                
-                    'if the dependency True Flaot is less than the previously stored float value
-                    '(i.e. there are redundant links in the network), then store the lower float value
-                    If tempFloat < DrivingTasks(i).tFloat Then
-                        DrivingTasks(i).tFloat = tempFloat
-                    End If
-                Else 'if evaluating secondary path
-                
-                    'if the dependency float value + the previous path float is less then the
-                    'previously stored float vlaue, then store the lower float value
-                    If tempFloat + tDrivingPaths.CurrentFloat < DrivingTasks(i).tFloat Then
-                        DrivingTasks(i).tFloat = tempFloat + tDrivingPaths.CurrentFloat
-                    End If
-                    
+                    If tempFloat < DrivingTasks(i).tFloat Then DrivingTasks(i).tFloat = tempFloat
+                Else
+                    If newFloat < DrivingTasks(i).tFloat Then DrivingTasks(i).tFloat = newFloat
                 End If
-            Else 'If the task does not exist in the Driving Tasks array
+                
+            Else
             
-                'Add new driver to the driving task count and store in the array
                 drivingTasksCount = drivingTasksCount + 1
                 ReDim Preserve DrivingTasks(1 To drivingTasksCount)
-                DrivingTasks(drivingTasksCount).UID = realPredUID 'v3.0.0
-                
+                DrivingTasks(drivingTasksCount).UID = realPredUID
                 DrivingTasks(drivingTasksCount).tFloat = tempFloat + tDrivingPaths.CurrentFloat
                 
             End If
+
         Else 'No other driving tasks found, this is the first driving task
             
             'Add the new driver to the driving tasks count and store in array
@@ -859,15 +840,37 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
                 End With
             End If
         End If
+        
+        'v3.5.1 first-pred-inherits: the first driving predecessor of this successor
+        'inherits the successor's sub-path (the spine keeps a stable id); each additional
+        'converging predecessor mints a fresh id.
+        Dim predSubPath As Integer
+        If SubPaths Then
+            If ExistsInCollection(SubPathClaimed, CStr(realSuccUID)) Then
+                'Only mint a new sub-path id if this pred will actually receive it.
+                'If it's already coded, reuse its existing id so we don't burn a number.
+                If predCritCoding = vbNullString Then
+                    SubPathMax = SubPathMax + 1
+                    predSubPath = SubPathMax
+                Else
+                    predSubPath = predT.GetField(FieldNameToFieldConstant(SubPathField))
+                    If predSubPath = 0 Then predSubPath = curSubPath
+                End If
+            Else
+                predSubPath = curSubPath
+                SubPathClaimed.Add realSuccUID, CStr(realSuccUID)
+            End If
+        End If
     
         'If no existing path coding, then no need to concatenate
         If predCritCoding = vbNullString Then
             With predT
                 .SetField FieldNameToFieldConstant(CritField), CurrentPath
                 .SetField FieldNameToFieldConstant(GroupField), CurrentPath
+                If SubPaths Then .SetField FieldNameToFieldConstant(SubPathField), predSubPath
             End With
         Else 'if existing code, then concatenate string
-            If InStr(predCritCoding, PathCount) = 0 Then
+            If InStr(predCritCoding, CurrentPath) = 0 Then   ' was PathCount
                 predT.SetField FieldNameToFieldConstant(CritField), predCritCoding & "," & CurrentPath
             End If
         End If
@@ -879,7 +882,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency)
         For Each tdpI In tdps
         
             'evaluate task dependencies, add to analyzed tasks collection as needed, and review for criticality
-            evaluateTaskDependencies tdpI, predT, curProj, AnalyzedTasks
+            evaluateTaskDependencies tdpI, predT, curProj, AnalyzedTasks, predSubPath
 
         Next tdpI 'Next dependency of the currently evaluated dependency
     End If
@@ -931,175 +934,39 @@ Private Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType
         End If
     End If
     
-    'if dependency lag is greater than or equal to 0
+    ' Determine pred and succ reference dates based on dependency type
+    Dim pDateBase As Date, sDateBase As Date, sDateEarly As Date
+    
+    Select Case dType
+    
+        Case 0: pDateBase = tPred.Finish: sDateBase = tSucc.Finish: sDateEarly = tSucc.EarlyFinish  'FF
+        
+        Case 1: pDateBase = tPred.Finish: sDateBase = tSucc.Start:  sDateEarly = tSucc.EarlyStart   'FS
+        
+        Case 2: pDateBase = tPred.Start:  sDateBase = tSucc.Finish: sDateEarly = tSucc.EarlyFinish  'SF
+        
+        Case 3: pDateBase = tPred.Start:  sDateBase = tSucc.Start:  sDateEarly = tSucc.EarlyStart   'SS
+        
+        Case Else: TrueFloat = 0: Exit Function
+        
+    End Select
+    
+    ' Resolve effective succ date (leveling delay ? use early date)
+    Dim sDateEffective As Date
+    
+    If tSucc.LevelingDelay > 0 Then
+        sDateEffective = sDateEarly
+    Else
+        sDateEffective = sDateBase
+    End If
+    
+    ' Apply lag or lead
     If dLag >= 0 Then
-    
-        'evaluate the depenency type
-        Select Case dType
-            
-            Case 0 'Finish to Finish
-                
-                'Set predecessor date equal to the pred Finish date plus the lag value (considering any succ task cal)
-                pDate = Application.DateAdd(tPred.Finish, Application.DurationFormat(dLag, dlagtype), sCalObj)
-                
-                'successor date equals the succ finish
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                    
-                    sDate = tSucc.EarlyFinish
-                    
-                Else
-                
-                    sDate = tSucc.Finish
-                
-                End If
-            
-            Case 1 'Finish to Start
-            
-                'Set predecessor date equal to the pred Finish date plus the lag value (considering any succ task cal)
-                pDate = Application.DateAdd(tPred.Finish, Application.DurationFormat(dLag, dlagtype), sCalObj)
-                
-                'successor date equals the succ start
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = tSucc.EarlyStart
-                
-                Else
-                
-                    sDate = tSucc.Start
-                
-                End If
-            
-            Case 2 'Start to Finish
-            
-                'Set predecessor date equal to the pred Start date plus the lag value (considering any succ task cal)
-                pDate = Application.DateAdd(tPred.Start, Application.DurationFormat(dLag, dlagtype), sCalObj)
-                
-                'successor date equals the succ finish
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = tSucc.EarlyFinish
-                
-                Else
-                
-                    sDate = tSucc.Finish
-                
-                End If
-            
-            Case 3 'Start to Start
-            
-                'Set predecessor date equal to the pred start date plus the lag value (considering any succ task cal)
-                pDate = Application.DateAdd(tPred.Start, Application.DurationFormat(dLag, dlagtype), sCalObj)
-                
-                'successor date equals the succ start
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = tSucc.EarlyStart
-                
-                Else
-                
-                    sDate = tSucc.Start
-                
-                End If
-                
-            Case Else
-        End Select
-    
-    'if lag is less than 0 (lead)
-    ElseIf dLag < 0 Then
-    
-        'evaluate the dependency type
-        Select Case dType
-            
-            Case 0 'Finish to Finish
-            
-                'pred date equals the pred finish
-                pDate = tPred.Finish
-                
-                'succ date equals the succ finish plus the absolute value of the lag (considering any succ task cal)
-                'adding the lead to the succ date is the same as subtracting it from the pred date (DateAdd cannot handle negative values)
-                
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = Application.DateAdd(tSucc.EarlyFinish, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-                
-                Else
-                
-                    sDate = Application.DateAdd(tSucc.Finish, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-            
-                End If
-            
-            Case 1 'Finish to Start
-            
-                'pred date equals the pred finish
-                pDate = tPred.Finish
-                
-                'succ date equals the succ start plus the absolute value of the lag (considering any succ task cal)
-                'adding the lead to the succ date is the same as subtracting it from the pred date (DateAdd cannot handle negative values)
-                
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = Application.DateAdd(tSucc.EarlyStart, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-                
-                Else
-                
-                    sDate = Application.DateAdd(tSucc.Start, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-            
-                End If
-            
-            Case 2 'Start to Finish
-            
-                'pred date equals the pred start
-                pDate = tPred.Start
-                
-                'succ date equals the succ finish plus the absolute value of the lag (considering any succ task cal)
-                'adding the lead to the succ date is the same as subtracting it from the pred date (DateAdd cannot handle negative values)
-                
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = Application.DateAdd(tSucc.Finish, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-                
-                Else
-                
-                    sDate = Application.DateAdd(tSucc.Finish, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-            
-                End If
-            
-            Case 3 'Start to Start
-            
-                'pred date equals the pred start
-                pDate = tPred.Start
-                
-                'succ date equals the succ start plus the absolute value of the lag (considering any succ task cal)
-                'adding the lead to the succ date is the same as subtracting it from the pred date (DateAdd cannot handle negative values)
-                
-                'includes leveling delay test v2.9.0
-                
-                If tSucc.LevelingDelay > 0 Then
-                
-                    sDate = Application.DateAdd(tSucc.EarlyStart, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-                
-                Else
-                
-                    sDate = Application.DateAdd(tSucc.Start, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
-                
-                End If
-                
-            Case Else
-        End Select
+        pDate = Application.DateAdd(pDateBase, Application.DurationFormat(dLag, dlagtype), sCalObj)
+        sDate = sDateEffective
+    Else
+        pDate = pDateBase
+        sDate = Application.DateAdd(sDateEffective, Application.DurationFormat(Abs(dLag), dlagtype), sCalObj)
     End If
     
     'v2.8.2 check for edays
@@ -1123,16 +990,16 @@ End Function
 Public Function ExistsInCollection(ByVal col As Collection, ByVal vKey As Variant) As Boolean
 'Check for task dependency relationship in the analyzed tasks collection
 
-    Dim f As Boolean 'stores boolean value 'True' if relationship exists in the collection
-    
     'If error encountered, value does not exist in the collection
     On Error GoTo err
     
-    f = IsObject(col.Item(vKey)) 'Store found item; if not found, will produce error
+    col.Item vKey 'Store found item; if not found, will produce error
     ExistsInCollection = True 'Set True
     Exit Function
+    
 err: 'If error encountered, item does not exist - return "False" boolean vlaue
     ExistsInCollection = False
+    
 End Function
 
 Function GetLettersOnly(str As String) As String
@@ -1159,35 +1026,44 @@ Private Sub ReadCustomFields(ByVal curProj As Project)
     Dim i As Integer
 
     'Read local Custom Text Fields
+    ReDim CustTextFields(1 To 30)
     For i = 1 To 30
-
+    
         If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Text" & i))) > 0 Then
-            ReDim Preserve CustTextFields(1 To i)
             CustTextFields(i) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Text" & i))
         Else
-            ReDim Preserve CustTextFields(1 To i)
             CustTextFields(i) = "Text" & i
         End If
-
+        
     Next i
 
     'Read local Custom Number Fields
+    ReDim CustNumFields(1 To 20)
     For i = 1 To 20
 
         If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Number" & i))) > 0 Then
-            ReDim Preserve CustNumFields(1 To i)
             CustNumFields(i) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Number" & i))
         Else
-            ReDim Preserve CustNumFields(1 To i)
             CustNumFields(i) = "Number" & i
         End If
 
     Next i
 
-
 End Sub
 
-Function get_subProj_index(ByVal masterProj As Project, ByVal subprojectFilename As String) As Integer
+Private Function ResolveMasterUID(ByVal proj As Project, ByVal depTask As Task) As Long
+    Dim idx As Integer
+    If depTask.ExternalTask Then
+        idx = get_subProj_index(proj, depTask.Project)
+        ResolveMasterUID = get_tdp_MasterUID(depTask.UniqueID, idx)
+    Else
+        idx = get_subProj_index(proj, proj.Subprojects(depTask.Project).Path)
+        ResolveMasterUID = get_tdp_MasterUID(depTask.UniqueID, idx)
+    End If
+End Function
+
+
+Function get_subProj_index(ByVal mProj As Project, ByVal subprojectFilename As String) As Integer
 'v3.5.0 Returns the subproject offset ID used to calculate the displayed Master Project UID.
 'In a master project, a task's displayed UID = localUID + 4194304 * (subP_Index + 1).
 'We derive subP_Index by reading an actual master-context task UID for the target
@@ -1217,7 +1093,7 @@ Function get_subProj_index(ByVal masterProj As Project, ByVal subprojectFilename
 
     'Confirm the requested subproject exists in master
     found = False
-    For Each subP In masterProj.Subprojects
+    For Each subP In mProj.Subprojects
         If subP.Path = subprojectFilename Then
             found = True
             Exit For
@@ -1229,12 +1105,12 @@ Function get_subProj_index(ByVal masterProj As Project, ByVal subprojectFilename
     End If
 
     'Find a master-context task belonging to this subproject; derive offset from its UID
-    For Each t In masterProj.Tasks
+    For Each t In mProj.Tasks
         If Not t Is Nothing Then
             If t.UniqueID >= 4194304 Then
                 resolvedPath = vbNullString
                 On Error Resume Next
-                resolvedPath = masterProj.Subprojects(t.Project).Path
+                resolvedPath = mProj.Subprojects(t.Project).Path
                 On Error GoTo 0
                 If resolvedPath = subprojectFilename Then
                     get_subProj_index = CInt(t.UniqueID \ 4194304)
