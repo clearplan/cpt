@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.5.1</cpt_version>
+'<cpt_version>v3.5.2</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -569,7 +569,13 @@ Private Function StoplightColor(ByVal maxValue As Long, ByVal currentValue As Lo
     Dim nStops As Long
     nStops = UBound(stops)                  ' Number of stops minus 1 (i.e., 4)
     
-    pos = (currentValue - 1) / (maxValue - 1) * nStops   ' Map value to position between 0 and nStops
+    If maxValue <> 1 Then
+        pos = (currentValue - 1) / (maxValue - 1) * nStops   ' Map value to position between 0 and nStops
+    Else
+        'v3.5.2 if only one path, color = red
+        StoplightColor = RGB(179, 0, 2)
+        Exit Function
+    End If
     
     idxLow = Int(pos)
     idxHigh = WorksheetFunction.Min(idxLow + 1, nStops)

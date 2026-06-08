@@ -13,13 +13,14 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v3.5.1</cpt_version>
+'<cpt_version>v3.5.2</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptCritPathFields_frm"
 Private Const cptSettingFeature As String = "Driving Paths" 'v3.5.0
 Private Const cptViewSetting As String = "User View" 'v3.5.0
 Private Const cptGanttSetting As String = "Gantt Format" 'v3.5.0
 Private Const cptSubPathSetting As String = "SubPaths" 'v3.5.1
+Private Const cptPathCountSetting As String = "Path Count" 'v3.5.2
 
 Private Sub GroupField_Combobox_Change()
     If checkDuplicate(GroupField_Combobox) = True Then
@@ -95,6 +96,7 @@ Private Sub RunBtn_Click()
     cptSaveSetting cptSettingFeature, cptViewSetting, UserView_Combobox.Text
     cptSaveSetting cptSettingFeature, cptGanttSetting, ganttFormatCheckBox.value
     cptSaveSetting cptSettingFeature, cptSubPathSetting, SubPath_Checkbox.value
+    cptSaveSetting cptSettingFeature, cptPathCountSetting, pathCnt_txtBox.value
     
     On Error GoTo Driving_FieldExists
     CustomFieldRename FieldID:=FieldNameToFieldConstant(PathField_Combobox.Text), NewName:="CP Driving Paths"
@@ -177,6 +179,12 @@ Private Sub UserForm_Activate()
     
     If settingTest <> "" Then
         Me.UserView_Combobox.value = settingTest
+    End If
+    
+    settingTest = cptGetSetting(cptSettingFeature, cptPathCountSetting)
+    
+    If settingTest <> "" Then
+        pathCnt_txtBox.value = settingTest
     End If
 
 End Sub
