@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.1.1</cpt_version>
+'<cpt_version>v1.2.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptMetricsData_frm"
 
 Private Sub cmdDelete_Click()
   'objects
@@ -78,8 +79,33 @@ Private Sub cmdDelete_Click()
           Me.lboMetricsData.List(Me.lboMetricsData.ListCount - 1, 8) = IIf(CLng(oRecordset.Fields(8)) = 0, "-", oRecordset.Fields(8))
           oRecordset.MoveNext
         Loop
+        'also delete cei data?
+        If MsgBox("Also delete 'Capture Week' data for this program and period?", vbQuestion + vbYesNo, "Please confirm") = vbYes Then
+          oRecordset.Close
+          strFileName = Replace(strFileName, "metrics", "cei")
+          Set oRecordset = CreateObject("ADODB.Recordset")
+          oRecordset.Open strFileName
+          If oRecordset.RecordCount = 0 Then
+            MsgBox "No detail records found.", vbExclamation + vbOKOnly, "No Data"
+            oRecordset.Close
+            GoTo next_item
+          End If
+          oRecordset.MoveFirst
+          oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & dtStatus & "#"
+          If oRecordset.RecordCount > 0 Then
+            oRecordset.MoveFirst
+            Do While Not oRecordset.EOF
+              oRecordset.Delete adAffectCurrent
+              oRecordset.MoveNext
+            Loop
+            oRecordset.Filter = 0
+            oRecordset.Save strFileName, adPersistADTG
+            MsgBox "Detail data deleted for '" & strProgram & "' for Status Period " & FormatDateTime(dtStatus, vbShortDate) & ".", vbInformation + vbOKOnly, "Metrics Detail Deleted"
+          End If
+        End If
       End If
     End If
+next_item:
   Next lngItem
 
 exit_here:
@@ -104,14 +130,16 @@ Private Sub lblURL_Click()
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
-
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+  
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDataDictionary_frm", "lblURL_Click()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click()", Err, Erl)
   Resume exit_here
 
 End Sub

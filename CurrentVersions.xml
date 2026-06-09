@@ -283,7 +283,7 @@
 	<Module>
 		<Name>cptMetricsData_frm</Name>
 		<FileName>cptMetricsData_frm.frm</FileName>
-		<Version>v1.1.1</Version>
+		<Version>v1.2.0</Version>
 		<Type>3</Type>
 		<Directory>Metrics</Directory>
 	</Module>
