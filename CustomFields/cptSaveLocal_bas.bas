@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSaveLocal_bas"
-'<cpt_version>v1.3.2</cpt_version>
+'<cpt_version>v1.3.3</cpt_version>
 Option Explicit
 Public strStartView As String
 Public strStartTable As String
@@ -233,7 +233,8 @@ skip_it:
   strStartGroup = ActiveProject.CurrentGroup
   
   'apply the ECF to LCF view
-  cptUpdateSaveLocalView mySaveLocal_frm
+  Set mySaveLocal_frm = New cptSaveLocal_frm
+  'cptUpdateSaveLocalView mySaveLocal_frm
   
   'prepare to capture all ECFs
   Set rstECF = CreateObject("ADODB.Recordset")
@@ -273,9 +274,9 @@ next_type:
     .txtAutoMap.Visible = False
     .chkAutoSwitch = True
     .cboLCF.Value = "Text"
-    .optTasks = True
+    .optTasks = True 'trigger
     
-    .Show False
+    '.Show False
   
     'get enterprise custom task fields
     For lngField = 188776000 To 188778000 '2000 should do it for now
@@ -316,16 +317,16 @@ next_type:
     .cboECF.Value = "All Types"
     
     'update the table
-    For lngField = 0 To .lboECF.ListCount - 1
-      If Not IsNull(.lboECF.List(lngField, 3)) Then
-        lngECF = .lboECF.List(lngField, 0)
-        lngLCF = .lboECF.List(lngField, 3)
-        cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF
-      End If
-    Next lngField
+    'For lngField = 0 To .lboECF.ListCount - 1
+    '  If Not IsNull(.lboECF.List(lngField, 3)) Then
+    '    lngECF = .lboECF.List(lngField, 0)
+    '    lngLCF = .lboECF.List(lngField, 3)
+        cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF 'trigger
+    '  End If
+    'Next lngField
         
     If cptErrorTrapping Then
-      .Hide
+      '.Hide
       cptSpeed False
       .Show 'modal to control changes to custom fields
     Else
