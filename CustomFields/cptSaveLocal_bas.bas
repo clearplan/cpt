@@ -234,7 +234,7 @@ skip_it:
   
   'apply the ECF to LCF view
   Set mySaveLocal_frm = New cptSaveLocal_frm
-  'cptUpdateSaveLocalView mySaveLocal_frm
+  cptUpdateSaveLocalView mySaveLocal_frm 'keep: creates required views/tables/filters
   
   'prepare to capture all ECFs
   Set rstECF = CreateObject("ADODB.Recordset")
@@ -276,8 +276,6 @@ next_type:
     .cboLCF.Value = "Text"
     .optTasks = True 'trigger
     
-    '.Show False
-  
     'get enterprise custom task fields
     For lngField = 188776000 To 188778000 '2000 should do it for now
       If FieldConstantToFieldName(lngField) <> "<Unavailable>" Then
@@ -316,23 +314,10 @@ next_type:
     'trigger lboECF refresh
     .cboECF.Value = "All Types"
     
-    'update the table
-    'For lngField = 0 To .lboECF.ListCount - 1
-    '  If Not IsNull(.lboECF.List(lngField, 3)) Then
-    '    lngECF = .lboECF.List(lngField, 0)
-    '    lngLCF = .lboECF.List(lngField, 3)
-        cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF 'trigger
-    '  End If
-    'Next lngField
+    cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF 'trigger
         
-    If cptErrorTrapping Then
-      '.Hide
-      cptSpeed False
-      .Show 'modal to control changes to custom fields
-    Else
-      cptSpeed False
-      .Show False
-    End If
+    cptSpeed False
+    .Show 'modal to control changes to custom fields
   End With
 
 exit_here:
@@ -1202,18 +1187,18 @@ Sub cptExportCFMap()
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
+  'ensure file exists
+  strSavedMap = cptDir & "\settings\cpt-save-local.adtg"
+  If Dir(strSavedMap) = vbNullString Then
+    MsgBox "Saved map file 'cpt-save-local.adtg' not found!", vbExclamation + vbOKOnly, "No Saved Maps"
+    GoTo exit_here
+  End If
+  
   strMsg = "Your maps are only valid for other users on this server:" & vbCrLf & vbCrLf
   strMsg = strMsg & ActiveProject.ServerURL & vbCrLf & vbCrLf
   strMsg = strMsg & "Proceed with export?"
   If MsgBox(strMsg, vbExclamation + vbYesNo, "Important") = vbNo Then GoTo exit_here
-  
-  'ensure file exists
-  strSavedMap = cptDir & "\settings\cpt-save-local.adtg"
-  If Dir(strSavedMap) = vbNullString Then
-    MsgBox "You have no saved map for this project.", vbExclamation + vbOKOnly, "No Map"
-    GoTo exit_here
-  End If
-  
+
   If CLng(Left(Application.Build, 2)) < 12 Then
     strGUID = ActiveProject.DatabaseProjectUniqueID
   Else
@@ -1240,7 +1225,7 @@ Sub cptExportCFMap()
       Print #lngFile, .GetString(adClipString, , ",", vbCrLf, vbNullString)
     End If
     Close #lngFile
-    .Filter = ""
+    .Filter = 0 
     .Close
   End With
   
