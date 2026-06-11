@@ -1,21 +1,23 @@
 Attribute VB_Name = "cptCore_bas"
 '<cpt_version>v1.19.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCore_bas"
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
   Private Declare PtrSafe Function cptGetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare PtrSafe Function cptSetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
-  Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr '<issue53>
+  Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr                      '<issue53>
   Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #Else
   Private Declare Function cptGetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function cptSetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
-  Public Declare Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As Long '<issue53>
+  Public Declare Function cptGetTickCount Lib "kernel32" lias "GetTickCount() As Long '<issue53>
   Public Declare Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #End If
 
 Sub cptStartEvents()
   Set oMSPEvents = New cptEvents_cls
+  Debug.Print "cptStartEvents"
 End Sub
 
 Sub cptStopEvents()
@@ -27,6 +29,55 @@ Sub cptSpeed(blnOn As Boolean)
   Application.Calculation = pjAutomatic = Not blnOn
   Application.ScreenUpdating = Not blnOn
 
+End Sub
+
+Sub cptSwitchConfig()
+
+  Dim strProgramAcronym As String
+  Dim strSetting As String
+  Dim strStatusText As String
+  Dim strFileName As String
+  Dim blnAutoSwitch As Boolean
+  Dim blnErrorTrapping As Boolean
+  Dim lngFile As Long
+  
+  Debug.Print "cptSwitchConfig"
+  strSetting = cptGetSetting("General", "chkAutoSwitchConfig")
+  If Len(strSetting) > 0 Then
+    If CBool(strSetting) Then
+      strProgramAcronym = cptGetProgramAcronym(False)
+      If strProgramAcronym <> "" Then
+        strFileName = cptDir & "\settings\" & LCase(Replace(strProgramAcronym, " ", "_") & "-cpt-settings.ini")
+        If Dir(strFileName) <> vbNullString Then
+          strStatusText = Application.StatusBar
+          Application.StatusBar = "Switching to config: " & Dir(strFileName)
+          FileCopy strFileName, cptDir & "\settings\cpt-settings.ini"
+          Application.StatusBar = strStatusText
+        End If
+      Else 'clear out settings? 'default settings? 'user settings?
+        strStatusText = Application.StatusBar
+        Application.StatusBar = "Resetting cpt-settings.ini"
+        blnAutoSwitch = True
+        blnErrorTrapping = cptErrorTrapping
+        'reset the settings file
+        strFileName = cptDir & "\settings\cpt-settings.ini"
+        If Dir(strFileName) <> vbNullString Then Kill strFileName
+        lngFile = FreeFile
+        Open strFileName For Output As #lngFile
+        'keep autoswitch
+        cptSaveSetting "General", "chkAutoSwitchConfig", 1
+        'keep errortrapping
+        cptSaveSetting "General", "ErrorTrapping", IIf(blnErrorTrapping, 1, 0)
+        'todo: keep reset all
+        'todo: keep show task count
+        'todo: keep Dynamic Filter
+        'todo: keep ?
+        Close #lngFile
+        Application.StatusBar = strStatusText
+      End If
+    End If
+  End If
+  Debug.Print cptGetSetting("Integration", "WBS")
 End Sub
 
 Function cptGetUserForm(strModuleName As String) As MSForms.UserForm
@@ -294,20 +345,21 @@ Sub cptShowAbout_frm()
 
   'show/hide
   'myAbout_frm.lblScoreBoard.Visible = IIf(Now <= #10/25/2019#, False, True) '<issue19>
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b1" EWR > MSY '3/22/19 = 1
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b2" MSY > EWR '3/24/19 = 2
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b3" 'EWR > SAN '10/25/19 = 3
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b4" 'SAN > EWR '10/27/19 = 4
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b5" 'EWR > NAS '2/17/20 = 5
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b6" 'NAS > EWR '2/20/20 = 6
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b7" 'EWR > SAV '6/3/22 = 7
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b8" 'EWR > SAV '6/5/22 = 8
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b9" 'EWR > DFW '5/16/25 = 9        v1.9.0
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b10" 'DFW > EWR '5/18/25 = 10      v1.9.1
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b11" 'EWR > SLC '4/10/2026 = 11    v1.13.0
-  myAbout_frm.lblScoreBoard.Caption = "t0 : b12" 'SLC > EWR '4/12/2026 = 12     v1.13.1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b1" EWR > MSY  '2019-03-22 = 1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b2" MSY > EWR  '2019-03-24 = 2
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b3" 'EWR > SAN '2019-10-25 = 3
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b4" 'SAN > EWR '2019-10-27 = 4
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b5" 'EWR > NAS '2020-02-17 = 5
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b6" 'NAS > EWR '2020-02-20 = 6
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b7" 'EWR > SAV '2022-06-03 = 7
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b8" 'EWR > SAV '2022-06-05 = 8
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b9" 'EWR > DFW '2025-05-16 = 9   v1.9.0
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b10" 'DFW > EWR '2025-05-18 = 10 v1.9.1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b11" 'EWR > SLC '2026-04-10 = 11 v1.13.0
+  myAbout_frm.lblScoreBoard.Caption = "t0 : b12" 'SLC > EWR '2026-04-12 = 12  v1.13.1
+  'ALSO UPDATE lblScoreboard_Click!
   
-  myAbout_frm.Caption = "The ClearPlan Toolbar - " & cptGetVersion("cptAbout_frm")
+  myAbout_frm.Caption = "The ClearPlan Toolbar (" & cptGetVersion("cptAbout_frm") & ")"
   myAbout_frm.Show '<issue19>
 
 exit_here:
@@ -1179,7 +1231,7 @@ next_lngItem:
   If xmlHttpDoc.Status = 200 And xmlHttpDoc.readyState = 4 Then
     Set RE = CreateObject("vbscript.regexp")
     With RE
-      .MultiLine = False
+      .Multiline = False
       .Global = True
       .IgnoreCase = True
       '.Pattern = Chr(34) & "name" & Chr(34) & ":" & Chr(34) & "[A-z0-9\-]*"
@@ -1726,25 +1778,74 @@ Sub cptGroupReapply()
   If lngUID > 0 Then Find "Unique ID", "equals", lngUID
 End Sub
 
+Function cptGetSettingsFile(strFeature As String) As String
+  Dim strPA As String
+  Dim strSettingsFile As String
+  'need to copy from cpt-settings.ini to cpt-settings-user.ini
+  If cptGetPosition(Split("Count,DynamicFilter,ETCAdjustment,FilterByClipboard,General,NetworkBrowser,ResetAll,SaveMarked,SmartDuration", ","), strFeature) >= 0 Then
+    strSettingsFile = "cpt-settings-user.ini"
+    'todo: check if file exists
+    'todo: if not check legacy, move it, delete it
+  ElseIf cptGetPosition(Split("AgeDates,CalendarDetails,Driving Paths,Driving Path Group,CostRateTables,Integration,Metrics,ResourceDemand,StatusSheet,StatusSheetImport", ","), strFeature) >= 0 Then
+    strPA = cptGetProgramAcronym(False)
+    If Len(strPA) > 0 Then
+      strSettingsFile = "cpt-settings-" & strPA & ".ini"
+      If Dir(strSettingsFile) <> vbNullString Then
+        strSettingsFile = "cpt-settings-" & strPA & ".ini"
+      End If
+    Else
+      'do what?
+      'look for legacy
+      'todo: if found then move it to proper settings file and delete from legacy
+      'todo: indicate on the Settings form which are user settings and which are program settings
+    End If
+  Else
+    'default to cpt-settings.ini
+  End If
+  cptGetSettingsFile = strSettingsFile
+End Function
+
 Function cptSaveSetting(strFeature As String, strKey As String, strValue As Variant) As Boolean
+  Dim strDir As String, strPA As String
   Dim strSettingsFile As String, lngWorked As Long
-  strSettingsFile = cptDir & "\settings\cpt-settings.ini"
+  strDir = cptDir
+  'todo: if strFeature in [programsettings] then...
+  'todo: if strFeature in [usersettings] then...
+  strSettingsFile = strDir & "\settings\cpt-settings.ini"
+  'strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
   If lngWorked Then
     cptSaveSetting = True
   Else
     cptSaveSetting = False
   End If
+  strPA = cptGetProgramAcronym(False)
+  If Len(strPA) > 0 Then
+    strSettingsFile = strDir & "\settings\" & strPA & "-cpt-settings.ini"
+    If Dir(strSettingsFile) <> vbNullString Then
+      lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
+      If lngWorked Then
+        Debug.Print "config saved"
+      Else
+        Debug.Print "config save failed"
+      End If
+    End If
+  End If
 End Function
 
 Function cptGetSetting(strFeature As String, strKey As String) As String
+  'always pulls from cpt-settings.ini
+  'todo: get from new; if not exists then get from legacy+delete from legacy
+  'user can turn on config-switching or not
   Dim strSettingsFile As String, strReturned As String, lngSize As Long, lngWorked As Long
+  'strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   strReturned = Space(255) 'this determines the length of the returned value, not the length of the stored value
   lngSize = Len(strReturned)
   lngWorked = cptGetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
   If lngWorked Then
     cptGetSetting = Left$(strReturned, lngWorked)
+    'todo: delete from legacy if strSettingsFile <> general then delete
   Else
     cptGetSetting = ""
   End If
@@ -1764,6 +1865,7 @@ End Function
 
 Function cptDeleteSetting(strFeature As String, strKey As String) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
+  'strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
   If lngWorked Then
@@ -1952,6 +2054,7 @@ Sub cptShowSettings_frm()
   'doubles
   'booleans
   'variants
+  Dim vFrequency As Variant
   'dates
   
   'prevent spawning
@@ -2032,6 +2135,10 @@ Sub cptShowSettings_frm()
     Else
       .tglErrorTrapping = False
     End If
+    'add options for checking for updates
+    For Each vFrequency In Split("Never,Daily,Weekly,Monthly", ",")
+      .cboCheckForUpdates.AddItem vFrequency
+    Next vFrequency
     .Show
   End With
   
@@ -2050,7 +2157,7 @@ err_here:
   Resume exit_here
 End Sub
 
-Function cptGetProgramAcronym() As String
+Function cptGetProgramAcronym(Optional blnPrompt As Boolean = True) As String
   'objects
   Dim oCustomDocumentProperty As DocumentProperty
   'strings
@@ -2068,20 +2175,24 @@ Function cptGetProgramAcronym() As String
   Set oCustomDocumentProperty = ActiveProject.CustomDocumentProperties("cptProgramAcronym")
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If oCustomDocumentProperty Is Nothing Then
-    strMsg = "For some features, a unique program acronym is required to capture data (locally)." & vbCrLf & vbCrLf
-    strMsg = strMsg & "This program acronym is saved in a custom document property named 'cptProgramAcronym'." & vbCrLf & vbCrLf
-    strMsg = strMsg & "Please enter a program acronym for this file:"
-    vResponse = InputBox(strMsg, "Program Acronym")
-    If StrPtr(vResponse) = 0 Then
-      MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
-      cptGetProgramAcronym = ""
-    ElseIf vResponse = vbNullString Then
-      MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
-      cptGetProgramAcronym = ""
+    If blnPrompt Then
+      strMsg = "For some features, a unique program acronym is required to capture data (locally)." & vbCrLf & vbCrLf
+      strMsg = strMsg & "This program acronym is saved in a custom document property named 'cptProgramAcronym'." & vbCrLf & vbCrLf
+      strMsg = strMsg & "Please enter a program acronym for this file:"
+      vResponse = InputBox(strMsg, "Program Acronym")
+      If StrPtr(vResponse) = 0 Then
+        MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
+        cptGetProgramAcronym = ""
+      ElseIf vResponse = vbNullString Then
+        MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
+        cptGetProgramAcronym = ""
+      Else
+        Set oCustomDocumentProperty = ActiveProject.CustomDocumentProperties.Add("cptProgramAcronym", False, msoPropertyTypeString, CStr(vResponse))
+        cptGetProgramAcronym = CStr(vResponse)
+        MsgBox "Program Acronym '" & CStr(vResponse) & "' saved!", vbInformation + vbOKOnly, "Success"
+      End If
     Else
-      Set oCustomDocumentProperty = ActiveProject.CustomDocumentProperties.Add("cptProgramAcronym", False, msoPropertyTypeString, CStr(vResponse))
-      cptGetProgramAcronym = CStr(vResponse)
-      MsgBox "Program Acronym '" & CStr(vResponse) & "' saved!", vbInformation + vbOKOnly, "Success"
+      cptGetProgramAcronym = ""
     End If
   Else
     cptGetProgramAcronym = ActiveProject.CustomDocumentProperties("cptProgramAcronym").Value
@@ -3028,7 +3139,15 @@ next_control:
     Else
       .chkSyncSettings.Enabled = False
     End If
-        
+    
+    strSetting = cptGetSetting("Integration", "chkCAParent")
+    If Len(strSetting) > 0 Then
+      .chkCAParent = CBool(strSetting)
+      If .chkCAParent = True Then
+        .cboWBS.Width = 108
+      End If
+    End If
+    
     If Not blnValid Or blnConfirmationRequired Then
       .Show
       cptValidMap = .blnValidIntegrationMap
@@ -3457,34 +3576,19 @@ err_here:
   Resume exit_here
 End Sub
 
-Sub cptAddBorders(ByRef rng As Object, Optional blnHorizontal As Boolean = True)
-  rng.Borders(xlDiagonalDown).LineStyle = xlNone
-  rng.Borders(xlDiagonalUp).LineStyle = xlNone
-  With rng.Borders(xlEdgeLeft)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlEdgeTop)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlEdgeBottom)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlEdgeRight)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlInsideVertical)
+Sub cptAddBorders(ByRef oRange As Object, Optional blnHorizontal As Boolean = True)
+  Dim vBorder As Variant
+  oRange.Borders(xlDiagonalDown).LineStyle = xlNone
+  oRange.Borders(xlDiagonalUp).LineStyle = xlNone
+  For Each vBorder In Array(xlEdgeLeft, xlEdgeTop, xlEdgeBottom, xlEdgeRight)
+    With oRange.Borders(vBorder)
+      .LineStyle = xlContinuous
+      .ThemeColor = 2
+      .TintAndShade = 0.499984740745262
+      .Weight = xlThin
+    End With
+  Next vBorder
+  With oRange.Borders(xlInsideVertical)
     .LineStyle = xlContinuous
     .ThemeColor = 1
     .TintAndShade = -0.249946592608417
@@ -3492,16 +3596,18 @@ Sub cptAddBorders(ByRef rng As Object, Optional blnHorizontal As Boolean = True)
   End With
   'optional horizontal lines
   If blnHorizontal Then
-    rng.Borders(xlInsideHorizontal).LineStyle = xlContinuous
-    rng.Borders(xlInsideHorizontal).ThemeColor = 1
-    rng.Borders(xlInsideHorizontal).TintAndShade = -0.249946592608417
-    rng.Borders(xlInsideHorizontal).Weight = xlThin
+    With oRange.Borders(xlInsideHorizontal)
+      .LineStyle = xlContinuous
+      .ThemeColor = 1
+      .TintAndShade = -0.249946592608417
+      .Weight = xlThin
+    End With
   Else
-    rng.Borders(xlInsideHorizontal).LineStyle = xlNone
+    oRange.Borders(xlInsideHorizontal).LineStyle = xlNone
   End If
 End Sub
 
-Sub cptAddShading(ByRef oRange As Object, Optional blnLight = False)
+Sub cptAddShading(ByRef oRange As Object, Optional blnLight As Boolean = False)
   If blnLight Then
     With oRange.Interior
       .Pattern = xlSolid
@@ -3768,6 +3874,173 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptConvertADODBtoCSV(strFromADTGFileName As String, strToCSVFileName As String) As Boolean
-  
+Function cptGetOutlineParent(strOutlineChild As String, strDelimiter As String, Optional lngReturnLevel As Long) As String
+  'slightly more feature-rich than left(strOutlineChild,instrrev(strOutlineChild,strDelimiter)-1)
+  'and safer too
+  Dim lngChildLevels As Long
+  Dim strOutlineParent As String
+  lngChildLevels = UBound(Split(strOutlineChild, strDelimiter)) + 1
+  If lngReturnLevel = 0 Then lngReturnLevel = lngChildLevels - 1
+  If lngChildLevels > 1 Then
+    strOutlineParent = cptRxMatch(strOutlineChild, "([A-z0-9]*\" & ".){" & lngReturnLevel & "}")
+    If Right(strOutlineParent, 1) = strDelimiter Then strOutlineParent = Left(strOutlineParent, Len(strOutlineParent) - 1)
+    cptGetOutlineParent = strOutlineParent
+  Else
+    cptGetOutlineParent = strOutlineChild
+  End If
 End Function
+
+Function cptGetOutlineCodeParent(strOutlineCode As String, strOutlineChild As String)
+  'this is very slow - build a cache/dictionary instead
+  Dim oOutlineCode As OutlineCode
+  Dim oLookupTable As LookupTable
+  Dim oLookupTableEntry As LookupTableEntry
+  Dim lngItem As Long
+  On Error Resume Next
+  Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
+  Set oLookupTable = oOutlineCode.LookupTable
+  For lngItem = 1 To oLookupTable.Count
+    Set oLookupTableEntry = oLookupTable.Item(lngItem)
+    If oLookupTableEntry.FullName = strOutlineChild Then
+      If oLookupTableEntry.Level = 1 Then
+        cptGetOutlineCodeParent = "*****"
+      Else
+        cptGetOutlineCodeParent = oLookupTableEntry.ParentEntry.FullName
+      End If
+      Exit For
+    End If
+  Next lngItem
+  Set oLookupTableEntry = Nothing
+  Set oLookupTable = Nothing
+  Set oOutlineCode = Nothing
+End Function
+
+Sub cptCleanCEI()
+  Dim strFileName As String
+  Dim oRecordset As New ADODB.Recordset
+  Dim vFind As Variant
+  strFileName = cptDir & "\settings\cpt-cei.adtg"
+  With oRecordset
+    .Open strFileName, , , , adCmdFile
+    If .RecordCount > 0 Then
+      For Each vFind In Array(",", Chr(34), vbCr, vbLf, vbCrLf, vbTab)
+        .Filter = "TASK_NAME LIKE '%" & vFind & "%' OR NOTE LIKE '%" & vFind & "%'"
+        Debug.Print "found " & .RecordCount & " records with " & Asc(vFind)
+        If .RecordCount > 0 Then
+          .MoveFirst
+          Do While Not .EOF
+            .Fields("TASK_NAME") = Replace(.Fields("TASK_NAME"), vFind, " ")
+            .Fields("NOTE") = Replace(.Fields("NOTE"), vFind, " ")
+            .MoveNext
+          Loop
+        End If
+        .Filter = 0
+      Next vFind
+      .Save strFileName, adPersistADTG
+    End If
+    .Close
+  End With
+  Set oRecordset = Nothing
+End Sub
+
+Function cptGetListBoxData(vOptions As Variant, lngListStyle As fmListStyle, lngMultiSelect As fmMultiSelect, strCaption As String, strColumnWidths As String, blnSearchEnabled As Boolean, blnAllEnabled As Boolean) As Variant
+  'returns comma-separated list of selected values (first column only)
+  'objects
+  Dim myListBox_frm As cptListbox_frm
+  'strings
+  Dim strResult As String
+  'longs
+  Dim lngColumnCount As Long
+  Dim lngItem As Long
+  Dim lngCol As Long
+  Dim lngRow As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  lngColumnCount = GetColumnCount(vOptions)
+  Set myListBox_frm = New cptListbox_frm
+  With myListBox_frm
+    .Caption = strCaption
+    .lboListBox.ListStyle = lngListStyle '0=Plain;1=Option
+    .lboListBox.ColumnCount = lngColumnCount
+    .lboListBox.ColumnWidths = strColumnWidths
+    .lboListBox.MultiSelect = lngMultiSelect '0=fmMultiSelectSingle;1=fmMultSelectMulti;2=fmMultiSelectExtended
+    If lngColumnCount = 1 Then
+      For lngItem = 0 To UBound(vOptions)
+        .lboListBox.AddItem vOptions(lngItem)
+      Next lngItem
+    ElseIf lngColumnCount > 1 Then
+      For lngRow = 0 To UBound(vOptions, 1)
+        .lboListBox.AddItem
+        For lngCol = 0 To UBound(vOptions, 2)
+          .lboListBox.List(.lboListBox.ListCount - 1, lngCol) = vOptions(lngRow, lngCol)
+        Next lngCol
+      Next lngRow
+    Else
+      'something is wrong
+    End If
+    If blnSearchEnabled Then
+      .txtFilter.SetFocus
+    Else
+      .txtFilter.Enabled = False
+    End If
+    .chkAllCodes.Enabled = blnAllEnabled
+    .Show
+    'return a list of the selected values in col 0
+    For lngItem = 0 To .lboListBox.ListCount - 1
+      If .lboListBox.Selected(lngItem) Then
+        strResult = strResult & .lboListBox.List(lngItem) & ","
+      End If
+    Next lngItem
+    If Right(strResult, 1) = "," Then strResult = Left(strResult, Len(strResult) - 1)
+    cptGetListBoxData = strResult
+  End With
+    
+exit_here:
+  On Error Resume Next
+
+  Exit Function
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptShowAllCodesForm", Err, Erl)
+  Resume exit_here
+
+End Function
+
+Function GetColumnCount(v As Variant) As Long
+    On Error GoTo OneDim
+    GetColumnCount = UBound(v, 2) - LBound(v, 2) + 1
+    Exit Function
+OneDim:
+    GetColumnCount = 1
+End Function
+
+Function cptTranspose(vArray As Variant) As Variant
+  Dim lngDimensions As Long
+  Dim lngRow As Long
+  Dim lngCol As Long
+  Dim vTemp As Variant
+  Dim vReturn() As Variant
+  lngDimensions = GetColumnCount(vArray)
+  If lngDimensions = 1 Then
+    ReDim Preserve vReturn(0 To UBound(vTemp))
+    For lngRow = 0 To UBound(vTemp)
+      vReturn(lngRow) = vArray(lngRow)
+    Next lngRow
+  ElseIf lngDimensions > 1 Then
+    ReDim vReturn(0 To UBound(vArray, 2), 0 To UBound(vArray, 1))
+    For lngRow = 0 To UBound(vArray, 1)
+      For lngCol = 0 To UBound(vArray, 2)
+        vReturn(lngCol, lngRow) = vArray(lngRow, lngCol)
+      Next lngCol
+    Next lngRow
+  End If
+  cptTranspose = vReturn
+End Function
+

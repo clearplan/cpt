@@ -1,4 +1,5 @@
 {
-  "files.eol": "\r\n"
+  "files.eol": "\r\n",
+  "git.path": "C:\\msys64\\ucrt64\\bin\\git.exe",
+  "terminal.integrated.defaultProfile.windows": "bash (MSYS2)"
 }
-
