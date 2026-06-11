@@ -5,6 +5,7 @@ Public strStartView As String
 Public strStartTable As String
 Public strStartFilter As String
 Public strStartGroup As String
+Private Const THIS_MODULE As String = "cptSaveLocal_bas"
 
 Sub cptShowSaveLocal_frm()
   'objects
@@ -315,7 +316,7 @@ next_type:
     .cboECF.Value = "All Types"
     
     cptUpdateSaveLocalView mySaveLocal_frm, lngECF, lngLCF 'trigger
-        
+    
     cptSpeed False
     .Show 'modal to control changes to custom fields
   End With
@@ -348,7 +349,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptShowSaveLocal_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowSaveLocal_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -555,7 +556,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptSaveLocal", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSaveLocal", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -686,7 +687,7 @@ exit_here:
   
   Exit Function
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptInterrogateECF", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptInterrogateECF", Err, Erl)
   Resume exit_here
 End Function
 
@@ -759,7 +760,7 @@ exit_here:
   Close #lngFile
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptGetAllFields", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetAllFields", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -794,7 +795,7 @@ Sub cptAnalyzeAutoMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     For Each vType In Array("Cost", "Date", "Duration", "Finish", "Start", "Outline Code")
       dTypes.Add vType, 10
       .AddNew Array(0, 1, 2), Array(vType, 0, 10)
-    Next
+    Next vType
     dTypes.Add "Flag", 20
     .AddNew Array(0, 1, 2), Array("Flag", 0, 20)
     dTypes.Add "Number", 20
@@ -826,7 +827,7 @@ Sub cptAnalyzeAutoMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
         .MoveFirst
         .Find "TYPE='" & Replace(mySaveLocal_frm.lboECF.List(lngItem, 2), "Maybe", "") & "'"
         If Not .EOF Then
-          If IsNull(mySaveLocal_frm.lboECF.List(mySaveLocal_frm.lboECF.ListIndex, 3)) Then
+          If IsNull(mySaveLocal_frm.lboECF.List(lngItem, 3)) Then
             'only count unmapped
             .Fields(1) = .Fields(1) + 1
           End If
@@ -882,7 +883,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptAutoMap", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAutoMap", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -942,7 +943,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptAutoMap", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAutoMap", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1164,7 +1165,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptMapECFtoLCF", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptMapECFtoLCF", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1225,7 +1226,7 @@ Sub cptExportCFMap()
       Print #lngFile, .GetString(adClipString, , ",", vbCrLf, vbNullString)
     End If
     Close #lngFile
-    .Filter = 0 
+    .Filter = 0
     .Close
   End With
   
@@ -1238,7 +1239,7 @@ exit_here:
   Close #lngFile
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptSaveLocal_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSaveLocal_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1342,7 +1343,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptImportCFMap", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptImportCFMap", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1443,7 +1444,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptUpdateECF", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateECF", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1492,7 +1493,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cboLCF_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboLCF_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1572,7 +1573,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptUpdateSaveLocalView", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateSaveLocalView", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1814,6 +1815,6 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptSaveLocal_bas", "cptLocalCustomFieldsMatch", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptLocalCustomFieldsMatch", Err, Erl)
   Resume exit_here
 End Function
