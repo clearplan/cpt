@@ -13,15 +13,15 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.2</cpt_version>
+'<cpt_version>v1.3.3</cpt_version>
 Option Explicit
 
 Private Sub cboECF_Change()
-  Call cptUpdateECF(Me.txtFilterECF)
+  Call cptUpdateECF(Me, Me.txtFilterECF)
 End Sub
 
 Sub cboLCF_Change()
-  Call cptUpdateLCF(Me.txtFilterLCF)
+  Call cptUpdateLCF(Me, Me.txtFilterLCF)
 End Sub
 
 Private Sub chkAutoSwitch_Click()
@@ -347,14 +347,14 @@ err_here:
 End Sub
 
 Private Sub optResources_Click()
-  cptUpdateECF Me.txtFilterECF
-  cptUpdateLCF Me.txtFilterLCF
+  cptUpdateECF Me, Me.txtFilterECF
+  cptUpdateLCF Me, Me.txtFilterLCF
   cptUpdateSaveLocalView Me
 End Sub
 
 Private Sub optTasks_Click()
-  cptUpdateECF Me.txtFilterECF
-  cptUpdateLCF Me.txtFilterLCF
+  cptUpdateECF Me, Me.txtFilterECF
+  cptUpdateLCF Me, Me.txtFilterLCF
   cptUpdateSaveLocalView Me
 End Sub
 
