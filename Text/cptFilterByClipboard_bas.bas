@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.4.1</cpt_version>
+'<cpt_version>v1.4.2</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptFilterByClipboard_bas"
 
@@ -523,7 +523,7 @@ next_field:
   TableEdit "cpt-temp-table", True, True, True, , "Unique ID"
   If cptViewExists("cpt-temp-view") Then ActiveProject.Views("cpt-temp-view").Delete
   ViewEditSingle "cpt-temp-view", True, , pjTaskUsage, False, False, "cpt-temp-table", "All Tasks", "No Group"
-  Application.WindowNewWindow ActiveProject, "cpt-temp-view"
+  Application.WindowNewWindow ActiveProject.FullName, "cpt-temp-view"
   FilterClear
   GroupClear
   SelectAll
@@ -638,7 +638,7 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
     TableEdit "cpt-temp-table", True, True, True, , "Unique ID"
     If cptViewExists("cpt-temp-view") Then ActiveProject.Views("cpt-temp-view").Delete
     ViewEditSingle "cpt-temp-view", True, , pjTaskUsage, False, False, "cpt-temp-table", "All Tasks", "No Group"
-    Application.WindowNewWindow ActiveProject, "cpt-temp-view"
+    Application.WindowNewWindow ActiveProject.FullName, "cpt-temp-view"
     FilterClear
     GroupClear
     Sort "ID", , , , , , , True
