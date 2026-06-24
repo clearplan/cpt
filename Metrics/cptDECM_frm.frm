@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v8.1.3</cpt_version>
+'<cpt_version>v8.1.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECM_frm"
 
@@ -69,7 +69,7 @@ exit_here:
   Set oSubMap = Nothing
   Exit Sub
 err_here:
-  cptHandleErr THIS_MODULE, "cmdDone_Click", err, Erl
+  cptHandleErr THIS_MODULE, "cmdDone_Click", Err, Erl
   Resume exit_here
     
 End Sub
@@ -91,7 +91,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "lblInfo_Click", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblInfo_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -109,7 +109,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "lblURL_Click", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -347,7 +347,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "lboMetrics_AfterUpdate", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboMetrics_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -656,7 +656,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "txtTitle_BeforeDropOrPaste", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTitle_BeforeDropOrPaste", Err, Erl)
   Resume exit_here
 End Sub
 

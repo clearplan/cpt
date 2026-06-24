@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v8.1.3</cpt_version>
+'<cpt_version>v8.1.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECM_bas"
 Private strWBS As String
@@ -2405,17 +2405,21 @@ Sub DECM_06A204b(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = strSQL & "WHERE AF IS NULL " 'incomplete
   strSQL = strSQL & "AND SUMMARY='No' " 'non-summary
   strSQL = strSQL & "AND (EVT <> '" & strLOE & "' OR EVT IS NULL) " 'non-LOE
-  strSQL = strSQL & "AND (BLS = (SELECT MIN(BLS) FROM [tasks.csv]) " 'earliest BLS
-  strSQL = strSQL & "OR BLF = (SELECT MAX(BLF) FROM [tasks.csv])) " 'latest BLF
+  strSQL = strSQL & "AND (BLS = (SELECT MIN(BLS) FROM [tasks.csv] WHERE SUMMARY='No' AND (EVT <> '" & strLOE & "' OR EVT IS NULL)) " 'earliest BLS
+  strSQL = strSQL & "OR BLF = (SELECT MAX(BLF) FROM [tasks.csv] WHERE SUMMARY='No' AND (EVT <> '" & strLOE & "' OR EVT IS NULL))) " 'latest BLF
   strSQL = strSQL & "ORDER BY BLS"
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-    If Not .EOF Then
-      .MoveFirst
-      Do While Not .EOF
-        If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
-        .MoveNext
-      Loop
+    If .RecordCount > 0 Then
+      If Not .EOF Then
+        .MoveFirst
+        Do While Not .EOF
+          If oDict.Exists(CStr(oRecordset("UID"))) Then oDict.Remove (CStr(oRecordset("UID")))
+          .MoveNext
+        Loop
+      End If
+    Else
+      MsgBox "Could not determine Earliest and Latest tasks/activities to remove them from this metric." & vbCrLf & vbCrLf & "Please account for these manually." & vbCrLf & vbCrLf & "Hint: Have you rolled up task baselines to their summary tasks lately?", vbExclamation + vbOKOnly, "06A204b: Dangling Logic"
     End If
     .Close
   End With
