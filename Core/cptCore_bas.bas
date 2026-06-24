@@ -1776,17 +1776,48 @@ End Function
 Function cptViewExists(strView As String) As Boolean
   'objects
   Dim oView As MSProject.View
+  Dim oTable As MSProject.Table
+  Dim oFilter As MSProject.Filter
+  Dim oGroup As MSProject.Group
+  Dim oViewSingle As MSProject.ViewSingle
+  Dim oViewCombo As MSProject.ViewCombination
+  'booleans
+  Dim blnExists As Boolean
 
+  blnExists = False 'until proven true
+
+  'does the view exist?
   On Error Resume Next
   Set oView = ActiveProject.Views(strView)
   If oView Is Nothing Then
     Set oView = Application.GlobalViews(strView)
   End If
+  blnExists = Not oView Is Nothing
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  cptViewExists = Not oView Is Nothing
+  'does the associated table/filter/group exist?
+  If blnExists Then
+    If oView.Single Then
+      Set oViewSingle = oView
+      If oViewSingle.Screen = pjGantt Or oViewSingle.Screen = pjTaskSheet Or oViewSingle.Screen = pjTaskUsage Then
+        blnExists = cptTableExists(oViewSingle.Table) And cptFilterExists(oViewSingle.Filter) And cptGroupExists(oViewSingle.Group)
+      Else
+        blnExists = True 'I guess?
+      End If
+    Else
+      Set oViewCombo = oView
+      blnExists = cptViewExists(oViewCombo.TopView) And cptViewExists(oViewCombo.BottomView)
+    End If
+  End If
+  
+  cptViewExists = blnExists
   
 exit_here:
   On Error Resume Next
+  Set oViewSingle = Nothing
+  Set oViewCombo = Nothing
+  Set oGroup = Nothing
+  Set oFilter = Nothing
+  Set oTable = Nothing
   Set oView = Nothing
 
   Exit Function
