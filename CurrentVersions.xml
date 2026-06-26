@@ -78,6 +78,20 @@
 		<Directory>Core</Directory>
 	</Module>
 	<Module>
+		<Name>cptBulkLogic_bas</Name>
+		<FileName>cptBulkLogic_bas.bas</FileName>
+		<Version>v0.0.1</Version>
+		<Type>1</Type>
+		<Directory>Trace</Directory>
+	</Module>
+	<Module>
+		<Name>cptBulkLogic_frm</Name>
+		<FileName>cptBulkLogic_frm.frm</FileName>
+		<Version>v0.0.1</Version>
+		<Type>3</Type>
+		<Directory>Trace</Directory>
+	</Module>
+	<Module>
 		<Name>cptCalendarExceptions_bas</Name>
 		<FileName>cptCalendarExceptions_bas.bas</FileName>
 		<Version>v1.2.1</Version>

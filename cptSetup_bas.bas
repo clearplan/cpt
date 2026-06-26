@@ -523,6 +523,13 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
     End If
+    If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" size=""large"" >"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""Link"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected task(s)."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""Link"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected task(s)."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""Unlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected task(s)."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
+    End If
     If cptModuleExists("cptSaveMarked_bas") And cptModuleExists("cptSaveMarked_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mMarked"" label=""Marking"" imageMso=""ApproveApprovalRequest"" visible=""true"" size=""large"" >"
