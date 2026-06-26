@@ -30,6 +30,24 @@ Private Sub cmdCancel_Click()
   Me.Hide
 End Sub
 
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+  
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
+  Resume exit_here
+
+End Sub
+
 Private Sub lboFrom_Change()
   cptBulkLogicUpdateCommand Me
 End Sub
