@@ -6,18 +6,17 @@ Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
   Private Declare PtrSafe Function cptGetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare PtrSafe Function cptSetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
-  Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr                      '<issue53>
+  Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr '<issue53>
   Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #Else
   Private Declare Function cptGetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function cptSetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
-  Public Declare Function cptGetTickCount Lib "kernel32" lias "GetTickCount() As Long '<issue53>
+  Public Declare Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As Long '<issue53>
   Public Declare Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #End If
 
 Sub cptStartEvents()
   Set oMSPEvents = New cptEvents_cls
-  Debug.Print "cptStartEvents"
 End Sub
 
 Sub cptStopEvents()
@@ -29,55 +28,6 @@ Sub cptSpeed(blnOn As Boolean)
   Application.Calculation = pjAutomatic = Not blnOn
   Application.ScreenUpdating = Not blnOn
 
-End Sub
-
-Sub cptSwitchConfig()
-
-  Dim strProgramAcronym As String
-  Dim strSetting As String
-  Dim strStatusText As String
-  Dim strFileName As String
-  Dim blnAutoSwitch As Boolean
-  Dim blnErrorTrapping As Boolean
-  Dim lngFile As Long
-  
-  Debug.Print "cptSwitchConfig"
-  strSetting = cptGetSetting("General", "chkAutoSwitchConfig")
-  If Len(strSetting) > 0 Then
-    If CBool(strSetting) Then
-      strProgramAcronym = cptGetProgramAcronym(False)
-      If strProgramAcronym <> "" Then
-        strFileName = cptDir & "\settings\" & LCase(Replace(strProgramAcronym, " ", "_") & "-cpt-settings.ini")
-        If Dir(strFileName) <> vbNullString Then
-          strStatusText = Application.StatusBar
-          Application.StatusBar = "Switching to config: " & Dir(strFileName)
-          FileCopy strFileName, cptDir & "\settings\cpt-settings.ini"
-          Application.StatusBar = strStatusText
-        End If
-      Else 'clear out settings? 'default settings? 'user settings?
-        strStatusText = Application.StatusBar
-        Application.StatusBar = "Resetting cpt-settings.ini"
-        blnAutoSwitch = True
-        blnErrorTrapping = cptErrorTrapping
-        'reset the settings file
-        strFileName = cptDir & "\settings\cpt-settings.ini"
-        If Dir(strFileName) <> vbNullString Then Kill strFileName
-        lngFile = FreeFile
-        Open strFileName For Output As #lngFile
-        'keep autoswitch
-        cptSaveSetting "General", "chkAutoSwitchConfig", 1
-        'keep errortrapping
-        cptSaveSetting "General", "ErrorTrapping", IIf(blnErrorTrapping, 1, 0)
-        'todo: keep reset all
-        'todo: keep show task count
-        'todo: keep Dynamic Filter
-        'todo: keep ?
-        Close #lngFile
-        Application.StatusBar = strStatusText
-      End If
-    End If
-  End If
-  Debug.Print cptGetSetting("Integration", "WBS")
 End Sub
 
 Function cptGetUserForm(strModuleName As String) As MSForms.UserForm
@@ -306,7 +256,6 @@ err_here:
   Resume exit_here
 
 End Sub '<issue31>
-
 Sub cptShowAbout_frm()
   'objects
   Dim myAbout_frm As cptAbout_frm
@@ -826,6 +775,196 @@ err_here:
 
 End Sub
 
+Public Function cptGetOutlineParent(ByVal strOutlineChild As String, ByVal strDelimiter As String, Optional ByVal lngReturnLevel As Long = 0) As String
+  'assisted
+  Dim vLevels() As String
+  Dim lngChildLevels As Long
+  Dim i As Long
+  Dim strResult As String
+
+  If Len(strOutlineChild) = 0 Then Exit Function
+
+  vLevels = Split(strOutlineChild, strDelimiter)
+  lngChildLevels = UBound(vLevels) + 1
+
+  'default = immediate parent
+  If lngReturnLevel = 0 Then
+      lngReturnLevel = lngChildLevels - 1
+  End If
+
+  'requested level does not exist
+  If lngReturnLevel < 1 Or lngReturnLevel > lngChildLevels Then
+      cptGetOutlineParent = strOutlineChild
+      Exit Function
+  End If
+
+  For i = 0 To lngReturnLevel - 1
+      If i > 0 Then strResult = strResult & strDelimiter
+      strResult = strResult & vLevels(i)
+  Next i
+
+  cptGetOutlineParent = strResult
+
+End Function
+
+Function cptGetOutlineCodeParent(strOutlineCode As String, strOutlineChild As String)
+  'this is very slow - build a cache/dictionary instead
+  Dim oOutlineCode As OutlineCode
+  Dim oLookupTable As LookupTable
+  Dim oLookupTableEntry As LookupTableEntry
+  Dim lngItem As Long
+  On Error Resume Next
+  Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
+  Set oLookupTable = oOutlineCode.LookupTable
+  For lngItem = 1 To oLookupTable.Count
+    Set oLookupTableEntry = oLookupTable.Item(lngItem)
+    If oLookupTableEntry.FullName = strOutlineChild Then
+      If oLookupTableEntry.Level = 1 Then
+        cptGetOutlineCodeParent = "*****"
+      Else
+        cptGetOutlineCodeParent = oLookupTableEntry.ParentEntry.FullName
+      End If
+      Exit For
+    End If
+  Next lngItem
+  Set oLookupTableEntry = Nothing
+  Set oLookupTable = Nothing
+  Set oOutlineCode = Nothing
+End Function
+
+Sub cptCleanCEI()
+  Dim strFileName As String
+  Dim oRecordset As New ADODB.Recordset
+  Dim vFind As Variant
+  strFileName = cptDir & "\settings\cpt-cei.adtg"
+  With oRecordset
+    .Open strFileName, , , , adCmdFile
+    If .RecordCount > 0 Then
+      For Each vFind In Array(",", Chr(34), vbCr, vbLf, vbCrLf, vbTab)
+        .Filter = "TASK_NAME LIKE '%" & vFind & "%' OR NOTE LIKE '%" & vFind & "%'"
+        Debug.Print "found " & .RecordCount & " records with " & Asc(vFind)
+        If .RecordCount > 0 Then
+          .MoveFirst
+          Do While Not .EOF
+            .Fields("TASK_NAME") = Replace(.Fields("TASK_NAME"), vFind, " ")
+            .Fields("NOTE") = Replace(.Fields("NOTE"), vFind, " ")
+            .MoveNext
+          Loop
+        End If
+        .Filter = 0
+      Next vFind
+      .Save strFileName, adPersistADTG
+    End If
+    .Close
+  End With
+  Set oRecordset = Nothing
+End Sub
+
+Function cptGetListBoxData(vOptions As Variant, lngListStyle As fmListStyle, lngMultiSelect As fmMultiSelect, strCaption As String, strColumnWidths As String, blnSearchEnabled As Boolean, blnAllEnabled As Boolean) As Variant
+  'returns comma-separated list of selected values (first column only)
+  'objects
+  Dim myListBox_frm As cptListBox_frm
+  'strings
+  Dim strResult As String
+  'longs
+  Dim lngColumnCount As Long
+  Dim lngItem As Long
+  Dim lngCol As Long
+  Dim lngRow As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  lngColumnCount = GetColumnCount(vOptions)
+  Set myListBox_frm = New cptListBox_frm
+  With myListBox_frm
+    .Caption = strCaption
+    .lboListBox.ListStyle = lngListStyle '0=Plain;1=Option
+    .lboListBox.ColumnCount = lngColumnCount
+    .lboListBox.ColumnWidths = strColumnWidths
+    .lboListBox.MultiSelect = lngMultiSelect '0=fmMultiSelectSingle;1=fmMultSelectMulti;2=fmMultiSelectExtended
+    If lngColumnCount = 1 Then
+      For lngItem = 0 To UBound(vOptions)
+        .lboListBox.AddItem vOptions(lngItem)
+      Next lngItem
+    ElseIf lngColumnCount > 1 Then
+      For lngRow = 0 To UBound(vOptions, 1)
+        .lboListBox.AddItem
+        For lngCol = 0 To UBound(vOptions, 2)
+          .lboListBox.List(.lboListBox.ListCount - 1, lngCol) = vOptions(lngRow, lngCol)
+        Next lngCol
+      Next lngRow
+    Else
+      'something is wrong
+    End If
+    If blnSearchEnabled Then
+      .txtFilter.SetFocus
+    Else
+      .txtFilter.Enabled = False
+    End If
+    .chkAll.Enabled = blnAllEnabled
+    .Show
+    'return a list of the selected values in col 0
+    For lngItem = 0 To .lboListBox.ListCount - 1
+      If .lboListBox.Selected(lngItem) Then
+        strResult = strResult & .lboListBox.List(lngItem) & ","
+      End If
+    Next lngItem
+    If Right(strResult, 1) = "," Then strResult = Left(strResult, Len(strResult) - 1)
+    cptGetListBoxData = strResult
+  End With
+
+exit_here:
+  On Error Resume Next
+
+  Exit Function
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptShowAllCodesForm", Err, Erl)
+  Resume exit_here
+
+End Function
+
+Function GetColumnCount(v As Variant) As Long
+    On Error GoTo OneDim
+    GetColumnCount = UBound(v, 2) - LBound(v, 2) + 1
+    Exit Function
+OneDim:
+    GetColumnCount = 1
+End Function
+ 
+Function cptTranspose(vArray As Variant) As Variant
+  Dim lngRow As Long
+  Dim lngCol As Long
+  Dim lngCols As Long
+  Dim vTemp As Variant
+  Dim vReturn() As Variant
+  
+  On Error GoTo OneDim
+  lngCols = UBound(vArray, 2)
+  
+  ReDim vReturn(0 To UBound(vArray, 2), 0 To UBound(vArray, 1))
+  For lngRow = 0 To UBound(vArray, 1)
+    For lngCol = 0 To UBound(vArray, 2)
+      vReturn(lngCol, lngRow) = vArray(lngRow, lngCol)
+    Next lngCol
+  Next lngRow
+  cptTranspose = vReturn
+  Exit Function
+  
+OneDim:
+  ReDim vReturn(0 To 0, 0 To UBound(vArray, 1))
+  For lngRow = 0 To UBound(vArray, 1)
+    vReturn(0, lngRow) = vArray(lngRow)
+  Next lngRow
+  cptTranspose = vReturn
+End Function
+
 Function cptGetOutlineParents(oTask As MSProject.Task) As String
   'objects
   Dim oCurrentTask As MSProject.Task
@@ -1231,7 +1370,7 @@ next_lngItem:
   If xmlHttpDoc.Status = 200 And xmlHttpDoc.readyState = 4 Then
     Set RE = CreateObject("vbscript.regexp")
     With RE
-      .Multiline = False
+      .MultiLine = False
       .Global = True
       .IgnoreCase = True
       '.Pattern = Chr(34) & "name" & Chr(34) & ":" & Chr(34) & "[A-z0-9\-]*"
@@ -1242,12 +1381,14 @@ next_lngItem:
     For Each REMatch In REMatches
       myUpgrades_frm.cboBranches.AddItem Replace(REMatch, Chr(34) & "name" & Chr(34) & ":" & Chr(34), "")
     Next
-    myUpgrades_frm.cboBranches.Value = "master"
+    myUpgrades_frm.cboBranches.Value = Replace(cptRegEx(strGitHub, "[^/]*/$"), "/", "")
   Else
     myUpgrades_frm.cboBranches.Clear
     myUpgrades_frm.cboBranches.AddItem "<unavailable>"
   End If
   myUpgrades_frm.Caption = "Installation Status (" & cptGetVersion("cptUpgrades_frm") & ")"
+  myUpgrades_frm.cboBranches.Visible = True
+  myUpgrades_frm.cboBranches.Enabled = False
   Application.StatusBar = "Ready for user input..."
   DoEvents
   myUpgrades_frm.Show
@@ -2046,6 +2187,7 @@ Sub cptShowSettings_frm()
   Dim strSettingsFileNew As String
   Dim strSettingsFile As String
   Dim strProgramAcronym As String
+  Dim strSetting As String
   Dim strFeature As String
   Dim strLine As String
   'longs
@@ -2136,9 +2278,15 @@ Sub cptShowSettings_frm()
       .tglErrorTrapping = False
     End If
     'add options for checking for updates
-    For Each vFrequency In Split("Never,Daily,Weekly,Monthly", ",")
-      .cboCheckForUpdates.AddItem vFrequency
+    For Each vFrequency In Split("0:Never,1:Daily,7:Weekly,14:Biweekly,30:Monthly", ",")
+      .cboCheckForUpdates.AddItem
+      .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 0) = Split(vFrequency, ":")(0)
+      .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 1) = Split(vFrequency, ":")(1)
     Next vFrequency
+    strSetting = cptGetSetting("General", "cboCheckForUpdates")
+    If Len(strSetting) > 0 Then
+      .cboCheckForUpdates.Value = CLng(strSetting)
+    End If
     .Show
   End With
   
@@ -2156,7 +2304,6 @@ err_here:
   Call cptHandleErr("cptCore_bas", "cptShowSettings_frm", Err, Erl)
   Resume exit_here
 End Sub
-
 Function cptGetProgramAcronym(Optional blnPrompt As Boolean = True) As String
   'objects
   Dim oCustomDocumentProperty As DocumentProperty
@@ -3139,7 +3286,7 @@ next_control:
     Else
       .chkSyncSettings.Enabled = False
     End If
-    
+
     strSetting = cptGetSetting("Integration", "chkCAParent")
     If Len(strSetting) > 0 Then
       .chkCAParent = CBool(strSetting)
@@ -3147,7 +3294,11 @@ next_control:
         .cboWBS.Width = 108
       End If
     End If
-    
+    If .cboWBS <> .cboCA And .chkCAParent = True Then
+      .cboWBS.Width = 126
+      .chkCAParent = False
+    End If
+
     If Not blnValid Or blnConfirmationRequired Then
       .Show
       cptValidMap = .blnValidIntegrationMap
@@ -3874,86 +4025,14 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptGetOutlineParent(strOutlineChild As String, strDelimiter As String, Optional lngReturnLevel As Long) As String
-  'slightly more feature-rich than left(strOutlineChild,instrrev(strOutlineChild,strDelimiter)-1)
-  'and safer too
-  Dim lngChildLevels As Long
-  Dim strOutlineParent As String
-  lngChildLevels = UBound(Split(strOutlineChild, strDelimiter)) + 1
-  If lngReturnLevel = 0 Then lngReturnLevel = lngChildLevels - 1
-  If lngChildLevels > 1 Then
-    strOutlineParent = cptRxMatch(strOutlineChild, "([A-z0-9]*\" & ".){" & lngReturnLevel & "}")
-    If Right(strOutlineParent, 1) = strDelimiter Then strOutlineParent = Left(strOutlineParent, Len(strOutlineParent) - 1)
-    cptGetOutlineParent = strOutlineParent
-  Else
-    cptGetOutlineParent = strOutlineChild
-  End If
-End Function
-
-Function cptGetOutlineCodeParent(strOutlineCode As String, strOutlineChild As String)
-  'this is very slow - build a cache/dictionary instead
-  Dim oOutlineCode As OutlineCode
-  Dim oLookupTable As LookupTable
-  Dim oLookupTableEntry As LookupTableEntry
-  Dim lngItem As Long
-  On Error Resume Next
-  Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
-  Set oLookupTable = oOutlineCode.LookupTable
-  For lngItem = 1 To oLookupTable.Count
-    Set oLookupTableEntry = oLookupTable.Item(lngItem)
-    If oLookupTableEntry.FullName = strOutlineChild Then
-      If oLookupTableEntry.Level = 1 Then
-        cptGetOutlineCodeParent = "*****"
-      Else
-        cptGetOutlineCodeParent = oLookupTableEntry.ParentEntry.FullName
-      End If
-      Exit For
-    End If
-  Next lngItem
-  Set oLookupTableEntry = Nothing
-  Set oLookupTable = Nothing
-  Set oOutlineCode = Nothing
-End Function
-
-Sub cptCleanCEI()
-  Dim strFileName As String
-  Dim oRecordset As New ADODB.Recordset
-  Dim vFind As Variant
-  strFileName = cptDir & "\settings\cpt-cei.adtg"
-  With oRecordset
-    .Open strFileName, , , , adCmdFile
-    If .RecordCount > 0 Then
-      For Each vFind In Array(",", Chr(34), vbCr, vbLf, vbCrLf, vbTab)
-        .Filter = "TASK_NAME LIKE '%" & vFind & "%' OR NOTE LIKE '%" & vFind & "%'"
-        Debug.Print "found " & .RecordCount & " records with " & Asc(vFind)
-        If .RecordCount > 0 Then
-          .MoveFirst
-          Do While Not .EOF
-            .Fields("TASK_NAME") = Replace(.Fields("TASK_NAME"), vFind, " ")
-            .Fields("NOTE") = Replace(.Fields("NOTE"), vFind, " ")
-            .MoveNext
-          Loop
-        End If
-        .Filter = 0
-      Next vFind
-      .Save strFileName, adPersistADTG
-    End If
-    .Close
-  End With
-  Set oRecordset = Nothing
-End Sub
-
-Function cptGetListBoxData(vOptions As Variant, lngListStyle As fmListStyle, lngMultiSelect As fmMultiSelect, strCaption As String, strColumnWidths As String, blnSearchEnabled As Boolean, blnAllEnabled As Boolean) As Variant
-  'returns comma-separated list of selected values (first column only)
+Function cptConvertADODBtoCSV(ByRef oRecordset As ADODB.Recordset, strToCSVFileName As String) As Boolean
   'objects
-  Dim myListBox_frm As cptListbox_frm
   'strings
-  Dim strResult As String
+  Dim strFileName As String
+  Dim strHeader As String
   'longs
-  Dim lngColumnCount As Long
+  Dim lngFile As Long
   Dim lngItem As Long
-  Dim lngCol As Long
-  Dim lngRow As Long
   'integers
   'doubles
   'booleans
@@ -3963,84 +4042,50 @@ Function cptGetListBoxData(vOptions As Variant, lngListStyle As fmListStyle, lng
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
-  lngColumnCount = GetColumnCount(vOptions)
-  Set myListBox_frm = New cptListbox_frm
-  With myListBox_frm
-    .Caption = strCaption
-    .lboListBox.ListStyle = lngListStyle '0=Plain;1=Option
-    .lboListBox.ColumnCount = lngColumnCount
-    .lboListBox.ColumnWidths = strColumnWidths
-    .lboListBox.MultiSelect = lngMultiSelect '0=fmMultiSelectSingle;1=fmMultSelectMulti;2=fmMultiSelectExtended
-    If lngColumnCount = 1 Then
-      For lngItem = 0 To UBound(vOptions)
-        .lboListBox.AddItem vOptions(lngItem)
-      Next lngItem
-    ElseIf lngColumnCount > 1 Then
-      For lngRow = 0 To UBound(vOptions, 1)
-        .lboListBox.AddItem
-        For lngCol = 0 To UBound(vOptions, 2)
-          .lboListBox.List(.lboListBox.ListCount - 1, lngCol) = vOptions(lngRow, lngCol)
-        Next lngCol
-      Next lngRow
-    Else
-      'something is wrong
-    End If
-    If blnSearchEnabled Then
-      .txtFilter.SetFocus
-    Else
-      .txtFilter.Enabled = False
-    End If
-    .chkAllCodes.Enabled = blnAllEnabled
-    .Show
-    'return a list of the selected values in col 0
-    For lngItem = 0 To .lboListBox.ListCount - 1
-      If .lboListBox.Selected(lngItem) Then
-        strResult = strResult & .lboListBox.List(lngItem) & ","
-      End If
+  
+  strFileName = Environ("tmp") & "\Schema.ini"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  lngFile = FreeFile
+  Open strFileName For Output As #lngFile
+  Print #lngFile, "[" & strToCSVFileName & "]"
+  Print #lngFile, "Format=CSVDelimited"
+  Print #lngFile, "ColNameHeader=True"
+  
+  With oRecordset
+    For lngItem = 0 To .Fields.Count - 1
+      Select Case .Fields(lngItem).Type
+        Case adInteger '3=integer
+          Print #lngFile, "Col" & lngItem + 1 & "=" & .Fields(lngItem).Name & " Integer"
+        Case adDate '7=date
+          Print #lngFile, "Col" & lngItem + 1 & "=" & .Fields(lngItem).Name & " DateTime"
+        Case adVarChar '200=text
+          Print #lngFile, "Col" & lngItem + 1 & "=" & .Fields(lngItem).Name & " Text Width " & .Fields(lngItem).DefinedSize
+      End Select
     Next lngItem
-    If Right(strResult, 1) = "," Then strResult = Left(strResult, Len(strResult) - 1)
-    cptGetListBoxData = strResult
   End With
-    
+  Close #lngFile
+  
+  lngFile = FreeFile
+  strFileName = Environ("tmp") & "\" & strToCSVFileName
+  Open strFileName For Output As #lngFile
+  For lngItem = 0 To oRecordset.Fields.Count - 1
+    If lngItem > 0 Then strHeader = strHeader & ","
+    strHeader = strHeader & oRecordset(lngItem).Name
+  Next lngItem
+  Print #lngFile, strHeader
+  Print #lngFile, oRecordset.GetString(adClipString, , ",", vbCrLf, vbNullString)
+  Close #lngFile
+
+  cptConvertADODBtoCSV = True
+
 exit_here:
   On Error Resume Next
-
+  
   Exit Function
 err_here:
-  Call cptHandleErr(THIS_MODULE, "cptShowAllCodesForm", Err, Erl)
+  Call cptHandleErr("cptCore_bas", "cptConvertADODBtoCSV", Err, Erl)
+  cptConvertADODBtoCSV = False
   Resume exit_here
 
-End Function
-
-Function GetColumnCount(v As Variant) As Long
-    On Error GoTo OneDim
-    GetColumnCount = UBound(v, 2) - LBound(v, 2) + 1
-    Exit Function
-OneDim:
-    GetColumnCount = 1
-End Function
-
-Function cptTranspose(vArray As Variant) As Variant
-  Dim lngDimensions As Long
-  Dim lngRow As Long
-  Dim lngCol As Long
-  Dim vTemp As Variant
-  Dim vReturn() As Variant
-  lngDimensions = GetColumnCount(vArray)
-  If lngDimensions = 1 Then
-    ReDim Preserve vReturn(0 To UBound(vTemp))
-    For lngRow = 0 To UBound(vTemp)
-      vReturn(lngRow) = vArray(lngRow)
-    Next lngRow
-  ElseIf lngDimensions > 1 Then
-    ReDim vReturn(0 To UBound(vArray, 2), 0 To UBound(vArray, 1))
-    For lngRow = 0 To UBound(vArray, 1)
-      For lngCol = 0 To UBound(vArray, 2)
-        vReturn(lngCol, lngRow) = vArray(lngRow, lngCol)
-      Next lngCol
-    Next lngRow
-  End If
-  cptTranspose = vReturn
 End Function
 

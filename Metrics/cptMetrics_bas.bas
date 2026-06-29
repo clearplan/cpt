@@ -223,7 +223,7 @@ Sub cptGetCPLI()
   If oTask Is Nothing Then GoTo exit_here
   If oTask.Summary Then GoTo exit_here
   If Not oTask.Active Then GoTo exit_here
-  HighlightDrivingPredecessors set:=True
+  HighlightDrivingPredecessors Set:=True
   For Each oPred In ActiveProject.Tasks
     If oPred.PathDrivingPredecessor Then
       If IsDate(oPred.ActualStart) Then
@@ -267,7 +267,6 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "cptGetCPLI", Err, Erl)
   Resume exit_here
 End Sub
-
 Sub cptGET(strWhat As String)
   'objects
   Dim oTask As Object
@@ -345,7 +344,7 @@ Sub cptGET(strWhat As String)
       strProgram = cptGetProgramAcronym
       If Len(strProgram) = 0 Then GoTo exit_here
       Application.StatusBar = "get unique list of status periods..."
-      vPrevious = cptGetPreviousPeriod(strProgram, ActiveProject.StatusDate, "CEI: select previous period:")
+      vPrevious = cptGetPreviousPeriod(strProgram, ActiveProject.StatusDate, "CEI: select previous period:", fmMultiSelectSingle)
       Application.StatusBar = "calculating cei..."
       If Not IsDate(vPrevious) Then
         GoTo exit_here 'and do nothing
@@ -434,7 +433,6 @@ skip_cei:
       cptGetEarnedSchedule
     
   End Select
-  
   
 exit_here:
   On Error Resume Next
@@ -1192,7 +1190,6 @@ next_task:
   oListObject.ListColumns("AF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT((--Table1[ACTUAL FINISH]<=[@WEEK])*--(Table1[ACTUAL FINISH]>R[-1]C[-2])*1)"
   oListObject.ListColumns("FF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT((--Table1[CURRENT FINISH]<=[@WEEK])*--(Table1[CURRENT FINISH]>R[-1]C[-3])*--(Table1[ACTUAL FINISH]="""")*1)"
   oWorksheet.[i1] = dtStatus
-  oWorksheet.[i1] = dtStatus
   oWorksheet.[E1] = "BLF_CUM"
   oListObject.ListColumns("BLF_CUM").DataBodyRange.FormulaR1C1 = "=IF(ROW(R[-1]C)=1,[@BLF],R[-1]C+[@BLF])"
   oWorksheet.[F1] = "AF_CUM"
@@ -1220,7 +1217,6 @@ next_task:
     oWorksheet.Range(oWorksheet.Cells(2, 7), oWorksheet.Cells(lngLastRow - 1, 7)).Value = ""
   End If
   oWorksheet.Range(oWorksheet.Cells(lngLastRow + 1, 6), oWorksheet.Cells(1048576, 6)).Value = ""
-  oWorksheet.[i1].Select
   oWorksheet.[i1].Select
   oWorksheet.Shapes.AddChart2 227, xlLine
   Set oChart = oWorksheet.ChartObjects(oWorksheet.ChartObjects.Count)
@@ -1323,431 +1319,6 @@ exit_here:
   Exit Sub
 err_here:
   Call cptHandleErr(THIS_MODULE, "cptLateStartsFinishes", Err, Erl)
-  Resume exit_here
-End Sub
-
-Sub cptLateStartsFinishes2()
-  'todo: what was this for?
-  'objects
-  Dim oSeries As Excel.Series
-  Dim oChart As Excel.ChartObject
-  Dim oShape As Excel.Shape
-  Dim oWorksheet As Excel.Worksheet
-  Dim oExcel As Excel.Application
-  Dim oWorkbook As Excel.Workbook
-  Dim oListObject As Excel.ListObject
-  Dim oRange As Excel.Range
-  Dim oCell As Excel.Range
-  Dim oAssignment As MSProject.Assignment
-  Dim oTask As MSProject.Task
-  'strings
-  Dim strSummary As String
-  Dim strHeaders As String
-  Dim strMyHeaders As String
-  Dim strLOE As String
-  Dim strEVT As String
-  Dim strCC As String
-  Dim strTo As String
-  Dim strProject As String
-  Dim strFileName As String
-  Dim strDir As String
-  'longs
-  Dim lngRecords As Long
-  Dim lngMyHeaders As Long
-  Dim lngLastCol As Long
-  Dim lngResponse As Long
-  Dim lngEVT As Long
-  Dim lngTask As Long
-  Dim lngTasks As Long
-  Dim lngForecastCount As Long
-  Dim lngBaselineCount As Long
-  Dim lngLastRow As Long
-  Dim lngCol As Long
-  'integers
-  'doubles
-  'booleans
-  Dim blnErrorTrapping As Boolean
-  'variants
-  Dim vResponse As Variant
-  Dim vRow() As Variant
-  Dim vResult() As Variant
-  Dim vMyHeader As Variant
-  Dim vCol As Variant
-  'dates
-  Dim dtDate As Date
-  Dim dtMax As Date
-  Dim dtMin As Date
-  Dim dtStatus As Date
-  
-  blnErrorTrapping = cptErrorTrapping
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-  If Not cptValidMap("EVT,LOE", blnConfirmationRequired:=True) Then
-    MsgBox "Settings not saved. Exiting.", vbExclamation + vbOKOnly, "Settings Required"
-    GoTo exit_here
-  End If
-  strEVT = Split(cptGetSetting("Integration", "EVT"), "|")(0)
-  lngEVT = CLng(strEVT)
-  strLOE = cptGetSetting("Integration", "LOE")
-  
-  If Not IsDate(ActiveProject.StatusDate) Then
-    If Not ChangeStatusDate Then
-      MsgBox "Status Date is required. Exiting.", vbExclamation + vbOKOnly, "Status Date Required"
-      GoTo exit_here
-    End If
-  End If
-  
-  dtStatus = ActiveProject.StatusDate
-    
-  strProject = cptGetProgramAcronym
-    
-  'get other fields
-  strMyHeaders = cptGetMyHeaders("Late Starts and Finishes", True) 'todo: get rid of this
-  If strMyHeaders = "" Then GoTo exit_here
-  
-  'get excel
-  On Error Resume Next
-  'Set oExcel = GetObject(, "Excel.Application")
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If oExcel Is Nothing Then Set oExcel = CreateObject("Excel.Application")
-  If blnErrorTrapping Then
-    oExcel.Visible = False
-  Else
-    oExcel.Visible = True
-  End If
-  Set oWorkbook = oExcel.Workbooks.Add
-  oExcel.Calculation = xlCalculationManual
-  If blnErrorTrapping Then oExcel.ScreenUpdating = False
-  Set oWorksheet = oWorkbook.Sheets(1)
-  oWorksheet.Name = "DETAILS"
-  cptSaveSetting "Metrics", "txtMyHeaders", strMyHeaders
-    
-  strHeaders = "UID,"
-  strHeaders = strHeaders & strMyHeaders
-  strHeaders = strHeaders & "NAME,TOTAL SLACK,REMAINING DURATION,REMAINING WORK,BASELINE START,START VARIANCE,ACTUAL START,START,BASELINE FINISH,FINISH VARIANCE,ACTUAL FINISH,FINISH"
-  
-  ReDim vResult(0 To UBound(Split(strHeaders, ",")), 0 To 1)
-  oWorksheet.Range(oWorksheet.Cells(1, 1), oWorksheet.Cells(1, 1).Offset(0, UBound(Split(strHeaders, ",")))) = Split(strHeaders, ",")
-  lngLastCol = oWorksheet.[A1].End(xlToRight).Column
-  lngTasks = ActiveProject.Tasks.Count
-  lngRecords = 0
-  For Each oTask In ActiveProject.Tasks
-    If Not oTask Is Nothing Then
-      oTask.Marked = False
-      'skip inactive tasks
-      If Not oTask.Active Then GoTo next_task
-      'skip summaries
-      If oTask.Summary Then GoTo next_task
-      'only check for tasks with assignments
-      If oTask.Resources.Count = 0 Then GoTo next_task
-      'only check for discrete tasks
-      If oTask.GetField(lngEVT) = strLOE Then GoTo next_task
-      'skip unassigned (currently material/odc/tvl)
-      'If oTask.GetField(FieldNameToFieldConstant("WPM")) = "" Then GoTo next_task
-      'only report early/late starts/finishes
-      If oTask.StartVariance <> 0 Or oTask.FinishVariance <> 0 Then
-        
-        ReDim Preserve vResult(0 To UBound(Split(strHeaders, ",")), 0 To lngRecords + 1)
-        
-        lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row + 1
-        vResult(0, lngRecords) = oTask.UniqueID
-        lngCol = 1
-        For Each vMyHeader In Split(strMyHeaders, ",")
-          If vMyHeader = "" Then Exit For
-          lngCol = lngCol + 1
-          vResult(lngCol - 1, lngRecords) = oTask.GetField(FieldNameToFieldConstant(vMyHeader))
-        Next vMyHeader
-        lngMyHeaders = UBound(Split(strMyHeaders, ","))
-        vResult(1 + lngMyHeaders, lngRecords) = oTask.Name
-        vResult(2 + lngMyHeaders, lngRecords) = Round(oTask.TotalSlack / (8 * 60), 0)
-        vResult(3 + lngMyHeaders, lngRecords) = oTask.RemainingDuration / (8 * 60)
-        vResult(4 + lngMyHeaders, lngRecords) = Round(oTask.RemainingWork / 60, 0)
-        vResult(5 + lngMyHeaders, lngRecords) = FormatDateTime(oTask.BaselineStart, vbShortDate)
-        vResult(6 + lngMyHeaders, lngRecords) = Round(oTask.StartVariance / (8 * 60), 0)
-        If IsDate(oTask.ActualStart) Then
-          vResult(7 + lngMyHeaders, lngRecords) = FormatDateTime(oTask.ActualStart, vbShortDate)
-        End If
-        vResult(8 + lngMyHeaders, lngRecords) = FormatDateTime(oTask.Start, vbShortDate)
-        vResult(9 + lngMyHeaders, lngRecords) = FormatDateTime(oTask.BaselineFinish, vbShortDate)
-        vResult(10 + lngMyHeaders, lngRecords) = Round(oTask.FinishVariance / (8 * 60), 0)
-        If IsDate(oTask.ActualFinish) Then
-          vResult(11 + lngMyHeaders, lngRecords) = FormatDateTime(oTask.ActualFinish, vbShortDate)
-        End If
-        vResult(12 + lngMyHeaders, lngRecords) = FormatDateTime(oTask.Finish, vbShortDate)
-        lngRecords = lngRecords + 1
-      End If
-    End If
-next_task:
-    lngTask = lngTask + 1
-    Application.StatusBar = "Exporting BEI... " & Format(lngTask, "#,##0") & " / " & Format(lngTasks, "#,##0") & " (" & Format(lngTask / lngTasks, "0%") & ")"
-    DoEvents
-  Next oTask
-    
-  oWorksheet.Range(oWorksheet.Cells(2, 1), oWorksheet.Cells(2, 1).Offset(UBound(vResult, 2), UBound(vResult))) = WorksheetFunction.Transpose(vResult)
-  If lngLastRow = 0 Then 'no results
-    MsgBox "No baselined, active, resourced tasks, with start or finish variances, to analyze.", vbExclamation + vbOKOnly, "No Tasks"
-    oWorkbook.Close False
-    oExcel.Quit
-    GoTo exit_here
-  End If
-  
-  Application.StatusBar = "Analyzing..."
-
-  oWorksheet.Cells(1, oWorksheet.Rows(1).Find("START", lookat:=xlWhole).Column).Value = "CURRENT START"
-  oWorksheet.Cells(1, oWorksheet.Rows(1).Find("FINISH", lookat:=xlWhole).Column).Value = "CURRENT FINISH"
-  oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
-
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.SplitRow = 1
-  oExcel.ActiveWindow.SplitColumn = 0
-  oExcel.ActiveWindow.FreezePanes = True
-
-  Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)), , xlYes)
-  
-  oListObject.HeaderRowRange.WrapText = True
-  oListObject.TableStyle = ""
-  oWorksheet.Columns.AutoFit
-  oListObject.ListColumns("TOTAL SLACK").Range.ColumnWidth = 10
-  For lngCol = 4 + lngMyHeaders To lngLastCol
-    oListObject.ListColumns(lngCol).Range.ColumnWidth = 12
-  Next lngCol
-  oListObject.HeaderRowRange.EntireRow.AutoFit
-  
-  'create summary worksheet
-  Set oWorksheet = oWorkbook.Sheets.Add(oWorkbook.Sheets(1))
-  oWorksheet.Name = "SUMMARY"
-  oWorksheet.[A1] = strProject & " IMS - Early/Late Starts/Finishes"
-  oWorksheet.[A1].Font.Bold = True
-  oWorksheet.[A1].Font.Size = 14
-  oWorksheet.[A2].Value = FormatDateTime(dtStatus, vbShortDate)
-  oWorksheet.Names.Add "STATUS_DATE", oWorksheet.[A2].Address
-  
-  'get field to summarize by
-  strSummary = Split(strMyHeaders, ",")(0)
-  oListObject.ListColumns(strSummary).Range.Copy oWorksheet.[A5]
-  oWorksheet.Range(oWorksheet.[A6], oWorksheet.[A1048576]).RemoveDuplicates Columns:=1, Header:=xlNo
-  oWorksheet.Sort.SortFields.Clear
-  oWorksheet.Sort.SortFields.Add Key:=oWorksheet.Range(oWorksheet.[A6], oWorksheet.[A6].End(xlDown)), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
-  With oWorksheet.Sort
-    .SetRange oWorksheet.Range(oWorksheet.[A6], oWorksheet.[A1048576].End(xlUp))
-    .Header = xlNo
-    .MatchCase = False
-    .Orientation = xlTopToBottom
-    .SortMethod = xlPinYin
-    .Apply
-  End With
-  
-  'todo: nuance for Critical/Driving?
-  oWorksheet.[B4].Value = "ACTUAL"
-  oWorksheet.[B4:H4].Merge True
-  oWorksheet.[B4:H4].HorizontalAlignment = xlCenter
-  oWorksheet.[B4:H4].Font.Bold = True
-  'todo: interior
-  oWorksheet.[B5:H5] = Array("ES", "EF", "LS", "LF", "# BLF", "# AF", "BEI (Finishes)")
-  Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A5].End(xlToRight), oWorksheet.[A5].End(xlDown)), , xlYes)
-  oListObject.TableStyle = "TableStyleMedium2"
-  oListObject.Name = "BEI"
-  
-  'ACTUAL
-  oListObject.ListColumns("ES").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[START VARIANCE]<0)*--(Table1[ACTUAL START]<>"""")*1)"
-  oListObject.ListColumns("EF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[FINISH VARIANCE]<0)*--(Table1[ACTUAL FINISH]<>"""")*1)"
-  oListObject.ListColumns("LS").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[START VARIANCE]>0)*--(Table1[ACTUAL FINISH]<>"""")*1)"
-  oListObject.ListColumns("LF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[FINISH VARIANCE]>0)*--(Table1[ACTUAL FINISH]<>"""")*1)"
-  oListObject.ListColumns("# BLF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[BASELINE FINISH]<=R2C1)*1)"
-  oListObject.ListColumns("# AF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[ACTUAL FINISH]<>"""")*1)"
-  oListObject.ListColumns("BEI (Finishes)").DataBodyRange.FormulaR1C1 = "=[@['# AF]]/IF([@['# BLF]]=0,1,[@['# BLF]])"
-  oListObject.ListColumns("BEI (Finishes)").DataBodyRange.Style = "Comma"
-  oListObject.ShowTotals = True
-  oListObject.ListColumns("ES").TotalsCalculation = xlTotalsCalculationSum
-  oListObject.ListColumns("EF").TotalsCalculation = xlTotalsCalculationSum
-  oListObject.ListColumns("LS").TotalsCalculation = xlTotalsCalculationSum
-  oListObject.ListColumns("LF").TotalsCalculation = xlTotalsCalculationSum
-  oListObject.ListColumns("# BLF").TotalsCalculation = xlTotalsCalculationSum
-  oListObject.ListColumns("# AF").TotalsCalculation = xlTotalsCalculationSum
-  oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("BEI (Finishes)").DataBodyRange.Column).FormulaR1C1 = "=BEI[[#Totals],['# AF]]/IF(BEI[[#Totals],['# BLF]]=0,1,BEI[[#Totals],['# BLF]])"
-  oListObject.ListColumns("BEI (Finishes)").DataBodyRange.Style = "Comma"
-  oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("BEI (Finishes)").DataBodyRange.Column).Style = "Comma"
-
-  'PROJECTED
-  lngLastRow = oWorksheet.[A1048576].End(xlUp).Row + 2
-  oWorksheet.Cells(lngLastRow, 2).Value = "PROJECTED"
-  oWorksheet.Range(oWorksheet.Cells(lngLastRow, 2), oWorksheet.Cells(lngLastRow, 2).Offset(0, 5)).Merge True
-  oWorksheet.Cells(lngLastRow, 2).HorizontalAlignment = xlCenter
-  oWorksheet.Cells(lngLastRow, 2).Font.Bold = True
-  oListObject.Range.Copy oWorksheet.Cells(oWorksheet.[A1048576].End(xlUp).Row + 3, 1)
-  Set oListObject = oWorksheet.ListObjects(2)
-  oListObject.Name = "PROJECTED"
-  oListObject.ListColumns("ES").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[START VARIANCE]<0)*--(Table1[ACTUAL START]="""")*1)"
-  oListObject.ListColumns("EF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[FINISH VARIANCE]<0)*--(Table1[ACTUAL START]="""")*1)"
-  oListObject.ListColumns("LS").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[START VARIANCE]>0)*--(Table1[ACTUAL START]="""")*1)"
-  oListObject.ListColumns("LF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*--(Table1[FINISH VARIANCE]>0)*--(Table1[ACTUAL FINISH]="""")*1)"
-  oListObject.ListColumns("# BLF").Name = "# TOTAL"
-  oListObject.ListColumns("# TOTAL").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT(--(Table1[" & strSummary & "]=RC1)*1)"
-  oListObject.ListColumns("# AF").Name = "% TOTAL"
-  oListObject.ListColumns("% TOTAL").DataBodyRange.FormulaR1C1 = "=[@[LF]]/IF([@['# TOTAL]]=0,1,[@['# TOTAL]])"
-  oListObject.ListColumns("% TOTAL").DataBodyRange.Style = "Comma"
-  oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("% TOTAL").DataBodyRange.Column).FormulaR1C1 = "=PROJECTED[[#Totals],[LF]]/IF(PROJECTED[[#Totals],['# TOTAL]]=0,1,PROJECTED[[#Totals],['# TOTAL]])"
-  oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("% TOTAL").DataBodyRange.Column).Style = "Comma"
-  oListObject.ListColumns("BEI (Finishes)").Delete
-    
-  oExcel.ActiveWindow.DisplayGridlines = False
-  oExcel.ActiveWindow.Zoom = 85
-  oListObject.Range.Columns.AutoFit
-  
-  'week,BLF,AF,CF (BEI/S-chart)
-  'get earliest start and latest finish
-  Set oListObject = oWorkbook.Sheets("DETAILS").ListObjects(1)
-  dtMin = oExcel.WorksheetFunction.Min(oListObject.ListColumns("Baseline Start").DataBodyRange)
-  dtMin = oExcel.WorksheetFunction.Min(dtMin, oListObject.ListColumns("Actual Start").DataBodyRange)
-  dtMin = oExcel.WorksheetFunction.Min(dtMin, oListObject.ListColumns("Current Start").DataBodyRange)
-  If dtMin > dtStatus Then dtMin = dtStatus
-  'convert to WE Friday
-  dtMin = DateAdd("d", 6 - Weekday(dtMin), dtMin)
-  dtMax = oExcel.WorksheetFunction.Max(oListObject.ListColumns("Baseline Finish").DataBodyRange)
-  dtMax = oExcel.WorksheetFunction.Max(dtMax, oListObject.ListColumns("Actual Finish").DataBodyRange)
-  dtMax = oExcel.WorksheetFunction.Max(dtMax, oListObject.ListColumns("Current Finish").DataBodyRange)
-  dtMax = DateAdd("d", 6 - Weekday(dtMax), dtMax)
-  
-  Set oWorksheet = oWorkbook.Sheets.Add(After:=oWorkbook.Sheets(oWorkbook.Sheets.Count))
-  oWorksheet.Name = "Chart_Data"
-  oWorksheet.[A1:D1] = Array("WEEK", "BLF", "AF", "FF")
-  lngLastRow = 2
-  dtDate = FormatDateTime(dtMin, vbShortDate) & " 5:00 PM"
-  oWorksheet.Cells(lngLastRow, 1) = dtDate
-  Do While dtDate <= dtMax
-    dtDate = DateAdd("d", 7, dtDate)
-    lngLastRow = oWorksheet.[A1048576].End(xlUp).Row + 1
-    oWorksheet.Cells(lngLastRow, 1) = dtDate
-  Loop
-  Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)))
-  oListObject.Name = "ChartData"
-  oListObject.ListColumns("BLF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT((--Table1[BASELINE FINISH]<=[@WEEK])*--(Table1[BASELINE FINISH]>R[-1]C[-1])*1)"
-  oListObject.ListColumns("AF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT((--Table1[ACTUAL FINISH]<=[@WEEK])*--(Table1[ACTUAL FINISH]>R[-1]C[-2])*1)"
-  oListObject.ListColumns("FF").DataBodyRange.FormulaR1C1 = "=SUMPRODUCT((--Table1[CURRENT FINISH]<=[@WEEK])*--(Table1[CURRENT FINISH]>R[-1]C[-3])*--(Table1[ACTUAL FINISH]="""")*1)"
-  oWorksheet.[i1] = dtStatus
-  oWorksheet.[E1] = "BLF_CUM"
-  oListObject.ListColumns("BLF_CUM").DataBodyRange.FormulaR1C1 = "=IF(ROW(R[-1]C)=1,[@BLF],R[-1]C+[@BLF])"
-  oWorksheet.[F1] = "AF_CUM"
-  oListObject.ListColumns("AF_CUM").DataBodyRange.FormulaR1C1 = "=IF(ROW(R[-1]C)=1,[@AF],IF([@WEEK]<=R1C9,R[-1]C+[@AF],""""))"
-  oWorksheet.[G1] = "FF_CUM"
-  oListObject.ListColumns("FF_CUM").DataBodyRange.FormulaR1C1 = "=IF([@WEEK]=R1C9,[@[AF_CUM]],IF([@WEEK]>R1C9,R[-1]C+[@FF],""""))"
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.SplitRow = 1
-  oExcel.ActiveWindow.SplitColumn = 0
-  oExcel.ActiveWindow.FreezePanes = True
-  oListObject.Range.Columns.AutoFit
-  oListObject.DataBodyRange.Copy
-  oListObject.DataBodyRange.PasteSpecial xlPasteValuesAndNumberFormats
-  lngLastRow = oWorksheet.Columns(1).Find(dtStatus).Row 'requires matching date format
-  oListObject.ListColumns(1).DataBodyRange.NumberFormat = "m/d/yyyy"
-  If lngLastRow = 2 Then
-    oWorksheet.Range(oWorksheet.Cells(2, 7), oWorksheet.Cells(lngLastRow, 7)).Value = ""
-  Else
-    oWorksheet.Range(oWorksheet.Cells(2, 7), oWorksheet.Cells(lngLastRow - 1, 7)).Value = ""
-  End If
-  oWorksheet.Range(oWorksheet.Cells(lngLastRow + 1, 6), oWorksheet.Cells(1048576, 6)).Value = ""
-  oWorksheet.[i1].Select
-  oWorksheet.Shapes.AddChart2 227, xlLine
-  Set oChart = oWorksheet.ChartObjects(oWorksheet.ChartObjects.Count)
-  oChart.Chart.FullSeriesCollection(1).Delete
-  oChart.Chart.SeriesCollection.NewSeries
-  oChart.Chart.FullSeriesCollection(1).Name = "=Chart_Data!$E$1"
-  oChart.Chart.FullSeriesCollection(1).Values = "=Chart_Data!" & oListObject.ListColumns("BLF_CUM").DataBodyRange.Address(True)
-  oChart.Chart.FullSeriesCollection(1).XValues = "=Chart_Data!" & oListObject.ListColumns("WEEK").DataBodyRange.Address(True)
-  oChart.Chart.SeriesCollection.NewSeries
-  oChart.Chart.FullSeriesCollection(2).Name = "=Chart_Data!$F$1"
-  oChart.Chart.FullSeriesCollection(2).Values = "=Chart_Data!" & oListObject.ListColumns("AF_CUM").DataBodyRange.Address(True)
-  oChart.Chart.SeriesCollection.NewSeries
-  oChart.Chart.FullSeriesCollection(3).Name = "=Chart_Data!$G$1"
-  oChart.Chart.FullSeriesCollection(3).Values = "=Chart_Data!" & oListObject.ListColumns("FF_CUM").DataBodyRange.Address(True)
-  oChart.Chart.SetElement (msoElementChartTitleAboveChart)
-  oChart.Chart.SetElement (msoElementLegendBottom)
-  oChart.Chart.ChartTitle.Text = strProject & " IMS - Task Completion" & Chr(10) & FormatDateTime(dtStatus, vbShortDate)
-  oChart.Chart.ChartTitle.Characters(1, Len(strProject & " IMS - Task Completion")).Font.Bold = True
-  oChart.Chart.Location WHERE:=xlLocationAsObject, Name:="SUMMARY"
-  'must reset the object after move
-  oWorksheet.Visible = xlSheetHidden
-  Set oWorksheet = oWorkbook.Sheets("SUMMARY")
-  Set oShape = oWorksheet.Shapes(oWorksheet.Shapes.Count)
-  oShape.Top = oWorksheet.[J5].Top
-  oShape.Left = oWorksheet.[J5].Left
-  oShape.ScaleWidth 1.6663381968, msoFalse, msoScaleFromTopLeft
-  oShape.ScaleHeight 1.8082112132, msoFalse, msoScaleFromTopLeft
-  Set oChart = oWorksheet.ChartObjects(1)
-  Set oSeries = oChart.Chart.SeriesCollection(1)
-  With oSeries.Format.Line
-    .Visible = msoTrue
-    .ForeColor.ObjectThemeColor = msoThemeColorText1
-    .ForeColor.TintAndShade = 0
-    .ForeColor.Brightness = 0
-    .Transparency = 0
-  End With
-  Set oSeries = oChart.Chart.FullSeriesCollection(3)
-  With oSeries.Format.Line
-    .Visible = msoTrue
-    .ForeColor.RGB = RGB(0, 112, 192)
-    .Transparency = 0
-    .DashStyle = msoLineDash
-  End With
-  oChart.Chart.Axes(xlCategory).CategoryType = xlTimeScale
-  oChart.Chart.Axes(xlCategory).TickLabels.NumberFormat = "m/d/yyyy"
-
-  Set oWorksheet = oWorkbook.Worksheets("Chart_Data")
-  lngBaselineCount = oWorksheet.[E1048576].End(xlUp).Value
-  lngForecastCount = oWorksheet.[G1048576].End(xlUp).Value
-  If lngForecastCount < lngBaselineCount Then
-    oWorkbook.Sheets("Summary").[J31] = "There are " & lngBaselineCount - lngForecastCount & " unstatused tasks in the current IMS."
-    oWorkbook.Sheets("Summary").[J31].Font.Italic = True
-    With oWorkbook.Sheets("Summary").[J31].Font
-      .Color = -16777024
-      .TintAndShade = 0
-    End With
-  End If
-  
-  oWorkbook.Sheets("Summary").Activate
-  oWorkbook.Sheets("Summary").[A2].Select
-  
-  'save the file
-  'todo: user-defined locations for metrics output
-'  strDir = oShell.SpecialFolders("Desktop") & "\Metrics\"
-'  strDir = strDir & Format(dtStatus, "yyyy-mm-dd") & "\"
-'  If Dir(strDir, vbDirectory) = vbNullString Then MkDir strDir
-'  strFileName = strDir & Replace(strProject, " ", "_") & "_IMS_EarlyLateStartsFinishes_" & Format(ActiveProject.StatusDate, "yyyy-mm-dd") & ".xlsx"
-'  If Dir(strFileName) <> vbNullString Then Kill strFileName
-  oExcel.Calculation = xlCalculationAutomatic
-  oExcel.ScreenUpdating = True
-  'oWorkbook.SaveAs strFileName, 51
-  'oWorkbook.Close True
-  
-  'capture BEI
-  Set oWorksheet = oWorkbook.Sheets("SUMMARY")
-  If Not IsError(oWorksheet.Range("BEI[[#Totals],[BEI (Finishes)]]").Value) Then
-    cptCaptureMetric strProject, dtStatus, "BEI", Round(oWorksheet.Range("BEI[[#Totals],[BEI (Finishes)]]").Value, 2)
-  End If
-  Application.StatusBar = "Complete."
-  DoEvents
-  oExcel.Visible = True
-    
-exit_here:
-  On Error Resume Next
-  Application.StatusBar = ""
-  Set oSeries = Nothing
-  Set oChart = Nothing
-  Set oShape = Nothing
-  Set oWorksheet = Nothing
-  Set oCell = Nothing
-  Set oRange = Nothing
-  Set oListObject = Nothing
-  Set oWorksheet = Nothing
-  Set oWorkbook = Nothing
-  Set oExcel = Nothing
-  Set oTask = Nothing
-  Set oShape = Nothing
-  Set oChart = Nothing
-  
-  Exit Sub
-err_here:
-  Call cptHandleErr(THIS_MODULE, "cptLateStartsFinishes2", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1975,7 +1546,6 @@ End Sub
 Sub cptGetTrend_CPLI()
   cptGetTrend "CPLI"
 End Sub
-
 Sub cptGetTrend_CEI()
   'objects
   Dim oRange As Excel.Range
@@ -2086,9 +1656,13 @@ Sub cptGetTrend_CEI()
   Set oRecordset = Nothing
   
   'get latest date of cei from cpt-metrics.adtg
-  vPrevious = cptGetPreviousPeriod(strProgram, dtThisPeriod, "CEI Trend: select previous period:")
-  If Not IsDate(vPrevious) Then GoTo exit_here
-  dtLastPeriod = CDate(vPrevious)
+  vPrevious = cptGetPreviousPeriod(strProgram, dtThisPeriod, "CEI Trend: select previous period(s):", fmMultiSelectMulti)
+  If Len(vPrevious) = 0 Then GoTo exit_here
+  If UBound(Split(vPrevious, ",")) > 0 Then
+    dtLastPeriod = CDate(Split(vPrevious, ",")(0))
+  Else
+    dtLastPeriod = CDate(vPrevious)
+  End If
   
   strFileName = strCptDir & "\settings\cpt-metrics.adtg"
   strMsg = "Current Status Date: " & FormatDateTime(dtThisPeriod, vbShortDate) & vbCrLf
@@ -2327,21 +1901,16 @@ next_task:
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
     .Open strFileName, , adOpenKeyset, adLockReadOnly
-    .Filter = "PROGRAM='" & strProgram & "'"
-    'todo: limit number of periods on cei trend?
-    If .EOF Then
-      'todo: warn & goto where?
-      .Filter = 0
-      .Close
-    End If
-    .Sort = "STATUS_DATE"
-    .MoveFirst
-    Do While Not .EOF
+    Dim vPreviousPeriod As Variant
+    For Each vPreviousPeriod In Split(vPrevious, ",")
+      .Filter = "PROGRAM='" & strProgram & "' AND STATUS_DATE=#" & vPreviousPeriod & "#"
       Set oListRow = oListObject.ListRows.Add
-      oListRow.Range = Array(.Fields("STATUS_DATE"), .Fields("CEI"), 0.69, 0.05, 0.26)
-      .MoveNext
-    Loop
-    .Filter = 0
+      If Not .EOF Then
+        oListRow.Range = Array(.Fields("STATUS_DATE"), .Fields("CEI"), 0.69, 0.05, 0.26)
+      Else
+        oListRow.Range = Array(vPreviousPeriod, 0, 0.69, 0.05, 0.26)
+      End If
+    Next vPreviousPeriod
     .Close
   End With
   oListObject.DataBodyRange.Style = "Comma"
@@ -3693,63 +3262,55 @@ Sub cptUpdateMetricsDataForm(ByRef myMetricsData_frm As cptMetricsData_frm)
       MsgBox "No records found.", vbExclamation + vbOKOnly, "No Data"
       GoTo exit_here
     End If
-    'gather unique programs
-    .Sort = "PROGRAM"
-    .MoveFirst
-    Do While Not .EOF
-      If InStr(strPrograms, .Fields("PROGRAM")) = 0 Then
-        strPrograms = .Fields("PROGRAM") & ","
-      End If
-      .MoveNext
-    Loop
-    Set myMetricsData_frm = New cptMetricsData_frm
-    myMetricsData_frm.Caption = "cpt Metrics Data (" & cptGetVersion("cptMetricsData_frm") & ")"
-    'myMetricsData_frm.lblDir.Caption = strFileName
-    .MoveFirst
-    .Sort = "STATUS_DATE DESC"
-    .Filter = "PROGRAM='" & strProgram & "'"
-    If Not .EOF Then
-      'populate headers
-      myMetricsData_frm.lboHeader.AddItem
-      For lngItem = 0 To .Fields.Count - 1
-        myMetricsData_frm.lboHeader.List(myMetricsData_frm.lboHeader.ListCount - 1, lngItem) = .Fields(lngItem).Name
+    lngColumnCount = oRecordset.Fields.Count
+    'update column counts and sizes
+    .lboHeader.ColumnCount = lngColumnCount
+    .lboMetricsData.ColumnCount = lngColumnCount
+    .lboHeader.ColumnWidths = strColumnWidths
+    'update lboHeader
+    .lboHeader.Clear
+    .lboHeader.IntegralHeight = False
+    'populate headers
+    .lboHeader.AddItem
+    For lngItem = 0 To oRecordset.Fields.Count - 1
+      .lboHeader.List(.lboHeader.ListCount - 1, lngItem) = oRecordset.Fields(lngItem).Name
+    Next lngItem
+    .lboHeader.Height = 14.25
+    'update lboMetricsData
+    .lboMetricsData.Clear
+    .lboMetricsData.ColumnWidths = strColumnWidths
+    oRecordset.MoveFirst
+    Do While Not oRecordset.EOF
+      .lboMetricsData.AddItem
+      For lngItem = 0 To lngColumnCount - 1
+        If lngItem = 8 Then
+          .lboMetricsData.List(.lboMetricsData.ListCount - 1, lngItem) = IIf(CLng(oRecordset.Fields(8)) = 0, "-", oRecordset.Fields(8))
+        Else
+'          If oRecordset.Fields(lngItem).Type = adDate Then
+'            .lboMetricsData.List(.lboMetricsData.ListCount - 1, lngItem) = FormatDateTime(oRecordset.Fields(lngItem), vbShortDate)
+'          Else
+            .lboMetricsData.List(.lboMetricsData.ListCount - 1, lngItem) = oRecordset.Fields(lngItem)
+'          End If
+        End If
       Next lngItem
-      'populate data
-      .MoveFirst
-      Do While Not .EOF
-        myMetricsData_frm.lboMetricsData.AddItem
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 0) = .Fields(0)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 1) = .Fields(1)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 2) = .Fields(2)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 3) = .Fields(3)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 4) = .Fields(4)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 5) = .Fields(5)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 6) = .Fields(6)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 7) = .Fields(7)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 8) = IIf(CLng(.Fields(8)) = 0, "-", .Fields(8))
-        .MoveNext
-      Loop
-      myMetricsData_frm.lboMetricsData.Top = myMetricsData_frm.lboHeader.Top + myMetricsData_frm.lboHeader.Height
-      myMetricsData_frm.Show
-    Else
-      MsgBox "No records found for Program '" & strProgram & "'", vbExclamation + vbOKOnly, "No Records Found"
-      GoTo exit_here
-    End If
+      oRecordset.MoveNext
+    Loop
+    .lboMetricsData.Top = .lboHeader.Top + .lboHeader.Height
   End With
-  
+
 exit_here:
   On Error Resume Next
+  oRecordset.Filter = 0
+  If oRecordset.State Then oRecordset.Close
   Set oRecordset = Nothing
-  Unload myMetricsData_frm
-  Set myMetricsData_frm = Nothing
-  
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "cptShowMetricsData_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateMetricsDataForm", Err, Erl)
   Resume exit_here
+
 End Sub
 
-Function cptGetPreviousPeriod(strProgramAcronym As String, dtCurrentPeriod As Date, strListBoxTitle As String)
+Function cptGetPreviousPeriod(strProgramAcronym As String, dtCurrentPeriod As Date, strListBoxTitle As String, lngMultiSelect As fmMultiSelect)
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
@@ -3843,8 +3404,12 @@ Function cptGetPreviousPeriod(strProgramAcronym As String, dtCurrentPeriod As Da
     End If
   End With
   
-  vPrevious = cptGetListBoxData(vPeriods, fmListStylePlain, fmMultiSelectSingle, strListBoxTitle, "40 pt;", False, False)
-
+  If lngMultiSelect = fmMultiSelectSingle Then
+    vPrevious = cptGetListBoxData(vPeriods, fmListStylePlain, fmMultiSelectSingle, strListBoxTitle, "40 pt;", False, False)
+  ElseIf lngMultiSelect = fmMultiSelectMulti Then
+    vPrevious = cptGetListBoxData(vPeriods, fmListStylePlain, fmMultiSelectMulti, strListBoxTitle, "40 pt;", True, True)
+  End If
+  
   If InStr(vPrevious, "*") > 0 Then
     vPrevious = Replace(vPrevious, " *", "")
   End If
@@ -3871,3 +3436,4 @@ err_here:
   Resume exit_here
 
 End Function
+
