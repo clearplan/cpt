@@ -779,7 +779,7 @@ Public Function cptGetOutlineParent(ByVal strOutlineChild As String, ByVal strDe
   'assisted
   Dim vLevels() As String
   Dim lngChildLevels As Long
-  Dim i As Long
+  Dim lngItem As Long
   Dim strResult As String
 
   If Len(strOutlineChild) = 0 Then Exit Function
@@ -798,9 +798,9 @@ Public Function cptGetOutlineParent(ByVal strOutlineChild As String, ByVal strDe
       Exit Function
   End If
 
-  For i = 0 To lngReturnLevel - 1
-      If i > 0 Then strResult = strResult & strDelimiter
-      strResult = strResult & vLevels(i)
+  For lngItem = 0 To lngReturnLevel - 1
+      If lngItem > 0 Then strResult = strResult & strDelimiter
+      strResult = strResult & vLevels(lngItem)
   Next i
 
   cptGetOutlineParent = strResult
