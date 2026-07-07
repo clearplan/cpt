@@ -115,7 +115,7 @@
 	<Module>
 		<Name>cptCore_bas</Name>
 		<FileName>cptCore_bas.bas</FileName>
-		<Version>v1.18.1</Version>
+		<Version>v1.19.0</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
