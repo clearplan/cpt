@@ -15,6 +15,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 '<cpt_version>v1.6.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptResourceDemand_frm"
 Private Const adVarChar As Long = 200
 
 Private Sub cboMonths_Change()
@@ -91,7 +92,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_frm", "cmdAdd_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdAdd_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -110,7 +111,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_frm", "cmdCancel_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdCancel_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -125,7 +126,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_frm", "cmdExport_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdExport_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -146,7 +147,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_frm", "cmdRemove_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRemove_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -154,16 +155,17 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
-  
 End Sub
 
 Private Sub stxtSearch_Change()
@@ -210,7 +212,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptResourceDemand_frm", "stxtSearch_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "stxtSearch_Change", Err, Erl)
   Resume exit_here
   
 End Sub

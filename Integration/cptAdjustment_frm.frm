@@ -13,8 +13,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.0.4</cpt_version>
+
+'<cpt_version>v0.1.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptAdjustment_frm"
 
 Private Sub cboResources_Change()
   
@@ -43,6 +45,24 @@ End Sub
 Private Sub cmdUndo_Click()
   Application.Undo
   cptRefreshAdjustment Me
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 Private Sub optDelta_Click()

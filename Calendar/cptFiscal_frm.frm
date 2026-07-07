@@ -15,6 +15,7 @@ Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 '<cpt_version>v1.3.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptFiscal_frm"
 
 Private Sub cboImportField_Change()
   If Not IsNull(Me.cboImportField.Value) Then
@@ -181,6 +182,24 @@ Private Sub cmdTemplate_Click()
   Call cptExportExceptionsTemplate
   Me.cmdImport.Enabled = True
   Me.cmdImport.ControlTipText = "Import a populated template"
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 Private Sub txtExceptions_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, ByVal Action As MSForms.fmAction, ByVal Data As MSForms.DataObject, ByVal X As Single, ByVal Y As Single, ByVal Effect As MSForms.ReturnEffect, ByVal Shift As Integer)

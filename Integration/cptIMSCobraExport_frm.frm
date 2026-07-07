@@ -3,8 +3,8 @@ Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptIMSCobraExport_frm
    Caption         =   "IMS Export Utility"
    ClientHeight    =   9060.001
    ClientLeft      =   120
-   ClientTop       =   468
-   ClientWidth     =   4392
+   ClientTop       =   465
+   ClientWidth     =   4395
    OleObjectBlob   =   "cptIMSCobraExport_frm.frx":0000
    StartUpPosition =   1  'CenterOwner
 End
@@ -13,8 +13,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-
 '<cpt_version>v3.5.1</cpt_version>
+Option Explicit
+Private Const THIS_MODULE As String = "cptIMSCobraExport_frm"
+
 Private Sub AsgnPcntBox_Change() 'v3.3.1
     
     If isIMSfield(AsgnPcntBox.Value) = False And AsgnPcntBox.Value <> "" And AsgnPcntBox.Value <> "<None>" Then
@@ -529,7 +531,20 @@ Private Sub CancelBtn_Click()
 End Sub
 
 Private Sub cptLinkLabel_Click()
-   If cptInternetIsConnected Then Application.FollowHyperlink "http://www.ClearPlanConsulting.com"
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
 End Sub
 
 Private Sub CSVBtn_Change()

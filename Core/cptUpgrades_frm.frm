@@ -13,12 +13,14 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 '<cpt_version>v1.5.7</cpt_version>
 '/===== IMPORTANT =====\
 'ALL CODE IN THIS MODULE MUST BE SELF-CONTAINED
 'DO NOT BUMP THE VERSION WHILE DEVELOPING OR IT WILL GET OVERWRITTEN NEXT TIME YOU OPEN THE FORM
 '\===== IMPORTANT =====/
 Option Explicit
+Private Const THIS_MODULE As String = "cptUpgrades_frm"
 Private Const BLN_TRAP_ERRORS As Boolean = True
 'If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
 
@@ -46,6 +48,14 @@ Private Sub cboBranches_Change()
 
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
   If Not Me.Visible Then Exit Sub
+  
+  If Me.cboBranches.Value = "smeagol" Then
+    If MsgBox("DO NOT INSTALL THIS UNLESS YOU HAVE BEEN SPECIFICALLY INSTRUCTED TO DO SO" & vbCrLf & vbCrLf & "PROCEED?", vbCritical + vbYesNo, "DANGER, WILL ROBINSON!") <> vbYes Then
+      Me.cboBranches.Value = "master"
+      GoTo exit_here
+    End If
+  End If
+  
   'set up the recordset
   Set rstStatus = CreateObject("ADODB.Recordset")
   rstStatus.Fields.Append "Module", 200, 200
@@ -150,7 +160,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErrUpgrade("cptUpgrades_frm", "cboBranches_Change", Err, Erl)
+  Call cptHandleErrUpgrade(THIS_MODULE, "cboBranches_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -177,7 +187,6 @@ Private Sub cmdUpgradeSelected_Click()
   Dim rstCode As Object 'ADODB.Recordset
   Dim cmCptThisProject As Object 'VBCodeModule
   Dim cmThisProject As Object 'VBCodeModule
-  Dim Project As Object
   Dim vbComponent As Object 'vbComponent
   Dim xmlHttpDoc As Object
   Dim oStream As Object 'ADODB.Stream
@@ -216,7 +225,7 @@ Private Sub cmdUpgradeSelected_Click()
       
       Me.lboModules.ListIndex = lngItem
       strModule = Me.lboModules.List(lngItem, 0)
-      If strModule = "cptUpgrades_frm" Then
+      If strModule = THIS_MODULE Then
         Me.lboModules.List(lngItem, 4) = "<skipped>"
         GoTo next_module
       Else
@@ -402,14 +411,13 @@ exit_here:
   Set cmCptThisProject = Nothing
   Set cmThisProject = Nothing
   Application.ScreenUpdating = True
-  Set Project = Nothing
   Set vbComponent = Nothing
   Application.StatusBar = ""
   Set xmlHttpDoc = Nothing
   Set oStream = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErrUpgrade("cptUpgrades_frm", "cmdUpdate_Click", Err, Erl)
+  Call cptHandleErrUpgrade(THIS_MODULE, "cmdUpdate_Click", Err, Erl)
   Me.lboModules.List(lngItem, 3) = "<error>" '</issue25>
   Resume exit_here
 
@@ -431,15 +439,16 @@ Private Sub lblURL_Click()
 
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
 
-  Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  Application.FollowHyperlink "https://www.ClearPlanConsulting.com" 'do not change this
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErrUpgrade("cptUpgrades_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErrUpgrade(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
+  
 End Sub
 
 Private Function cptDirUpgrade() As String
@@ -468,6 +477,8 @@ End Function
 Private Sub cptHandleErrUpgrade(strModule As String, strProcedure As String, objErr As ErrObject, Optional lngErl As Long)
   'common error handling prompt
   Dim strMsg As String
+  Dim strFileName As String
+  Dim lngFile As Long
 
   strMsg = "Please contact help@ClearPlanConsulting.com for assistance if needed." & vbCrLf & vbCrLf
   strMsg = strMsg & "Error " & Err.Number & ": " & Err.Description & vbCrLf & vbCrLf
@@ -476,8 +487,6 @@ Private Sub cptHandleErrUpgrade(strModule As String, strProcedure As String, obj
     strMsg = strMsg & ":" & lngErl
   End If
   MsgBox strMsg, vbExclamation + vbOKOnly, "Error"
-  Dim strFileName As String
-  Dim lngFile As Long
   strFileName = Environ("tmp") & "\cptUpgradeError.txt"
   Open strFileName For Output As #lngFile
   Print #lngFile, "Please send the following text to help@ClearPlanConsulting.com:"
@@ -516,7 +525,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErrUpgrade("cptUpgrades_frm", "cptModuleExistsUpgrade", Err, Erl)
+  Call cptHandleErrUpgrade(THIS_MODULE, "cptModuleExistsUpgrade", Err, Erl)
   Resume exit_here
 
 End Function

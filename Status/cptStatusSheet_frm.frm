@@ -13,9 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-
 '<cpt_version>v1.7.5</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptStatusSheet_frm"
 Private Const lngForeColorValid As Long = -2147483630
 Private Const lngBorderColorValid As Long = 8421504 '-2147483642
 Private Const lngForeColorInvalid As Long = 192
@@ -926,15 +926,18 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "lblURL", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
+  
 End Sub
 
 Private Sub lboItems_Change()
