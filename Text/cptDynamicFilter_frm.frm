@@ -14,7 +14,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v1.6.6</cpt_version>
+'<cpt_version>v1.6.7</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDynamicFilter_frm"
 

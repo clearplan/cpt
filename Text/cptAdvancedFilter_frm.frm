@@ -15,7 +15,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v0.3.3</cpt_version>
+'<cpt_version>v0.3.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptAdvancedFilter_frm"
 Private Const MODULE_NAME As String = "cptAdvancedFilter_frm"

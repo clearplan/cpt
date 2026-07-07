@@ -14,7 +14,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v0.1.2</cpt_version>
+'<cpt_version>v0.1.3</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptCustomFieldUsage_frm"
 

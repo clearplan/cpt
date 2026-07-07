@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptAdjustment_bas"
-'<cpt_version>v0.0.4</cpt_version>
+'<cpt_version>v0.1.0</cpt_version>
 Option Explicit
 
 Sub cptShowAdjustment_frm()

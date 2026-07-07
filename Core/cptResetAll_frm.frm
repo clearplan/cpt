@@ -14,7 +14,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v1.4.0</cpt_version>
+'<cpt_version>v1.4.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptResetAll_frm"
 
