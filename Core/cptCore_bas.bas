@@ -1274,7 +1274,7 @@ Sub cptShowUpgrades_frm()
   lngItem = 0
   Do While Not rstStatus.EOF
     strCurVer = rstStatus(2)
-    If Not IsNull(rstStatus(3)) Then
+    If Len(rstStatus(3)) > 0 Then
       strInstVer = rstStatus(3)
     Else
       strInstVer = "< missing >"
