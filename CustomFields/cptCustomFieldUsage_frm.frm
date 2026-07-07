@@ -13,8 +13,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 '<cpt_version>v0.1.2</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCustomFieldUsage_frm"
 
 Private Sub chkIncludeSummaryTasks_Click()
   Dim blnSummaries As Boolean
@@ -71,19 +73,20 @@ Private Sub cmdRename_Click()
 End Sub
 
 Private Sub lblURL_Click()
-  
+
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCustomFieldUsage_frm", "lblURL_Click()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
-
 End Sub
 
 Private Sub lboCustomFields_Click()

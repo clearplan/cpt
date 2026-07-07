@@ -14,11 +14,31 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 '<cpt_version>v0.3.3</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptAdvancedFilter_frm"
 Private Const MODULE_NAME As String = "cptAdvancedFilter_frm"
 Private oFilterItems As Collection
 Public blnDisableChangeEvents As Boolean
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
+
+End Sub
 
 Private Sub sortField_Change()
 

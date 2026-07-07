@@ -13,8 +13,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
+
 '<cpt_version>v1.4.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptResetAll_frm"
 
 Private Sub chkKeepPosition_Click()
   cptSaveSetting "ResetAll", "KeepPosition", IIf(Me.chkKeepPosition, "1", "0")
@@ -72,6 +74,24 @@ exit_here:
 err_here:
   Call cptHandleErr("cptResetAll_frm", "cmdDoIt_Click", Err, Erl)
   Resume exit_here
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 Private Sub optOutlineLevel_Click()
