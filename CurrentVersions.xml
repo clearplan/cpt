@@ -288,6 +288,13 @@
 		<Directory>Integration</Directory>
 	</Module>
 	<Module>
+		<Name>cptListBox_frm</Name>
+		<FileName>cptListBox_frm.frm</FileName>
+		<Version>v0.0.1</Version>
+		<Type>3</Type>
+		<Directory>Core</Directory>
+	</Module>	
+	<Module>
 		<Name>cptMetrics_bas</Name>
 		<FileName>cptMetrics_bas.bas</FileName>
 		<Version>v1.5.5</Version>
