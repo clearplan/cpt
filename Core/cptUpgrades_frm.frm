@@ -430,6 +430,7 @@ Private Sub lblTitle_Click()
     Me.cboBranches.Visible = False
   ElseIf Val(Me.txtDevMode.Value) = 5 Then
     Me.cboBranches.Visible = True
+    Me.cboBranches.Enabled = True
   Else
     Me.cboBranches.Visible = False
   End If
