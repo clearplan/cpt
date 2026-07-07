@@ -57,7 +57,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetUserForm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetUserForm", Err, Erl)
   Resume exit_here
 End Function
 
@@ -89,7 +89,7 @@ exit_here:
   Set objIndName = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetUserFullName", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetUserFullName", Err, Erl)
   Resume exit_here
 
 End Function
@@ -159,7 +159,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetVersions", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetVersions", Err, Erl)
   Resume exit_here
 
 End Function
@@ -252,7 +252,7 @@ exit_here:
   Application.StatusBar = ""
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptUpgrade", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpgrade", Err, Erl)
   Resume exit_here
 
 End Sub '<issue31>
@@ -317,7 +317,7 @@ exit_here:
   Set myAbout_frm = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowAbout_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowAbout_frm", Err, Erl)
   Resume exit_here '</issue19>
 
 End Sub
@@ -378,7 +378,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptReferenceExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptReferenceExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -459,7 +459,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetDirectory()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetDirectory()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -770,67 +770,10 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptResetAll", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptResetAll", Err, Erl)
   Resume exit_here
 
 End Sub
-
-Public Function cptGetOutlineParent(ByVal strOutlineChild As String, ByVal strDelimiter As String, Optional ByVal lngReturnLevel As Long = 0) As String
-  'assisted
-  Dim vLevels() As String
-  Dim lngChildLevels As Long
-  Dim lngItem As Long
-  Dim strResult As String
-
-  If Len(strOutlineChild) = 0 Then Exit Function
-
-  vLevels = Split(strOutlineChild, strDelimiter)
-  lngChildLevels = UBound(vLevels) + 1
-
-  'default = immediate parent
-  If lngReturnLevel = 0 Then
-      lngReturnLevel = lngChildLevels - 1
-  End If
-
-  'requested level does not exist
-  If lngReturnLevel < 1 Or lngReturnLevel > lngChildLevels Then
-      cptGetOutlineParent = strOutlineChild
-      Exit Function
-  End If
-
-  For lngItem = 0 To lngReturnLevel - 1
-      If lngItem > 0 Then strResult = strResult & strDelimiter
-      strResult = strResult & vLevels(lngItem)
-  Next i
-
-  cptGetOutlineParent = strResult
-
-End Function
-
-Function cptGetOutlineCodeParent(strOutlineCode As String, strOutlineChild As String)
-  'this is very slow - build a cache/dictionary instead
-  Dim oOutlineCode As OutlineCode
-  Dim oLookupTable As LookupTable
-  Dim oLookupTableEntry As LookupTableEntry
-  Dim lngItem As Long
-  On Error Resume Next
-  Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
-  Set oLookupTable = oOutlineCode.LookupTable
-  For lngItem = 1 To oLookupTable.Count
-    Set oLookupTableEntry = oLookupTable.Item(lngItem)
-    If oLookupTableEntry.FullName = strOutlineChild Then
-      If oLookupTableEntry.Level = 1 Then
-        cptGetOutlineCodeParent = "*****"
-      Else
-        cptGetOutlineCodeParent = oLookupTableEntry.ParentEntry.FullName
-      End If
-      Exit For
-    End If
-  Next lngItem
-  Set oLookupTableEntry = Nothing
-  Set oLookupTable = Nothing
-  Set oOutlineCode = Nothing
-End Function
 
 Sub cptCleanCEI()
   Dim strFileName As String
@@ -1155,7 +1098,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowResetAll_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowResetAll_frm", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1413,7 +1356,7 @@ exit_here:
   Set FindRecord = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowUpgrades_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowUpgrades_frm", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1486,7 +1429,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptSetReferences", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSetReferences", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1632,7 +1575,7 @@ Sub cptSendMail(strCategory As String)
       oMailItem.Subject = "Issue: <enter brief summary of the issue>"
       On Error Resume Next
       Err.Raise 1, "User", "User-submitted Issue"
-      cptHandleErr "cptCore_bas", "cptSendMail", Err
+      cptHandleErr THIS_MODULE, "cptSendMail", Err
       strHTML = "<h3>Please Describe Your Environment:</h3><p>"
       strHTML = strHTML & "<i>Operating System</i>: [operating system]<p>"
       strHTML = strHTML & "<i>Microsoft Project Version</i>: [Standard / Professional] [Year]<p>"
@@ -1662,7 +1605,7 @@ exit_here:
   Set oMailItem = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptSendMail", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSendMail", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1761,7 +1704,7 @@ exit_here:
 '  GoTo exit_here
 
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptWrapItUp", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptWrapItUp", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1887,7 +1830,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptVersionStatus", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptVersionStatus", Err, Erl)
   Resume exit_here
 
 End Function
@@ -1919,74 +1862,24 @@ Sub cptGroupReapply()
   If lngUID > 0 Then Find "Unique ID", "equals", lngUID
 End Sub
 
-Function cptGetSettingsFile(strFeature As String) As String
-  Dim strPA As String
-  Dim strSettingsFile As String
-  'need to copy from cpt-settings.ini to cpt-settings-user.ini
-  If cptGetPosition(Split("Count,DynamicFilter,ETCAdjustment,FilterByClipboard,General,NetworkBrowser,ResetAll,SaveMarked,SmartDuration", ","), strFeature) >= 0 Then
-    strSettingsFile = "cpt-settings-user.ini"
-    'todo: check if file exists
-    'todo: if not check legacy, move it, delete it
-  ElseIf cptGetPosition(Split("AgeDates,CalendarDetails,Driving Paths,Driving Path Group,CostRateTables,Integration,Metrics,ResourceDemand,StatusSheet,StatusSheetImport", ","), strFeature) >= 0 Then
-    strPA = cptGetProgramAcronym(False)
-    If Len(strPA) > 0 Then
-      strSettingsFile = "cpt-settings-" & strPA & ".ini"
-      If Dir(strSettingsFile) <> vbNullString Then
-        strSettingsFile = "cpt-settings-" & strPA & ".ini"
-      End If
-    Else
-      'do what?
-      'look for legacy
-      'todo: if found then move it to proper settings file and delete from legacy
-      'todo: indicate on the Settings form which are user settings and which are program settings
-    End If
-  Else
-    'default to cpt-settings.ini
-  End If
-  cptGetSettingsFile = strSettingsFile
-End Function
-
 Function cptSaveSetting(strFeature As String, strKey As String, strValue As Variant) As Boolean
-  Dim strDir As String, strPA As String
   Dim strSettingsFile As String, lngWorked As Long
-  strDir = cptDir
-  'todo: if strFeature in [programsettings] then...
-  'todo: if strFeature in [usersettings] then...
-  strSettingsFile = strDir & "\settings\cpt-settings.ini"
-  'strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
   If lngWorked Then
     cptSaveSetting = True
   Else
     cptSaveSetting = False
   End If
-  strPA = cptGetProgramAcronym(False)
-  If Len(strPA) > 0 Then
-    strSettingsFile = strDir & "\settings\" & strPA & "-cpt-settings.ini"
-    If Dir(strSettingsFile) <> vbNullString Then
-      lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
-      If lngWorked Then
-        Debug.Print "config saved"
-      Else
-        Debug.Print "config save failed"
-      End If
-    End If
-  End If
 End Function
 
 Function cptGetSetting(strFeature As String, strKey As String) As String
-  'always pulls from cpt-settings.ini
-  'todo: get from new; if not exists then get from legacy+delete from legacy
-  'user can turn on config-switching or not
   Dim strSettingsFile As String, strReturned As String, lngSize As Long, lngWorked As Long
-  'strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   strReturned = Space(255) 'this determines the length of the returned value, not the length of the stored value
   lngSize = Len(strReturned)
   lngWorked = cptGetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
   If lngWorked Then
     cptGetSetting = Left$(strReturned, lngWorked)
-    'todo: delete from legacy if strSettingsFile <> general then delete
   Else
     cptGetSetting = ""
   End If
@@ -2006,7 +1899,6 @@ End Function
 
 Function cptDeleteSetting(strFeature As String, strKey As String) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
-  'strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
   If lngWorked Then
@@ -2065,7 +1957,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptViewExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptViewExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2094,7 +1986,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptTableExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptTableExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2123,7 +2015,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptFilterExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptFilterExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2152,7 +2044,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGroupExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGroupExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2171,7 +2063,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptCreateFilter", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCreateFilter", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2187,7 +2079,6 @@ Sub cptShowSettings_frm()
   Dim strSettingsFileNew As String
   Dim strSettingsFile As String
   Dim strProgramAcronym As String
-  Dim strSetting As String
   Dim strFeature As String
   Dim strLine As String
   'longs
@@ -2196,7 +2087,6 @@ Sub cptShowSettings_frm()
   'doubles
   'booleans
   'variants
-  Dim vFrequency As Variant
   'dates
   
   'prevent spawning
@@ -2277,16 +2167,6 @@ Sub cptShowSettings_frm()
     Else
       .tglErrorTrapping = False
     End If
-    'add options for checking for updates
-    For Each vFrequency In Split("0:Never,1:Daily,7:Weekly,14:Biweekly,30:Monthly", ",")
-      .cboCheckForUpdates.AddItem
-      .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 0) = Split(vFrequency, ":")(0)
-      .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 1) = Split(vFrequency, ":")(1)
-    Next vFrequency
-    strSetting = cptGetSetting("General", "cboCheckForUpdates")
-    If Len(strSetting) > 0 Then
-      .cboCheckForUpdates.Value = CLng(strSetting)
-    End If
     .Show
   End With
   
@@ -2301,7 +2181,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowSettings_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowSettings_frm", Err, Erl)
   Resume exit_here
 End Sub
 Function cptGetProgramAcronym(Optional blnPrompt As Boolean = True) As String
@@ -2350,7 +2230,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetProgramAcronym", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetProgramAcronym", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2434,7 +2314,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetMyHeaders", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetMyHeaders", Err, Erl)
   Resume exit_here
 
 End Function
@@ -2494,7 +2374,7 @@ exit_here:
   Set oSubprojects = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptConvertToMasterUIDs", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptConvertToMasterUIDs", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2527,7 +2407,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetShowStatusBarCountFirstRun", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetShowStatusBarCountFirstRun", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2601,7 +2481,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptAppendColumn", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAppendColumn", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2843,7 +2723,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetSums", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetSums", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2959,7 +2839,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetCustomFields", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetCustomFields", Err, Erl)
   Resume exit_here
   
 End Function
@@ -3287,18 +3167,6 @@ next_control:
       .chkSyncSettings.Enabled = False
     End If
 
-    strSetting = cptGetSetting("Integration", "chkCAParent")
-    If Len(strSetting) > 0 Then
-      .chkCAParent = CBool(strSetting)
-      If .chkCAParent = True Then
-        .cboWBS.Width = 108
-      End If
-    End If
-    If .cboWBS <> .cboCA And .chkCAParent = True Then
-      .cboWBS.Width = 126
-      .chkCAParent = False
-    End If
-
     If Not blnValid Or blnConfirmationRequired Then
       .Show
       cptValidMap = .blnValidIntegrationMap
@@ -3317,7 +3185,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptValidMap", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidMap", Err, Erl)
   Resume exit_here
     
 End Function
@@ -3393,7 +3261,7 @@ exit_here:
   End If
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptValidPath()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidPath()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3445,7 +3313,7 @@ exit_here:
   
 err_here:
   On Error Resume Next
-  cptHandleErr "cptCore_bas", "cptGetShortPath", Err, Erl
+  cptHandleErr THIS_MODULE, "cptGetShortPath", Err, Erl
   strShortPath = ""
   Resume exit_here
 
@@ -3477,7 +3345,7 @@ exit_here:
 '  Call cptCore_bas.cptStartEvents
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptErrorTrapping", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptErrorTrapping", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3643,7 +3511,7 @@ exit_here:
   Set oCalendar = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptCalendarExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCalendarExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3723,7 +3591,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptCheckMetadata", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCheckMetadata", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3929,7 +3797,7 @@ exit_here:
   Set oOutlineCode = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptHasLookup()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptHasLookup()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -4021,7 +3889,7 @@ exit_here:
   Set oReturn = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetCustomFieldInfo", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetCustomFieldInfo", Err, Erl)
   Resume exit_here
 End Function
 
@@ -4083,7 +3951,7 @@ exit_here:
   
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptConvertADODBtoCSV", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptConvertADODBtoCSV", Err, Erl)
   cptConvertADODBtoCSV = False
   Resume exit_here
 
