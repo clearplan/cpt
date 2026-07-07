@@ -14,11 +14,6 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-
-
-
-
-
 '<cpt_version>v3.5.1</cpt_version>
 Private Sub AsgnPcntBox_Change() 'v3.3.1
     
@@ -1232,7 +1227,7 @@ Private Function PopulateCustFieldUsage() As Boolean
                     fProject = True
                     Me.projBox.Value = docProp.Value
                 Else
-                    nametets = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
+                    nameTest = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
                     fProject = True
                     Me.projBox.Value = docProp.Value
                 End If
@@ -1268,7 +1263,7 @@ NextDocProp:
     Next docProp
     
     Set docProps = Nothing
-    Set curpro = Nothing
+    Set curProj = Nothing
     
     If fCAID1 And fCAID2 And fWP And fCAM And fEVT And fCAID3 And fPCNT And fResID And dateFmt Then 'v3.2.6, v3.3.5
     
