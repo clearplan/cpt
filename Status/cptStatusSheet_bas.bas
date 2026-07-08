@@ -3024,10 +3024,10 @@ Sub cptExportCompletedWork()
   'objects
   Dim oCDP As DocumentProperty
   Dim oAssignment As Assignment
-  Dim oWorksheet As Object 'Excel.Worksheet
-  Dim oWorkbook As Object 'Excel.Workbook
-  Dim oExcel As Object 'Excel.Application
-  Dim oRecordset As Object 'ADODB.Recordset
+  Dim oWorksheet As Excel.Worksheet
+  Dim oWorkbook As Excel.Workbook
+  Dim oExcel As Excel.Application
+  Dim oRecordset As ADODB.Recordset
   Dim oTask As MSProject.Task
   'strings
   Dim strSetting As String
@@ -3046,8 +3046,9 @@ Sub cptExportCompletedWork()
   Dim strDir As String
   Dim strSQL As String
   Dim strFileName As String
+  Dim strDelimiter As String
   'longs
-  Dim lngWPMCol as Long
+  Dim lngWPMCol As Long
   Dim lngEVPCol As Long
   Dim lngCA As Long
   Dim lngLC As Long
@@ -3068,6 +3069,7 @@ Sub cptExportCompletedWork()
   Dim blnHasWPM As Boolean
   Dim blnErrorTrapping As Boolean
   Dim blnMissing As Boolean
+  Dim blnCAParent As Boolean
   'variants
   'dates
   Dim dtStatus As Date
@@ -3081,7 +3083,18 @@ Sub cptExportCompletedWork()
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
+  'account for when WBS = CA Parent
+  strSetting = cptGetSetting("Integration", "chkCAParent")
+  If Len(strSetting) > 0 Then
+    blnCAParent = CBool(strSetting)
+  Else
+    blnCAParent = False
+  End If
   lngWBS = Split(cptGetSetting("Integration", "WBS"), "|")(0)
+  If blnCAParent And InStr(FieldConstantToFieldName(lngWBS), "Outline") = 0 Then
+    strDelimiter = cptGetSetting("Integration", "CA_DELIMITER")
+    If Len(strDelimiter) = 0 Then strDelimiter = "." 'default
+  End If
   strWBS = CustomFieldGetName(lngWBS)
   lngOBS = Split(cptGetSetting("Integration", "OBS"), "|")(0)
   strOBS = CustomFieldGetName(lngOBS)
@@ -3146,7 +3159,15 @@ Sub cptExportCompletedWork()
     If oTask.ExternalTask Then GoTo next_task
     For Each oAssignment In oTask.Assignments
       strRecord = oTask.UniqueID & ","
-      strRecord = strRecord & oTask.GetField(lngWBS) & ","
+      If blnCAParent Then
+        If InStr(FieldConstantToFieldName(lngWBS), "Outline") > 0 Then
+          strRecord = strRecord & Trim(cptGetOutlineCodeParent(CustomFieldGetName(lngWBS), oTask.GetField(lngWBS))) & ","
+        Else
+          strRecord = strRecord & Trim(cptGetOutlineParent(oTask.GetField(lngWBS), strDelimiter)) & ","
+        End If
+      Else
+        strRecord = strRecord & oTask.GetField(lngWBS) & ","
+      End If
       strRecord = strRecord & oTask.GetField(lngOBS) & ","
       strRecord = strRecord & oTask.GetField(lngCA) & ","
       strRecord = strRecord & oTask.GetField(lngCAM) & ","
@@ -3207,6 +3228,7 @@ next_task:
     oWorksheet.Columns.AutoFit
     oExcel.ActiveWindow.SplitRow = 1
     oExcel.ActiveWindow.SplitColumn = 0
+    oExcel.ActiveWindow.WindowState = xlMaximized
     oExcel.ActiveWindow.FreezePanes = True
     'get details
     If oWorkbook.Sheets.Count >= 2 Then
@@ -3240,7 +3262,7 @@ next_task:
     oRecordset.Close
     oWorkbook.Sheets("COMPLETED WPs").Activate
     oExcel.Visible = True
-    oExcel.ActiveWindow.WindowState = -4143 'xlNormal
+    oExcel.ActiveWindow.WindowState = xlMaximized
     Application.ActivateMicrosoftApp pjMicrosoftExcel
   Else
     MsgBox "No records found!", vbExclamation + vbOKOnly, "Completed Work"

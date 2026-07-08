@@ -43,6 +43,9 @@ Sub cptDECM_GET_DATA()
   Dim oLink As MSProject.TaskDependency
   Dim oTask As MSProject.Task
   'strings
+  Dim strWBS As String
+  Dim strDelimiter As String
+  Dim strSetting As String
   Dim strProject As String
   Dim strMetric As String
   Dim strRollingWaveDate As String
@@ -104,6 +107,7 @@ Sub cptDECM_GET_DATA()
   'doubles
   Dim dblScore As Double
   'booleans
+  Dim blnCAParent As Boolean
   Dim blnMaster As Boolean
   Dim blnLimitToPMB As Boolean
   Dim blnTaskHistoryExists As Boolean
@@ -111,6 +115,7 @@ Sub cptDECM_GET_DATA()
   Dim blnDumpToExcel As Boolean
   Dim blnErrorTrapping As Boolean
   'variants
+  Dim vWBS As Variant
   Dim vFile As Variant
   Dim vHeader As Variant
   Dim vField As Variant
@@ -369,6 +374,16 @@ next_mapping_task:
     Application.DefaultDateFormat = pjDate_mm_dd_yyyy
   End If
   blnResourceLoaded = False
+  strSetting = cptGetSetting("Integration", "chkCAParent")
+  If Len(strSetting) > 0 Then
+    blnCAParent = CBool(strSetting)
+  Else
+    blnCAParent = False
+  End If
+  If blnCAParent And InStr(FieldConstantToFieldName(lngWBS), "Outline") = 0 Then
+    strDelimiter = cptGetSetting("Integration", "CA_DELIMITER")
+    If Len(strDelimiter) = 0 Then strDelimiter = "."
+  End If
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_task
     If Not oTask.Active Then GoTo next_task
@@ -386,8 +401,29 @@ next_mapping_task:
       If vField = 0 Then
         strRecord = strRecord & "," 'account for empty WPM
         GoTo next_field
-      End If
-      If vField = FieldNameToFieldConstant("Physical % Complete") Then
+      ElseIf vField = lngWBS Then
+        strWBS = oTask.GetField(lngWBS)
+        If Len(strWBS) > 0 Then
+          If blnCAParent Then
+            Select Case cptGetPosition(Split(lngUID & "," & lngWBS & "," & lngOBS & "," & lngCA, ","), vField)
+              Case 1 'WBS
+                If InStr(FieldConstantToFieldName(lngWBS), "Outline") > 0 Then
+                  'use get outline code parent
+                  strRecord = strRecord & Trim(cptGetOutlineCodeParent(CustomFieldGetName(lngWBS), oTask.GetField(lngWBS))) & ","
+                Else
+                  'use get outline parent
+                  strRecord = strRecord & Trim(cptGetOutlineParent(strWBS, strDelimiter)) & ","
+                End If
+              Case 3 'CA
+                strRecord = strRecord & Trim(oTask.GetField(CLng(vField))) & ","
+            End Select
+          Else
+            strRecord = strRecord & Trim(oTask.GetField(CLng(vField))) & ","
+          End If
+        Else
+          strRecord = strRecord & ","
+        End If
+      ElseIf vField = FieldNameToFieldConstant("Physical % Complete") Then
         strRecord = strRecord & cptRegEx(oTask.GetField(vField), "[0-9]{1,}") & ","
       ElseIf vField = FieldNameToFieldConstant("% Complete") Then
         strRecord = strRecord & cptRegEx(oTask.GetField(vField), "[0-9]{1,}") & ","
@@ -4473,6 +4509,9 @@ End Sub
 
 Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
   Dim strGroup As String
+  Dim strCAList As String
+  Dim strWPList As String
+
   ScreenUpdating = False
   ActiveWindow.TopPane.Activate
   FilterClear
@@ -4481,17 +4520,24 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
   OptionsViewEx DisplaySummaryTasks:=True
   OutlineShowAllTasks
   If strMetric <> "06A208a" Then OptionsViewEx DisplaySummaryTasks:=False
-
+  
+  strWBS = FieldConstantToFieldName(Split(cptGetSetting("Integration", "WBS"), "|")(0))
+  strOBS = FieldConstantToFieldName(Split(cptGetSetting("Integration", "OBS"), "|")(0))
+  strCA = FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0))
+  strCAM = FieldConstantToFieldName(Split(cptGetSetting("Integration", "CAM"), "|")(0))
+  strWP = FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0))
+  strEVT = Split(cptGetSetting("Integration", "EVT"), "|")(1)
+  
   Select Case strMetric
     Case "05A101a" '1 CA : 1 OBS
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strCA, pjAutoFilterIn, "equals", strList
         'group by CA,OBS
         strGroup = "cpt 05A101a 1 CA : 1 OBS"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
-        ActiveProject.TaskGroups.Add strGroup, FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0))
-        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add FieldConstantToFieldName(Split(cptGetSetting("Integration", "OBS"), "|")(0))
+        ActiveProject.TaskGroups.Add strGroup, strCA
+        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add strOBS
         GroupApply Name:=strGroup
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
@@ -4500,12 +4546,12 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "05A102a" '1 CA : 1 CAM
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strCA, pjAutoFilterIn, "equals", strList
         'group by CA,CAM
         strGroup = "cpt 05A102a 1 CA : 1 CAM"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
-        ActiveProject.TaskGroups.Add strGroup, FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0))
-        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add FieldConstantToFieldName(Split(cptGetSetting("Integration", "CAM"), "|")(0))
+        ActiveProject.TaskGroups.Add strGroup, strCA
+        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add strCAM
         GroupApply Name:=strGroup
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
@@ -4514,12 +4560,12 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "05A103a" '1 CA : 1 WBS
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strCA, pjAutoFilterIn, "equals", strList
         'group by CA,WBS
         strGroup = "cpt 05A103a 1 CA : 1 WBS"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
-        ActiveProject.TaskGroups.Add strGroup, FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0))
-        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add FieldConstantToFieldName(Split(cptGetSetting("Integration", "WBS"), "|")(0))
+        ActiveProject.TaskGroups.Add strGroup, strCA
+        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add strWBS
         GroupApply Name:=strGroup
         
       Else
@@ -4534,7 +4580,6 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
         ScreenUpdating = True
         SetAutoFilter "Unique ID", pjAutoFilterIn, "equals", strList
-        strEVT = Split(cptGetSetting("Integration", "EVT"), "|")(1)
         strGroup = "cpt 06A210a LOE driving Discrete"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
         ActiveProject.TaskGroups2.Add strGroup, strEVT
@@ -4558,12 +4603,12 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "CPT02"
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "equals", strList
         'group by WP, CA
         strGroup = "cpt 1wp_1ca"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
-        ActiveProject.TaskGroups.Add strGroup, FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0))
-        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0))
+        ActiveProject.TaskGroups.Add strGroup, strWP
+        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add strCA
         GroupApply Name:=strGroup
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
@@ -4590,12 +4635,12 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "10A102a" '1 WP : 1 EVT
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "equals", strList
         'group by WP,EVT
         strGroup = "cpt 10A102a 1 WP : 1 EVT"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
-        ActiveProject.TaskGroups.Add strGroup, FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0))
-        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add FieldConstantToFieldName(Split(cptGetSetting("Integration", "EVT"), "|")(0))
+        ActiveProject.TaskGroups.Add strGroup, strWP
+        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add strEVT
         GroupApply Name:=strGroup
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
@@ -4604,7 +4649,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "10A103a" '0/100 >1 fiscal periods
       If Len(strList) > 0 Then
         strList = Left(strList, Len(strList) - 1) 'remove last tab
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "equals", strList
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
       End If
@@ -4612,7 +4657,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "10A109b" 'WP with no budget
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "equals", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "equals", strList
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
       End If
@@ -4620,7 +4665,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "10A302b" 'same as 29A601a
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "contains", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "contains", strList
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
       End If
@@ -4628,31 +4673,28 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "10A303a"
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "contains", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "contains", strList
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
       End If
       
     Case "11A101a" 'CA BAC = Sum(WP BAC)
       If Len(strList) > 0 Then
-        Dim strCAList As String
-        Dim strWPList As String
         strList = Left(strList, Len(strList) - 1) 'remove last comma
         strCAList = Split(strList, ";")(0)
         strWPList = Split(strList, ";")(1)
-        
         If Len(strCAList) > 0 Then
           strCAList = Replace(strCAList, ",", vbTab)
-          SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0)), pjAutoFilterIn, "equals", strCAList
+          SetAutoFilter strCA, pjAutoFilterIn, "equals", strCAList
         End If
         If Len(strWPList) > 0 Then
           strWPList = Replace(strWPList, ",", vbTab)
-          SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "equals", strWPList
+          SetAutoFilter strWP, pjAutoFilterIn, "equals", strWPList
         End If
         strGroup = "cpt 11A101a CA BAC = SUM(WP BAC)"
         If cptGroupExists(strGroup) Then ActiveProject.TaskGroups2(strGroup).Delete
-        ActiveProject.TaskGroups.Add strGroup, FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0))
-        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add FieldConstantToFieldName(Split(cptGetSetting("Integration", "CA"), "|")(0))
+        ActiveProject.TaskGroups.Add strGroup, strWP
+        ActiveProject.TaskGroups(strGroup).GroupCriteria.Add strCA
         GroupApply Name:=strGroup
         OptionsViewEx DisplaySummaryTasks:=True
         OutlineShowTasks 2
@@ -4664,7 +4706,7 @@ Sub cptDECM_UPDATE_VIEW(strMetric As String, Optional strList As String)
     Case "29A601a" 'PPs within Rolling Wave Period
       If Len(strList) > 0 Then
         strList = Left(Replace(strList, ",", vbTab), Len(strList) - 1) 'remove last comma
-        SetAutoFilter FieldConstantToFieldName(Split(cptGetSetting("Integration", "WP"), "|")(0)), pjAutoFilterIn, "contains", strList
+        SetAutoFilter strWP, pjAutoFilterIn, "contains", strList
       Else
         SetAutoFilter "Name", pjAutoFilterIn, "equals", "<< zero results >>"
       End If

@@ -228,6 +228,15 @@ Private Sub cboWPM_Change()
   UpdateIntegrationSettings
 End Sub
 
+Private Sub chkCAParent_Click()
+  If Not Me.Visible Then Exit Sub
+  If Me.chkCAParent = False Then
+    Me.cboWBS.Width = 126
+  End If
+  If Me.ActiveControl.Name = "chkCAParent" Then Me.cboWBS.SetFocus
+  UpdateIntegrationSettings
+End Sub
+
 Private Sub chkECF_Click()
   'objects
   Dim oComboBox As MSForms.ComboBox
@@ -531,6 +540,7 @@ Private Sub UpdateIntegrationSettings()
   'objects
   Dim oCDP As Office.DocumentProperty
   'strings
+  Dim strDelimiter As String
   Dim strControl As String
   Dim strField As String
   'longs
@@ -548,19 +558,56 @@ Private Sub UpdateIntegrationSettings()
 
   If Not Me.Visible Then Exit Sub
   strControl = Me.ActiveControl.Name
+  cptSaveSetting "Integration", "chkCAParent", IIf(Me.chkCAParent, 1, 0)
   If Left(strControl, 3) <> "cbo" Then GoTo exit_here
   If IsNull(Me.Controls(strControl).Value) Then GoTo exit_here
   lngField = Me.Controls(strControl).Value
   Me.Controls(strControl).BorderColor = -2147483642
   strControl = Me.ActiveControl.Name
+  'catch when WBS = CA; error; prompt to chkCAParent
+  If Me.ActiveControl.Name = "cboWBS" Or Me.ActiveControl.Name = "cboCA" Then
+    If Me.cboWBS.Value = Me.cboCA.Value Then
+      If Me.chkCAParent = False Then
+        Me.cboWBS.BorderColor = 192
+        Me.cboCA.BorderColor = 192
+        If MsgBox("Use Control Account (CA) outline parent as Work Breakdown Structure (WBS)?", vbQuestion + vbYesNo, "WBS = CA Parent") = vbYes Then
+          If Me.ActiveControl.Name = "cboWBS" And InStr(FieldConstantToFieldName(Me.cboWBS.Value), "Outline") = 0 Then
+            strDelimiter = InputBox("Provide the parent-child delimter:", "Delimiter Required", ".")
+          ElseIf Me.ActiveControl.Name = "cboCA" And InStr(FieldConstantToFieldName(Me.cboCA.Value), "Outline") = 0 Then
+            strDelimiter = InputBox("Provide the parent-child delimter:", "Delimiter Required", ".")
+          End If
+          If Len(strDelimiter) > 0 Then
+            cptSaveSetting "Integration", "CA_DELIMITER", strDelimiter
+            Me.cboWBS.BorderColor = -2147483642
+            Me.cboCA.BorderColor = -2147483642
+            Me.cboWBS.Width = 108 '126
+            Me.chkCAParent = True
+          End If
+        End If
+      End If
+    Else
+      Me.cboWBS.BorderColor = -2147483642
+      Me.cboCA.BorderColor = -2147483642
+      Me.cboWBS.Width = 126
+      Me.chkCAParent = False
+    End If
+  End If
   'first check the other controls
   For Each vControl In Split("WBS,OBS,CA,CAM,WP,EVT", ",")
     'skip activecontrol
     If Me.Controls("cbo" & vControl).Name = Me.Controls(strControl).Name Then GoTo next_uniq
     If Me.Controls("cbo" & vControl).Value = lngField Then
-      Me.Controls(strControl).BorderColor = 192 '-2147483642
-      MsgBox CustomFieldGetName(lngField) & " (" & FieldConstantToFieldName(lngField) & ") is already assigned to " & vControl & ".", vbExclamation + vbOKOnly, "Duplicate"
-      GoTo exit_here
+      If (vControl = "WBS" And strControl = "cboCA") Or (vControl = "CA" And strControl = "cboWBS") And Me.chkCAParent = True Then
+        'do nothing
+      Else
+        Me.Controls(strControl).BorderColor = 192 '-2147483642
+        If (vControl = "WBS" Or vControl = "CA") And Me.chkCAParent = True Then
+          MsgBox CustomFieldGetName(lngField) & " (" & FieldConstantToFieldName(lngField) & ") is already assigned to WBS and CA.", vbExclamation + vbOKOnly, "Duplicate"
+        Else
+          MsgBox CustomFieldGetName(lngField) & " (" & FieldConstantToFieldName(lngField) & ") is already assigned to " & vControl & ".", vbExclamation + vbOKOnly, "Duplicate"
+        End If
+        GoTo exit_here
+      End If
     End If
 next_uniq:
   Next vControl

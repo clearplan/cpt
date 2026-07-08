@@ -353,7 +353,8 @@ Function cptGuessDelimiter(ByRef vData As Variant, strRegEx As String) As Long
   Set dScores = CreateObject("Scripting.Dictionary")
   
   'check all "^([^\t\,\;]*[\t\,\;])"
-  RE.Pattern = "^([^\t\,\;]*[\t\,\;])"
+  If Len(strRegEx) = 0 Then strRegEx = "^([^\t\,\;]*[\t\,\;])"
+  RE.Pattern = strRegEx '"^([^\t\,\;]*[\t\,\;])"
   For lngItem = 0 To UBound(vData)
     Set REMatches = RE.Execute(CStr(vData(lngItem)))
     For Each REMatch In REMatches
