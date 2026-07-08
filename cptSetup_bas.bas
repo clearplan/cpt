@@ -662,7 +662,7 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gIntegration"" label=""Integration"" visible=""true"" >"
   'outline codes
   If cptModuleExists("cptBackbone_frm") And cptModuleExists("cptBackbone_bas") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" size=""large"" supertip=""Quickly create or edit Outline Codes (CWBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" size=""large"" supertip=""Quickly create or edit Outline Codes (WBS, OBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
   End If
   ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   If cptModuleExists("cptIMSCobraExport_bas") And cptModuleExists("cptIMSCobraExport_frm") Then
