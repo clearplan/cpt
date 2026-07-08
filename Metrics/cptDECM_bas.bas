@@ -43,6 +43,9 @@ Sub cptDECM_GET_DATA()
   Dim oLink As MSProject.TaskDependency
   Dim oTask As MSProject.Task
   'strings
+  Dim strWBS As String
+  Dim strDelimiter As String
+  Dim strSetting As String
   Dim strProject As String
   Dim strMetric As String
   Dim strRollingWaveDate As String
@@ -104,6 +107,7 @@ Sub cptDECM_GET_DATA()
   'doubles
   Dim dblScore As Double
   'booleans
+  Dim blnCAParent As Boolean
   Dim blnMaster As Boolean
   Dim blnLimitToPMB As Boolean
   Dim blnTaskHistoryExists As Boolean
@@ -111,6 +115,7 @@ Sub cptDECM_GET_DATA()
   Dim blnDumpToExcel As Boolean
   Dim blnErrorTrapping As Boolean
   'variants
+  Dim vWBS As Variant
   Dim vFile As Variant
   Dim vHeader As Variant
   Dim vField As Variant
@@ -369,6 +374,16 @@ next_mapping_task:
     Application.DefaultDateFormat = pjDate_mm_dd_yyyy
   End If
   blnResourceLoaded = False
+  strSetting = cptGetSetting("Integration", "chkCAParent")
+  If Len(strSetting) > 0 Then
+    blnCAParent = CBool(strSetting)
+  Else
+    blnCAParent = False
+  End If
+  If blnCAParent And InStr(FieldConstantToFieldName(lngWBS), "Outline") = 0 Then
+    strSetting = cptGetSetting("Integration", "CA_DELIMITER")
+    If Len(strDelimiter) = 0 Then strDelimiter = "."
+  End If
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_task
     If Not oTask.Active Then GoTo next_task
@@ -386,8 +401,24 @@ next_mapping_task:
       If vField = 0 Then
         strRecord = strRecord & "," 'account for empty WPM
         GoTo next_field
-      End If
-      If vField = FieldNameToFieldConstant("Physical % Complete") Then
+      ElseIf vField = lngWBS Then
+        strWBS = oTask.GetField(lngWBS)
+        If Len(strWBS) > 0 Then
+          If blnCAParent Then
+            If InStr(FieldConstantToFieldName(lngWBS), "Outline") > 0 Then
+              'use get outline code parent
+              strRecord = strRecord & Trim(cptGetOutlineCodeParent(CustomFieldGetName(lngWBS), oTask.GetField(lngWBS))) & ","
+            Else
+              'use get outline parent
+              strRecord = strRecord & Trim(cptGetOutlineParent(strWBS, strDelimiter)) & ","
+            End If
+          Else
+            strRecord = strRecord & Trim(oTask.GetField(CLng(vField))) & ","
+          End If
+        Else
+          strRecord = strRecord & ","
+        End If
+      ElseIf vField = FieldNameToFieldConstant("Physical % Complete") Then
         strRecord = strRecord & cptRegEx(oTask.GetField(vField), "[0-9]{1,}") & ","
       ElseIf vField = FieldNameToFieldConstant("% Complete") Then
         strRecord = strRecord & cptRegEx(oTask.GetField(vField), "[0-9]{1,}") & ","

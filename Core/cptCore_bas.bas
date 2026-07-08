@@ -775,6 +775,63 @@ err_here:
 
 End Sub
 
+Public Function cptGetOutlineParent(ByVal strOutlineChild As String, ByVal strDelimiter As String, Optional ByVal lngReturnLevel As Long = 0) As String
+  'assisted
+  Dim vLevels() As String
+  Dim lngChildLevels As Long
+  Dim lngItem As Long
+  Dim strResult As String
+
+  If Len(strOutlineChild) = 0 Then Exit Function
+
+  vLevels = Split(strOutlineChild, strDelimiter)
+  lngChildLevels = UBound(vLevels) + 1
+
+  'default = immediate parent
+  If lngReturnLevel = 0 Then
+      lngReturnLevel = lngChildLevels - 1
+  End If
+
+  'requested level does not exist
+  If lngReturnLevel < 1 Or lngReturnLevel > lngChildLevels Then
+      cptGetOutlineParent = strOutlineChild
+      Exit Function
+  End If
+
+  For lngItem = 0 To lngReturnLevel - 1
+      If lngItem > 0 Then strResult = strResult & strDelimiter
+      strResult = strResult & vLevels(lngItem)
+  Next lngItem
+
+  cptGetOutlineParent = strResult
+
+End Function
+
+Function cptGetOutlineCodeParent(strOutlineCode As String, strOutlineChild As String)
+  'this is very slow - build a cache/dictionary instead
+  Dim oOutlineCode As OutlineCode
+  Dim oLookupTable As LookupTable
+  Dim oLookupTableEntry As LookupTableEntry
+  Dim lngItem As Long
+  On Error Resume Next
+  Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
+  Set oLookupTable = oOutlineCode.LookupTable
+  For lngItem = 1 To oLookupTable.Count
+    Set oLookupTableEntry = oLookupTable.Item(lngItem)
+    If oLookupTableEntry.FullName = strOutlineChild Then
+      If oLookupTableEntry.Level = 1 Then
+        cptGetOutlineCodeParent = "*****"
+      Else
+        cptGetOutlineCodeParent = oLookupTableEntry.ParentEntry.FullName
+      End If
+      Exit For
+    End If
+  Next lngItem
+  Set oLookupTableEntry = Nothing
+  Set oLookupTable = Nothing
+  Set oOutlineCode = Nothing
+End Function
+
 Sub cptCleanCEI()
   Dim strFileName As String
   Dim oRecordset As New ADODB.Recordset
@@ -2079,6 +2136,7 @@ Sub cptShowSettings_frm()
   Dim strSettingsFileNew As String
   Dim strSettingsFile As String
   Dim strProgramAcronym As String
+  Dim strSetting As String
   Dim strFeature As String
   Dim strLine As String
   'longs
@@ -3165,6 +3223,18 @@ next_control:
       End If
     Else
       .chkSyncSettings.Enabled = False
+    End If
+
+    strSetting = cptGetSetting("Integration", "chkCAParent")
+    If Len(strSetting) > 0 Then
+      .chkCAParent = CBool(strSetting)
+      If .chkCAParent = True Then
+        .cboWBS.Width = 108
+      End If
+    End If
+    If .cboWBS <> .cboCA And .chkCAParent = True Then
+      .cboWBS.Width = 126
+      .chkCAParent = False
     End If
 
     If Not blnValid Or blnConfirmationRequired Then
