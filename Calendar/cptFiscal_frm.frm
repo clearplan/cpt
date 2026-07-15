@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.1</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptFiscal_frm"
 
@@ -38,8 +38,7 @@ Private Sub chkImportResults_Click()
 
   On Error GoTo 0
   If chkImportResults Then
-    Me.lblAvailableFields.Visible = True
-    Me.cboImportField.Visible = True
+    Me.cboImportField.Enabled = True
     Me.cboImportField.Clear
     Set oDict = New Scripting.Dictionary
     oDict.Add "Number", 20
@@ -67,19 +66,41 @@ Private Sub chkImportResults_Click()
     End If
   Else
     Me.cboImportField.Clear
-    Me.cboImportField.Visible = False
+    Me.cboImportField.Enabled = False
     Me.lblStatus.Visible = False
     Me.lblProgress.Visible = False
-    Me.lblAvailableFields.Visible = False
   End If
   
   Set oDict = Nothing
 End Sub
 
+Private Sub chkShowFiscalPeriods_Click()
+  Dim strSetting As String
+  Dim blnSetting As Boolean
+  If Not Me.Visible Then Exit Sub
+  blnSetting = Me.chkShowFiscalPeriods.Value
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", IIf(blnSetting, 1, 0)
+  If blnSetting Then
+    strSetting = cptGetSetting("Count", "blnShowStatusBarTaskCount")
+    If Len(strSetting) > 0 Then
+      If CBool(strSetting) = False Then
+        If MsgBox("This setting requires that selected task count be shown in status bar also.", vbInformation + vbOKCancel, "Status Bar Settings") = vbOK Then
+          cptSaveSetting "Count", "blnShowStatusBarTaskCount", 1
+        End If
+      End If
+    Else
+      If MsgBox("This setting requires that selected task count be shown in status bar also.", vbInformation + vbOKCancel, "Status Bar Settings") = vbOK Then
+        cptSaveSetting "Count", "blnShowStatusBarTaskCount", 1
+      End If
+    End If
+  End If
+  cptStartEvents
+End Sub
+
 Private Sub cmdAnalyzeEVT_Click()
   If Me.chkImportResults Then
     If IsNull(Me.cboImportField.Value) Then
-      MsgBox "Please select an avaialable local custom number or text field and try again.", vbCritical + vbOKOnly, "Import...where?"
+      MsgBox "Please select an available local custom number or text field and try again.", vbCritical + vbOKOnly, "Import...where?"
       Exit Sub
     Else
       Call cptAnalyzeEVT(Me.cboImportField.Value)
@@ -314,4 +335,5 @@ End Sub
 
 Private Sub UserForm_Terminate()
   Unload Me
+  cptStartEvents
 End Sub

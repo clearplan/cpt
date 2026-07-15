@@ -227,7 +227,7 @@
 	<Module>
 		<Name>cptEvents_cls</Name>
 		<FileName>cptEvents_cls.cls</FileName>
-		<Version>v1.5.0</Version>
+		<Version>v1.6.0</Version>
 		<Type>2</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -255,14 +255,14 @@
 	<Module>
 		<Name>cptFiscal_bas</Name>
 		<FileName>cptFiscal_bas.bas</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.4.0</Version>
 		<Type>1</Type>
 		<Directory>Calendar</Directory>
 	</Module>
 	<Module>
 		<Name>cptFiscal_frm</Name>
 		<FileName>cptFiscal_frm.frm</FileName>
-		<Version>v1.3.1</Version>
+		<Version>v1.4.0</Version>
 		<Type>3</Type>
 		<Directory>Calendar</Directory>
 	</Module>

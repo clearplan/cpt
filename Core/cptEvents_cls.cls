@@ -7,7 +7,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-'<cpt_version>v1.5.0</cpt_version>
+'<cpt_version>v1.6.0</cpt_version>
 Option Explicit
 Private WithEvents MyMSPApplication As Application
 Attribute MyMSPApplication.VB_VarHelpID = -1
@@ -19,22 +19,24 @@ Private Sub Class_Initialize()
 End Sub
 
 Private Sub MyMSPApplication_WindowSelectionChange(ByVal Window As Window, ByVal sel As Selection, ByVal selType As Variant)
-'objects
-Dim oUserForm As Object 'UserForm
-Dim oTasks As MSProject.Tasks
-Dim oTask As MSProject.Task
-Dim oResources As MSProject.Resources
-'strings
-'longs
-Dim lngItem As Long
-Dim lngItems As Long
-'integers
-'booleans
-'variants
-'dates
+  'objects
+  Dim oUserForm As Object 'UserForm
+  Dim oTasks As MSProject.Tasks
+  Dim oTask As MSProject.Task
+  Dim oResources As MSProject.Resources
+  'strings
+  'longs
+  Dim lngItem As Long
+  Dim lngItems As Long
+  Dim lngFiscalPeriods As Long
+  'integers
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
 
+  blnErrorTrapping = cptErrorTrapping
   On Error Resume Next
-  
   'Validate users selected view type
   If ActiveWindow.ActivePane.View.Type = pjTaskItem Then
     Set oTasks = ActiveSelection.Tasks
@@ -68,6 +70,16 @@ Dim lngItems As Long
         Else
           Application.StatusBar = Format(lngItems, "#,##0") & " task" & IIf(lngItems = 1, "", "s") & " selected"
         End If
+        If cptGetSetting("Fiscal", "chkShowFiscalPeriodCountInStatusBar") = 1 Then
+          lngFiscalPeriods = cptGetFiscalPeriods(oTasks)
+          If lngFiscalPeriods > 0 And cptCalendarExists("cptFiscalCalendar") Then 'todo: and setting
+            If Len(Application.StatusBar) > 0 Then
+              Application.StatusBar = Application.StatusBar & " | " & lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
+            Else
+              Application.StatusBar = lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
+            End If
+          End If
+        End If
       Else
         Application.StatusBar = "0 tasks selected"
       End If
@@ -97,6 +109,8 @@ Dim lngItems As Long
   Set oUserForm = cptGetUserForm("cptSmartDuration_frm") 'returns Nothing if form is not loaded
   If Not oUserForm Is Nothing Then Application.Run "cptUpdateSmartDurationForm", oUserForm
   
+  'cptStartEvents
+  
 exit_here:
   On Error Resume Next
   Set oUserForm = Nothing
@@ -109,3 +123,4 @@ err_here:
   Resume exit_here
   
 End Sub
+
