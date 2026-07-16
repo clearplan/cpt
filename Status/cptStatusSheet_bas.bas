@@ -36,6 +36,7 @@ Sub cptShowStatusSheet_frm()
   Dim intField As Integer
   'strings
   Dim strCptDir As String
+  Dim strCustomFieldName As String
   Dim strNewCustomFieldName As String
   Dim strLOE As String
   Dim strIgnoreLOE As String
@@ -67,6 +68,7 @@ Sub cptShowStatusSheet_frm()
   Dim strFileName As String
   'booleans
   Dim blnErrorTrapping As Boolean
+  Dim blnRemove As Boolean
   'dates
   Dim dtStatus As Date
   'variants
@@ -440,6 +442,7 @@ skip_fields:
         .MoveFirst
         lngItem = 0
         Do While Not .EOF
+          blnRemove = False
           myStatusSheet_frm.lboExport.AddItem
           myStatusSheet_frm.lboExport.List(lngItem, 0) = .Fields(0) 'Field Constant
           myStatusSheet_frm.lboExport.List(lngItem, 1) = .Fields(1) 'Custom Field Name
@@ -448,29 +451,41 @@ skip_fields:
           'todo: was this for filtering out enterprise fields since CFGN = FCFN?
           'If cptRegEx(FieldConstantToFieldName(.Fields(0)), "[0-9]{1,}$") = "" Then GoTo next_item
           'If InStr("Custom", FieldConstantToFieldName(FieldNameToFieldConstant(.Fields(2)))) = 0 Then GoTo next_item
-          If CustomFieldGetName(.Fields(0)) <> CStr(.Fields(1)) Then
+          If .Fields(0) >= 188776000 Then 'it's an ECF
+            If FieldConstantToFieldName(.Fields(0)) = "<Unavailable>" Then 'it's no longer available
+              MsgBox "The saved export field '" & .Fields(1) & "' is no longer accessible in the Enterprise Project Global and will be removed.", vbExclamation + vbOKOnly, "Status Sheet"
+              blnRemove = True
+              goto remove_saved_ecf
+            End if
+          End IF
+          strCustomFieldName = CustomFieldGetName(.Fields(0))
+          If strCustomFieldName <> CStr(.Fields(1)) Then
             If FieldConstantToFieldName(.Fields(0)) = CStr(.Fields(1)) Then GoTo next_item
-            If Len(CustomFieldGetName(.Fields(0))) > 0 Then
-              strNewCustomFieldName = CustomFieldGetName(.Fields(0))
+            If Len(strCustomFieldName) > 0 Then
+              strNewCustomFieldName = strCustomFieldName
             Else
               strNewCustomFieldName = "<unnamed>"
             End If
             'prompt user to accept changed name or remove from list
-            If MsgBox("Saved field '" & .Fields(1) & "' has been renamed to '" & strNewCustomFieldName & "'." & vbCrLf & vbCrLf & "Click Yes to accept the name change." & vbCrLf & "Click No to remove from export list.", vbExclamation + vbYesNo, "Confirm Export Field") = vbYes Then
+            If MsgBox("Saved export field '" & .Fields(1) & "' has been renamed to '" & strNewCustomFieldName & "'." & vbCrLf & vbCrLf & "Click Yes to accept the name change." & vbCrLf & "Click No to remove from export list.", vbExclamation + vbYesNo, "Confirm Export Field") = vbYes Then
               'update export list
               myStatusSheet_frm.lboExport.List(lngItem, 1) = CustomFieldGetName(.Fields(0))
               'update the adtg
               .Fields(1) = CustomFieldGetName(.Fields(0))
               .Update
             Else
-              'remove from export list
-              myStatusSheet_frm.lboExport.RemoveItem (lngItem)
-              'remove from adtg
-              .Delete adAffectCurrent
-              .Update
-              lngItem = lngItem - 1
+              blnRemove = True
             End If
           End If
+remove_saved_ecf:
+          If blnRemove Then
+            'remove from export list
+            myStatusSheet_frm.lboExport.RemoveItem (lngItem)
+            'remove from adtg
+            .Delete adAffectCurrent
+            .Update
+            lngItem = lngItem - 1
+          End if
 next_item:
           lngItem = lngItem + 1
           .MoveNext
