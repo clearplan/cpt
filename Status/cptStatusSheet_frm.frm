@@ -433,6 +433,7 @@ Sub cmdAdd_Click()
   'doubles
   'booleans
   Dim blnExists As Boolean
+  Dim blnSelected As Boolean
   'variants
   'dates
 
@@ -452,8 +453,10 @@ Sub cmdAdd_Click()
     strEVP = FieldConstantToFieldName(lngEVP)
   End If
   
+  blnSelected = False
   For lngField = 0 To Me.lboFields.ListCount - 1
     If Me.lboFields.Selected(lngField) Then
+      blnSelected = True
       'do not allow EVT
       If CLng(Me.lboFields.List(lngField)) = lngEVT Then
         MsgBox "The EVT Field ('" & strEVT & "') is automatically included.", vbInformation + vbOKOnly, "EVT Rejected"
@@ -480,7 +483,7 @@ Sub cmdAdd_Click()
 next_item:
   Next lngField
 
-  cptRefreshStatusTable Me
+  If blnSelected Then cptRefreshStatusTable Me
 
 exit_here:
   On Error Resume Next
@@ -498,23 +501,27 @@ Private Sub cmdAddAll_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  For lngField = 0 To Me.lboFields.ListCount - 1
-    'ensure doesn't already exist
-    blnExists = False
-    For lngExists = 0 To Me.lboExport.ListCount - 1
-      If Me.lboExport.List(lngExists, 0) = Me.lboFields.List(lngField) Then
-        GoTo next_item
-      End If
-    Next lngExists
-    Me.lboExport.AddItem
-    lngExport = Me.lboExport.ListCount - 1
-    Me.lboExport.List(lngExport, 0) = Me.lboFields.List(lngField, 0)
-    Me.lboExport.List(lngExport, 1) = Me.lboFields.List(lngField, 1)
-    Me.lboExport.List(lngExport, 2) = Me.lboFields.List(lngField, 2)
-next_item:
-  Next lngField
+  If Me.lboExport.ListCount > 0 Then
 
-  cptRefreshStatusTable Me
+    For lngField = 0 To Me.lboFields.ListCount - 1
+      'ensure doesn't already exist
+      blnExists = False
+      For lngExists = 0 To Me.lboExport.ListCount - 1
+        If Me.lboExport.List(lngExists, 0) = Me.lboFields.List(lngField) Then
+          GoTo next_item
+        End If
+      Next lngExists
+      Me.lboExport.AddItem
+      lngExport = Me.lboExport.ListCount - 1
+      Me.lboExport.List(lngExport, 0) = Me.lboFields.List(lngField, 0)
+      Me.lboExport.List(lngExport, 1) = Me.lboFields.List(lngField, 1)
+      Me.lboExport.List(lngExport, 2) = Me.lboFields.List(lngField, 2)
+next_item:
+    Next lngField
+  
+    cptRefreshStatusTable Me
+    
+  End If
 
 exit_here:
   On Error Resume Next
@@ -630,16 +637,19 @@ End Sub
 
 Private Sub cmdRemove_Click()
   Dim lngExport As Long
+  Dim blnSelected As Boolean
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
+  blnSelected = False
   For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
     If Me.lboExport.Selected(lngExport) Then
       Me.lboExport.RemoveItem lngExport
+      blnSelected = True
     End If
   Next lngExport
 
-  cptRefreshStatusTable Me
+  If blnSelected Then cptRefreshStatusTable Me
 
 exit_here:
   On Error Resume Next
@@ -656,11 +666,12 @@ Private Sub cmdRemoveAll_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
-    Me.lboExport.RemoveItem lngExport
-  Next lngExport
-
-  cptRefreshStatusTable Me
+  If Me.lboExport.ListCount > 0 Then
+    For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
+      Me.lboExport.RemoveItem lngExport
+    Next lngExport
+    cptRefreshStatusTable Me
+  End If
 
 exit_here:
   On Error Resume Next
