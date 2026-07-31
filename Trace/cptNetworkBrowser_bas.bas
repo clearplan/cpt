@@ -742,6 +742,7 @@ Sub cptExportCrossProjectLinks()
   Dim oWorksheet As Excel.Worksheet
   Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
+  Dim oPred As MSProject.Task
   Dim oLink As MSProject.TaskDependency
   'longs
   Dim lngCount As Long
@@ -751,8 +752,6 @@ Sub cptExportCrossProjectLinks()
   Dim lngPUID As Long
   Dim lngTask As Long
   Dim lngTaskCount As Long
-  Dim lngSubproject As Long
-  Dim lngSubprojectCount As Long
   'strings
   Dim strProject As String
   Dim strProjectUID As String
@@ -763,18 +762,16 @@ Sub cptExportCrossProjectLinks()
   Dim blnErrorTrapping As Boolean
   Dim blnMaster As Boolean
   
-  strProjectUID = "Project-UID2" 'PUID, etc.
-  
-  blnErrorTrapping = cptErrorTrapping
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-  'todo: what if a subproject is opened directly...
-  'todo: ...should still allow export...
   blnMaster = ActiveProject.Subprojects.Count > 0
-  If ActiveProject.Subprojects.Count = 0 Then
+  If Not blnMaster Then
     MsgBox "This project has no subprojects.", vbExclamation + vbOKOnly, "Export CPLs"
     GoTo exit_here
   End If
+  
+  strProjectUID = "PUID" 'use listbox?
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   If oSubMap Is Nothing Then
     Application.StatusBar = "Building Subproject map..."
@@ -782,64 +779,71 @@ Sub cptExportCrossProjectLinks()
     Application.StatusBar = ""
   End If
   
-  'remove summaries
-  'filter unique id preds for contains <>
-  'select all
-  'FROM:PROJECT,UID[M],UID[S],TASK_NAME,LINK:TYPE,LINK:LAG,TO:PROJECT,UID[M],UID[S],TASK_NAME
-  'todo: get rid of hard-coded PUID
-  'todo: use cptListBox to get other custom fields, put between PROJECT and UID[M]
-  ReDim vCPL(0 To 11, 0 To 0)
-  lngCount = 0
-  lngSubprojectCount = ActiveProject.Subprojects.Count
-  For Each oSubproject In ActiveProject.Subprojects
-    lngPUID = FieldNameToFieldConstant(strProjectUID, pjTask)
-    lngTask = 0
-    lngTaskCount = oSubproject.SourceProject.Tasks.Count
-    For Each oTask In oSubproject.SourceProject.Tasks
-      If oTask Is Nothing Then GoTo next_task
-      If oTask.ExternalTask = True Then GoTo next_task
-      If Not oTask.Active Then GoTo next_task
-      For Each oLink In oTask.TaskDependencies
-        If oLink.To.Guid = oTask.Guid And oLink.From.ExternalTask = True Then   'preds only
-          If Not oLink.From.Active Then GoTo next_link
-          ReDim Preserve vCPL(0 To 11, 0 To lngCount)
-          'fix the returned UID
-          lngSourceUID = oLink.From.GetField(185073906) Mod 4194304
-          strProject = oLink.From.Project
-          If Left(strProject, 2) = "<>" Then
-            strProject = Replace(strProject, "<>\", "")
-          Else
-            strProject = Replace(cptRegEx(strProject, "[^\\/]*.mpp$"), ".mpp", "")
-          End If
-          lngFactor = oSubMap(strProject)
-          lngMasterUID = (lngFactor * 4194304) + lngSourceUID
-          vCPL(0, lngCount) = oLink.From.Project
-          vCPL(1, lngCount) = lngMasterUID
-          vCPL(2, lngCount) = lngSourceUID
-          vCPL(3, lngCount) = oLink.From.GetField(lngPUID)
-          vCPL(4, lngCount) = oLink.From.Name
-          vCPL(5, lngCount) = Choose(oLink.Type + 1, "FF", "FS", "SF", "SS")
-          vCPL(6, lngCount) = Round(oLink.Lag / 480, 1)
-          vCPL(7, lngCount) = oTask.Project
-          vCPL(8, lngCount) = (oSubMap(oTask.Project) * 4194304) + oTask.UniqueID
-          vCPL(9, lngCount) = oTask.UniqueID
-          vCPL(10, lngCount) = oTask.GetField(lngPUID)
-          vCPL(11, lngCount) = oTask.Name
-          lngCount = lngCount + 1
-        End If
-next_link:
-      Next oLink
-next_task:
-      lngTask = lngTask + 1
-      Application.StatusBar = "EXPORTING CPLs: Subproject " & lngSubproject & "/" & lngSubprojectCount & " (" & Format(lngSubproject / lngSubprojectCount, "0%") & ") | Tasks " & Format(lngTask, "#,##0") & "/" & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(lngCount, "#,##0") & " CPLs found"
-    Next oTask
-next_subproject:
-    lngSubproject = lngSubproject + 1
-    Application.StatusBar = "EXPORTING CPLs: Subproject " & lngSubproject & "/" & lngSubprojectCount & " (" & Format(lngSubproject / lngSubprojectCount, "0%") & ") | Tasks " & Format(lngTask, "#,##0") & "/" & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(lngCount, "#,##0") & " CPLs found"
-  Next oSubproject
+  cptSpeed True
   
+  FilterClear
+  SelectAll
+  OutlineShowAllTasks
+  OptionsViewEx DisplayNameIndent:=False, DisplaySummaryTasks:=False, DisplayExternalSuccessors:=True, DisplayExternalPredecessors:=True
+  SetAutoFilter "Unique ID Predecessors", pjAutoFilterCustom, "contains", ":", "or", "contains", "<>"
+  SelectAll
+  
+  ReDim vCPL(0 To 16, 0 To 0)
+  lngCount = 0
+  lngPUID = FieldNameToFieldConstant(strProjectUID, pjTask)
+  lngTask = 0
+  lngTaskCount = ActiveSelection.Tasks.Count
+  For Each oTask In ActiveSelection.Tasks
+    If oTask Is Nothing Then GoTo next_task
+    If oTask.ExternalTask = True Then GoTo next_task
+    If Not oTask.Active Then GoTo next_task
+    For Each oLink In oTask.TaskDependencies
+      If oLink.To.Guid = oTask.Guid And oLink.From.ExternalTask = True Then 'preds only
+        If Not oLink.From.Active Then GoTo next_link
+        ReDim Preserve vCPL(0 To 16, 0 To lngCount)
+        'fix the returned UID
+        lngSourceUID = oLink.From.GetField(185073906) Mod 4194304
+        strProject = Replace(cptRxMatch(oLink.From.Project, "[^\\/]+$"), ".mpp", "")
+        lngFactor = oSubMap(strProject)
+        lngMasterUID = (lngFactor * 4194304) + lngSourceUID
+        vCPL(0, lngCount) = oLink.From.Project
+        vCPL(1, lngCount) = lngMasterUID
+        vCPL(2, lngCount) = lngSourceUID
+        Set oPred = Nothing
+        On Error Resume Next
+        Set oPred = ActiveProject.Tasks.UniqueID(lngMasterUID)
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        If Not oPred Is Nothing Then
+          vCPL(3, lngCount) = oPred.GetField(lngPUID)
+        Else
+          vCPL(3, lngCount) = "<<< GHOST >>>"
+        End If
+        vCPL(4, lngCount) = oLink.From.Name
+        vCPL(5, lngCount) = Choose(oLink.Type + 1, "FF", "FS", "SF", "SS")
+        vCPL(6, lngCount) = Round(oLink.Lag / 480, 1)
+        vCPL(7, lngCount) = oTask.Project
+        vCPL(8, lngCount) = oTask.UniqueID
+        vCPL(9, lngCount) = oLink.To.UniqueID
+        vCPL(10, lngCount) = oTask.GetField(lngPUID)
+        vCPL(11, lngCount) = oTask.Name
+        vCPL(12, lngCount) = oTask.ActualFinish
+        vCPL(13, lngCount) = Choose(oTask.ConstraintType + 1, "ASAP", "ALAP", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT")
+        vCPL(14, lngCount) = oTask.ConstraintDate
+        vCPL(15, lngCount) = oTask.Start
+        vCPL(16, lngCount) = oTask.PredecessorTasks.Count
+        lngCount = lngCount + 1
+      End If
+next_link:
+    Next oLink
+next_task:
+    lngTask = lngTask + 1
+    Application.StatusBar = "EXPORTING CPLs: Tasks " & Format(lngTask, "#,##0") & "/" & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(lngCount, "#,##0") & " CPLs found"
+    DoEvents
+  Next oTask
+    
   'export to Excel
   Application.StatusBar = "Exporting to Excel..."
+  DoEvents
   On Error Resume Next
   Set oExcel = GetObject(, "Excel.Application")
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -849,17 +853,33 @@ next_subproject:
   oExcel.Visible = True
   Set oWorkbook = oExcel.Workbooks.Add
   Set oWorksheet = oWorkbook.Sheets(1)
-  oWorksheet.[A2].Resize(, UBound(vCPL, 1) + 1) = Split("PROJECT,UID[M],UID[S],PUID,TASK NAME,TYPE,LAG(DAYS),PROJECT,UID[M],UID[S],PUID,TASK NAME", ",")
+  oWorksheet.[A2].Resize(, UBound(vCPL, 1) + 1) = Split("PROJECT,UID[M],UID[S],PUID,TASK NAME,TYPE,LAG(DAYS),PROJECT,UID[M],UID[S],PUID,TASK NAME,ACTUAL FINISH,CONSTRAINT TYPE,CONSTRAINT DATE,FORECAST START,PRED COUNT", ",")
   oWorksheet.[A3].Resize(UBound(vCPL, 2) + 1, UBound(vCPL, 1) + 1) = oExcel.WorksheetFunction.Transpose(vCPL)
+  'conditional formatting
+  With oWorksheet.Range(oWorksheet.[D3], oWorksheet.[D3].End(xlDown))
+    .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""<<< GHOST >>>"""
+    .FormatConditions(.FormatConditions.Count).SetFirstPriority
+    With .FormatConditions(1).Font
+      .Color = -16383844
+      .TintAndShade = 0
+    End With
+    With .FormatConditions(1).Interior
+      .PatternColorIndex = xlAutomatic
+      .Color = 13551615
+      .TintAndShade = 0
+    End With
+    .FormatConditions(1).StopIfTrue = False
+  End With
   oExcel.ActiveWindow.Zoom = 85
   oExcel.ActiveWindow.DisplayGridlines = False
-  oWorksheet.[A1] = "FROM"
+  oWorksheet.[A1] = "GIVER"
   oWorksheet.[A1:E1].HorizontalAlignment = xlCenterAcrossSelection
   oWorksheet.[F1] = "LINK"
   oWorksheet.[F1:G1].HorizontalAlignment = xlCenterAcrossSelection
-  oWorksheet.[H1] = "TO"
-  oWorksheet.[H1:L1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[H1] = "RECEIVER"
+  oWorksheet.[H1:Q1].HorizontalAlignment = xlCenterAcrossSelection
   oWorksheet.[A1].Resize(2, UBound(vCPL, 1) + 1).Font.Bold = True
+  oWorksheet.[A1].Resize(1, UBound(vCPL, 1) + 1).Font.Size = 20
   oWorksheet.[A2].AutoFilter
   For Each vCol In Array(1, 5, 8, 12)
     With oWorksheet.Columns(vCol)
@@ -868,19 +888,31 @@ next_subproject:
       .WrapText = True
     End With
   Next vCol
+  For Each vCol In Array(13, 15, 16)
+    oWorksheet.Range(oWorksheet.Cells(oWorksheet.[A3].Row, vCol), oWorksheet.Cells(oWorksheet.[A3].End(xlDown).Row, vCol)).NumberFormat = "m/d/yyyy"
+  Next vCol
+  oWorksheet.Range(oWorksheet.[A3].End(xlDown), oWorksheet.[A3].End(xlToRight)).HorizontalAlignment = xlCenter
+  For Each vCol In Array(1, 5, 8, 12)
+    oWorksheet.Range(oWorksheet.Cells(oWorksheet.[A3].Row, vCol), oWorksheet.Cells(oWorksheet.[A3].End(xlDown).Row, vCol)).HorizontalAlignment = xlLeft
+  Next vCol
   oWorksheet.Range(oWorksheet.[A3].End(xlDown), oWorksheet.[A3].End(xlToRight)).VerticalAlignment = xlCenter
   oExcel.ActiveWindow.SplitColumn = 0
   oExcel.ActiveWindow.SplitRow = 2
   oExcel.ActiveWindow.FreezePanes = True
   oWorksheet.Columns.AutoFit
   cptAddBorders oWorksheet.Range(oWorksheet.[A2].End(xlToRight).Offset(-1, 0), oWorksheet.[A2].End(xlDown))
+  'todo: border around GIVER;LINK;RECEIVER
   cptAddShading oWorksheet.Range(oWorksheet.[A2].Offset(-1, 0), oWorksheet.[A2].End(xlToRight))
   Application.StatusBar = Format(lngCount, "#,##0") & " cross-project links exported."
+  DoEvents
+  
+  'todo: add macro
   
   MsgBox Format(lngCount, "#,##0") & " cross-project links exported.", vbInformation + vbOKOnly, "CPLs"
   
 exit_here:
   On Error Resume Next
+  cptSpeed False
   Application.StatusBar = ""
   oSubMap.RemoveAll
   Set oWorksheet = Nothing
@@ -889,6 +921,7 @@ exit_here:
   Set oSubMap = Nothing
   Set oLink = Nothing
   Set oTask = Nothing
+  Set oPred = Nothing
   Set oSubproject = Nothing
   Exit Sub
 err_here:
@@ -911,12 +944,13 @@ Sub cptGetSubMap()
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  
   If oSubMap Is Nothing Then
     Set oSubMap = CreateObject("Scripting.Dictionary")
   Else
     oSubMap.RemoveAll
   End If
+  Application.Calculation = pjManual
   For Each oSubproject In ActiveProject.Subprojects
     If Left(oSubproject.Path, 2) = "<>" Then 'PWA
       oSubMap.Add Replace(oSubproject.Path, "<>\", ""), 0
@@ -937,6 +971,7 @@ Sub cptGetSubMap()
       End If
     End If
   Next oSubproject
+  Application.CalculateProject
   For Each oTask In ActiveProject.Tasks
     If oSubMap.Exists(oTask.Project) Then
       If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
@@ -947,6 +982,7 @@ next_mapping_task:
   
 exit_here:
   On Error Resume Next
+  Application.Calculation = pjAutomatic
   Set oTask = Nothing
   Set oSubproject = Nothing
 
