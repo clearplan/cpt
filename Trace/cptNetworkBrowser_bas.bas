@@ -776,7 +776,7 @@ Sub cptExportCrossProjectLinks()
     GoTo exit_here
   End If
   
-  strProjectUID = "PUID" 'use listbox?
+  strProjectUID = "Project-UID2" 'use listbox?
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -930,6 +930,7 @@ next_task:
   oExcel.Visible = True
   Set oWorkbook = oExcel.Workbooks.Add
   Set oWorksheet = oWorkbook.Sheets(1)
+  oWorksheet.Name = "CrossProjectLinks"
   oWorksheet.[A2].Resize(, UBound(vCPL, 1) + 1) = Split("PROJECT,UID[M],UID[S],PUID,TASK NAME,GRUID,TYPE,LAG(DAYS),PROJECT,UID[M],UID[S],PUID,TASK NAME,ACTUAL FINISH,CONSTRAINT TYPE,CONSTRAINT DATE,FORECAST START,PRED COUNT", ",")
   oWorksheet.[A3].Resize(UBound(vCPL, 2) + 1, UBound(vCPL, 1) + 1) = oExcel.WorksheetFunction.Transpose(vCPL)
   'conditional formatting
@@ -1022,16 +1023,17 @@ next_task:
   strCode = strCode & "  Dim strR_PUID As String" & vbCrLf
   strCode = strCode & "  If Target.Cells.Count > 1 Then Exit Sub" & vbCrLf
   strCode = strCode & "  strG_PUID = Me.Cells(Target.Row, 4)" & vbCrLf
-  strCode = strCode & "  strR_PUID = Me.Cells(Target.Row, 11)" & vbCrLf
+  strCode = strCode & "  strR_PUID = Me.Cells(Target.Row, 12)" & vbCrLf
   strCode = strCode & "  Dim oMSPROJ As Object 'MSProject.Application" & vbCrLf
   strCode = strCode & "  Dim oProject As Object 'MSProject.Project" & vbCrLf
   strCode = strCode & "  Set oMSPROJ = GetObject(, ""MSProject.Application"")" & vbCrLf
   strCode = strCode & "  Set oProject = oMSPROJ.ActiveProject" & vbCrLf
   strCode = strCode & "  If Len(strG_PUID) > 0 Or Len(strR_PUID) > 0 Then" & vbCrLf
-  strCode = strCode & "    oMSPROJ.SetAutoFilter ""PUID"", 1, ""equals"", strG_PUID, ""or"", ""equals"", strR_PUID" & vbCrLf
+  strCode = strCode & "    oMSPROJ.SetAutoFilter """ & strProjectUID & """, 1, ""equals"", strG_PUID, ""or"", ""equals"", strR_PUID" & vbCrLf
   strCode = strCode & "  Else" & vbCrLf
   strCode = strCode & "    oMSPROJ.FilterClear" & vbCrLf
   strCode = strCode & "  End If" & vbCrLf
+  strCode = strCode & "  oMSPROJ.ActiveWindow.TopPane.Activate" & vbCrLf
   strCode = strCode & "  oMSPROJ.SelectBeginning" & vbCrLf
   strCode = strCode & "  oMSPROJ.SelectAll" & vbCrLf
   strCode = strCode & "  Set oProject = Nothing" & vbCrLf
