@@ -747,7 +747,9 @@ Sub cptExportCrossProjectLinks()
     GoTo exit_here
   End If
   
-  strProjectUID = "Project-UID2" 'use listbox?
+  strProjectUID = cptGetListBoxData(cptGetCustomFields("t", "Text", "cfn,fc", True), fmListStylePlain, fmMultiSelectSingle, "Identify Project-Unique ID:", ";0 pt", True, False)
+  If Len(strProjectUID) = 0 Then Exit Sub
+  lngPUID = FieldNameToFieldConstant(strProjectUID)
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
