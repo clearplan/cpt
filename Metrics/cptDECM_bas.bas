@@ -26,7 +26,7 @@ Private oSubMap As Scripting.Dictionary
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
   'objects
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim myDECM_frm As cptDECM_frm
   Dim oException As MSProject.Exception
   Dim oTasks As MSProject.Tasks
@@ -281,29 +281,10 @@ Sub cptDECM_GET_DATA()
     
     'set up mapping
     If oSubMap Is Nothing Then
-      Set oSubMap = CreateObject("Scripting.Dictionary")
-    Else
-      oSubMap.RemoveAll
+      Application.StatusBar = "Building SubMap..."
+      cptGetSubMap
+      Application.StatusBar = "Building SubMap...done."
     End If
-    For Each oSubProject In ActiveProject.Subprojects
-      If Left(oSubProject.Path, 2) = "<>" Then 'PWA
-        oSubMap.Add Replace(oSubProject.Path, "<>\", ""), 0
-      Else 'mpp (local or SharePoint
-        oSubMap.Add Replace(cptRegEx(oSubProject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
-      End If
-    Next oSubProject
-    For Each oTask In ActiveProject.Tasks
-      If oTask Is Nothing Then GoTo next_mapping_task
-      If Not oTask.Active Then GoTo next_mapping_task
-      If oSubMap.Exists(oTask.Project) Then
-        If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
-        If Not oTask.Summary Then
-          oSubMap.Item(oTask.Project) = CLng(oTask.UniqueID / 4194304)
-        End If
-      End If
-next_mapping_task:
-      If oTask.Active Then lngTasks = lngTasks + 1
-    Next oTask
     
   Else
     lngTasks = ActiveProject.Tasks.Count
@@ -4729,7 +4710,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   'objects
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
   Dim oExcel As Excel.Application
@@ -5089,7 +5070,7 @@ exit_here:
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oSubMap = Nothing
   Application.StatusBar = ""
   oExcel.EnableEvents = True

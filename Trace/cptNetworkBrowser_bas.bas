@@ -173,39 +173,10 @@ Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
   'determine if there are subprojects loaded (this affects displayed UIDs)
   blnSubprojects = ActiveProject.Subprojects.Count > 0
   
-  If blnSubprojects Then
-    If oSubMap Is Nothing Then
-      Set oSubMap = CreateObject("Scripting.Dictionary")
-    Else
-      oSubMap.RemoveAll
-    End If
-    For Each oSubproject In ActiveProject.Subprojects
-      If Left(oSubproject.Path, 2) = "<>" Then 'PWA
-        oSubMap.Add Replace(oSubproject.Path, "<>\", ""), 0
-      Else 'mpp (local or remote)
-        oSubMap.Add Replace(cptRegEx(oSubproject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
-      End If
-      If oSubproject.IsLoaded = False Then
-        Application.OpenUndoTransaction "cpt - load subproject"
-        FilterClear
-        GroupClear
-        SelectAll
-        OutlineShowAllTasks
-        Application.CloseUndoTransaction
-        If Application.GetUndoListCount > 0 Then
-          If Application.GetUndoListItem(1) = "cpt - load subproject" Then
-            Application.Undo
-          End If
-        End If
-      End If
-    Next oSubproject
-    For Each oTask In ActiveProject.Tasks
-      If oSubMap.Exists(oTask.Project) Then
-        If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
-        oSubMap.Item(oTask.Project) = CLng(oTask.UniqueID / 4194304)
-      End If
-next_mapping_task:
-    Next oTask
+  If blnSubprojects And oSubMap Is Nothing Then
+    Application.StatusBar = "Building SubMap..."
+    cptGetSubMap
+    Application.StatusBar = "Building SubMap...done."
   End If
   
   'reset after mapping
@@ -784,7 +755,7 @@ Sub cptExportCrossProjectLinks()
   If oSubMap Is Nothing Then
     Application.StatusBar = "Building SubMap..."
     cptGetSubMap
-    Application.StatusBar = ""
+    Application.StatusBar = "Building SubMap...done."
   End If
   
   cptSpeed True
@@ -808,7 +779,7 @@ Sub cptExportCrossProjectLinks()
       oTaskMap.Add oTask.UniqueID, oTask
     End If
   Next oTask
-  Application.StatusBar = ""
+  Application.StatusBar = "Building TaskMap...done."
   
   ReDim vCPL(0 To 17, 0 To 0)
   lngCount = 0
