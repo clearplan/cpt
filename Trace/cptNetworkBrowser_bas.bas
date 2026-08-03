@@ -733,6 +733,9 @@ Sub cptExportCrossProjectLinks()
   Dim strCode As String
   Dim strFromPUID As String
   Dim strToPUID As String
+  Dim strFilterName As String
+  Dim strTableName As String
+  Dim strViewName As String
   'variants
   Dim vCol As Variant
   Dim vCPL() As Variant
@@ -764,13 +767,35 @@ Sub cptExportCrossProjectLinks()
   
   'todo: add to Master Toolset on Ribbon
   ActiveWindow.TopPane.Activate
+  
+  'create a CPL Table
+  strTableName = "cptCPL Table"
+  TableEditEx Name:=strTableName, TaskTable:=True, Create:=True, OverwriteExisting:=True, FieldName:="ID", Title:="", Width:=10, Align:=1, ShowInMenu:=False, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Unique ID", Title:="", Width:=10, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:=strProjectUID, Title:="", Width:=10, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Unique ID Predecessors", Title:="", Width:=25, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Name", Title:="", Width:=60, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Unique ID Successors", Title:="", Width:=25, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  strViewName = "cptCPL View"
+  'create a CPL Filter
+  strFilterName = "cptCPL Filter"
+  FilterEdit Name:=strFilterName, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Unique ID Predecessors", Test:="contains", Value:=":", ShowInMenu:=True, ShowSummaryTasks:=False 'c:\ and https://
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Predecessors", Test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", Test:="contains", Value:=":", Operation:="Or", ShowSummaryTasks:=False 'c:\ and https://
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", Test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
+  'create/apply a CPL View
+  If ActiveProject.CurrentView = strViewName Then ViewApply "Gantt Chart"
+  If cptViewExists(strViewName) Then ActiveProject.Views(strViewName).Delete
+  ViewEditSingle strViewName, True, , pjTaskSheet, , , strTableName, strFilterName, "No Group"
+  ViewApply strViewName
   OptionsViewEx DisplayNameIndent:=True, DisplaySummaryTasks:=True, DisplayExternalSuccessors:=True, DisplayExternalPredecessors:=True
   Sort "ID", , , , , , False, True
   FilterClear
   SelectAll
   OutlineShowAllTasks
+  ViewApply strViewName
+  FilterApply strFilterName
   OptionsViewEx DisplayNameIndent:=False, DisplaySummaryTasks:=False, DisplayExternalSuccessors:=True, DisplayExternalPredecessors:=True
-  SetAutoFilter "Unique ID Predecessors", pjAutoFilterCustom, "contains", ":", "or", "contains", "<>"
   SelectAll
   
   'build taskindex
@@ -807,6 +832,7 @@ Sub cptExportCrossProjectLinks()
         lngSourceUID = oFrom.GetField(185073906) Mod 4194304
         'strProject = Replace(cptRxMatch(oFrom.Project, "[^\\/]+$"), ".mpp", "") 'KEEP: in case https://file.mpp
         strProject = Replace(Mid$(oFrom.Project, InStrRev(oFrom.Project, "\") + 1), ".mpp", "")
+        strProject = Replace(Mid$(strProject, InStrRev(strProject, "/") + 1), ".mpp", "")
         lngFactor = oSubMap(strProject)
         lngMasterUID = (lngFactor * 4194304) + lngSourceUID
         vCPL(0, lngCount) = strProject
@@ -840,8 +866,8 @@ Sub cptExportCrossProjectLinks()
         vCPL(16, lngCount) = oTask.Start
         vCPL(17, lngCount) = oTask.PredecessorTasks.Count
         lngCount = lngCount + 1
-      ElseIf oFrom.Guid = oTask.Guid And oTo.ExternalTask = True Then 'succs too tho
-        'only export if ghost...
+      ElseIf oFrom.Guid = oTask.Guid And oTo.ExternalTask = True Then
+        'only export if ghost (all others rels included by definition above)
         If Not oTo.Active Then GoTo next_link
         If lngCount > UBound(vCPL, 2) Then
           ReDim Preserve vCPL(0 To 17, 0 To UBound(vCPL, 2) + CHUNK_SIZE)
@@ -850,9 +876,10 @@ Sub cptExportCrossProjectLinks()
         lngSourceUID = oTo.GetField(185073906) Mod 4194304
         'strProject = Replace(cptRxMatch(oFrom.Project, "[^\\/]+$"), ".mpp", "") 'KEEP: in case https://file.mpp
         strProject = Replace(Mid$(oTo.Project, InStrRev(oTo.Project, "\") + 1), ".mpp", "")
+        strProject = Replace(Mid$(strProject, InStrRev(strProject, "/") + 1), ".mpp", "")
         lngFactor = oSubMap(strProject)
         lngMasterUID = (lngFactor * 4194304) + lngSourceUID
-        Set oPred = Nothing 'todo: change to oSucc
+        Set oPred = Nothing
         On Error Resume Next
         Set oPred = oTaskMap(lngMasterUID)
         If oPred Is Nothing Then
@@ -991,26 +1018,41 @@ next_task:
   strCode = strCode & "Option Explicit" & vbCrLf
   strCode = strCode & "" & vbCrLf
   strCode = strCode & "Private Sub Worksheet_SelectionChange(ByVal Target As Range)" & vbCrLf
-  strCode = strCode & "  If Not BLN_FILTER Then Exit Sub" & vbCrLf
-  strCode = strCode & "  Dim strG_PUID As String" & vbCrLf
-  strCode = strCode & "  Dim strR_PUID As String" & vbCrLf
-  strCode = strCode & "  If Target.Cells.Count > 1 Then Exit Sub" & vbCrLf
-  strCode = strCode & "  strG_PUID = Me.Cells(Target.Row, 4)" & vbCrLf
-  strCode = strCode & "  strR_PUID = Me.Cells(Target.Row, 12)" & vbCrLf
+  strCode = strCode & "  'objects" & vbCrLf
   strCode = strCode & "  Dim oMSPROJ As Object 'MSProject.Application" & vbCrLf
   strCode = strCode & "  Dim oProject As Object 'MSProject.Project" & vbCrLf
+  strCode = strCode & "  'strings" & vbCrLf
+  strCode = strCode & "  Dim strG_PUID As String" & vbCrLf
+  strCode = strCode & "  Dim strR_PUID As String" & vbCrLf
+  strCode = strCode & "  " & vbCrLf
+  strCode = strCode & "  If Not BLN_FILTER Then Exit Sub" & vbCrLf
+  strCode = strCode & "  On Error GoTo err_here" & vbCrLf
+  strCode = strCode & "  If Target.Cells.Count > 1 Then Exit Sub" & vbCrLf
   strCode = strCode & "  Set oMSPROJ = GetObject(, ""MSProject.Application"")" & vbCrLf
   strCode = strCode & "  Set oProject = oMSPROJ.ActiveProject" & vbCrLf
+  strCode = strCode & "  If oProject.subprojects.Count > 0 Then" & vbCrLf
+  strCode = strCode & "    strG_PUID = Me.Cells(Target.Row, 4) 'PUID" & vbCrLf
+  strCode = strCode & "    strR_PUID = Me.Cells(Target.Row, 12) 'PUID" & vbCrLf
+  strCode = strCode & "  Else" & vbCrLf
+  strCode = strCode & "    strG_PUID = Me.Cells(Target.Row, 3) 'UID" & vbCrLf
+  strCode = strCode & "    strR_PUID = Me.Cells(Target.Row, 11) 'UID" & vbCrLf
+  strCode = strCode & "  End If" & vbCrLf
   strCode = strCode & "  If Len(strG_PUID) > 0 Or Len(strR_PUID) > 0 Then" & vbCrLf
-  strCode = strCode & "    oMSPROJ.SetAutoFilter """ & strProjectUID & """, 1, ""equals"", strG_PUID, ""or"", ""equals"", strR_PUID" & vbCrLf
+  strCode = strCode & "    oMSPROJ.SetAutoFilter ""PUID"", 1, ""equals"", strG_PUID, ""or"", ""equals"", strR_PUID" & vbCrLf
   strCode = strCode & "  Else" & vbCrLf
   strCode = strCode & "    oMSPROJ.FilterClear" & vbCrLf
   strCode = strCode & "  End If" & vbCrLf
   strCode = strCode & "  oMSPROJ.ActiveWindow.TopPane.Activate" & vbCrLf
   strCode = strCode & "  oMSPROJ.SelectBeginning" & vbCrLf
   strCode = strCode & "  oMSPROJ.SelectAll" & vbCrLf
+  strCode = strCode & "exit_here:" & vbCrLf
+  strCode = strCode & "  On Error Resume Next" & vbCrLf
   strCode = strCode & "  Set oProject = Nothing" & vbCrLf
   strCode = strCode & "  Set oMSPROJ = Nothing" & vbCrLf
+  strCode = strCode & "  Exit Sub" & vbCrLf
+  strCode = strCode & "err_here:" & vbCrLf
+  strCode = strCode & "  MsgBox Err.Number & "": "" & Err.Description, vbExclamation + vbOKOnly, ""cptCPL""" & vbCrLf
+  strCode = strCode & "  Resume exit_here" & vbCrLf
   strCode = strCode & "End Sub" & vbCrLf
   oWorkbook.VBProject.VBComponents("Sheet1").CodeModule.AddFromString strCode
   
