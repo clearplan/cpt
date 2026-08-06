@@ -7,7 +7,7 @@ Private oMSPEvents As cptEvents_cls
   Private Declare PtrSafe Function cptGetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare PtrSafe Function cptSetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr '<issue53>
-  Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+  Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hWnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #Else
   Private Declare Function cptGetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function cptSetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
@@ -410,7 +410,7 @@ Sub cptGetReferences()
     Debug.Print "-- BuiltIn: " & oRef.BuiltIn
     Debug.Print "-- IsBroken: " & oRef.IsBroken
     Debug.Print "-- Type: " & oRef.Type
-    strRef = Join(Array(oRef.Name, oRef.Description, oRef.FullPath, oRef.Guid, oRef.Major, oRef.Minor, oRef.BuiltIn, oRef.IsBroken, oRef.Type), ",")
+    strRef = Join(Array(oRef.Name, Chr(34) & oRef.Description & Chr(34), oRef.FullPath, oRef.Guid, oRef.Major, oRef.Minor, oRef.BuiltIn, oRef.IsBroken, oRef.Type), ",")
     Print #lngFile, strRef & ","
   Next oRef
   Reset
@@ -1416,6 +1416,101 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "cptShowUpgrades_frm", Err, Erl)
   Resume exit_here
 
+End Sub
+
+Sub cptSetReferencesNew()
+  'this is a one-time shot to set all references currently required by the cp toolbar
+  'REQUIRED:
+  '{B691E011-1797-432E-907A-4D8C69339129}  Microsoft ActiveX Data Objects 6.1 Library
+  '{00020813-0000-0000-C000-000000000046}  Microsoft Excel 16.0 Object Library
+  '{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}  Microsoft Windows Common Controls 6.0 (SP6)
+  '{BED7F4EA-1A96-11D2-8F08-00A0C9A6186D}  mscorlib.dll
+  '{0D452EE1-E08F-101A-852E-02608C4D0BB4}  Microsoft Forms 2.0 Object Library
+  '{A7107640-94DF-1068-855E-00DD01075445}  Microsoft Project . Object Library
+  '{F5078F18-C551-11D3-89B9-0000F81FE221}  Microsoft XML, v3.0
+  '{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}  Microsoft Office 16.0 Object Library
+  '{00062FFF-0000-0000-C000-000000000046}  Microsoft Outlook 16.0 Object Library
+  '{91493440-5A91-11CF-8700-00AA0060263B}  Microsoft PowerPoint 16.0 Object Library
+  '{420B2830-E718-11CF-893D-00A0C9054228}  Microsoft Scripting Runtime
+  '{00020430-0000-0000-C000-000000000046}  OLE Automation
+  '{000204EF-0000-0000-C000-000000000046}  Visual Basic For Applications
+  '{0002E157-0000-0000-C000-000000000046}  Microsoft Visual Basic for Applications Extensibility 5.3
+  '{3F4DACA7-160D-11D2-A8E9-00104B365C9F}  Microsoft VBScript Regular Expressions 5.5
+  '{00020905-0000-0000-C000-000000000046}  Microsoft Word 16.0 Object Library
+  'objects
+  Dim oShell As Object
+  Dim oExec As Object
+  'strings
+  Dim strCmd As String
+  Dim strOut As String
+  Dim strRefName As String
+  Dim strGUID As String
+  'longs
+  Dim lngMaj As Long
+  Dim lngMin As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  Dim vRefs As Variant
+  Dim vRef As Variant
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  vRefs = Array("ADODB|{B691E011-1797-432E-907A-4D8C69339129}", _
+                "Excel|{00020813-0000-0000-C000-000000000046}", _
+                "MSComctlLib|{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}", _
+                "mscorlib|{BED7F4EA-1A96-11D2-8F08-00A0C9A6186D}", _
+                "MSForms|{0D452EE1-E08F-101A-852E-02608C4D0BB4}", _
+                "MSProject|{A7107640-94DF-1068-855E-00DD01075445}", _
+                "MSXML2|{F5078F18-C551-11D3-89B9-0000F81FE221}", _
+                "Office|{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}", _
+                "Outlook|{00062FFF-0000-0000-C000-000000000046}", _
+                "PowerPoint|{91493440-5A91-11CF-8700-00AA0060263B}", _
+                "Scripting|{420B2830-E718-11CF-893D-00A0C9054228}", _
+                "stdole|{00020430-0000-0000-C000-000000000046}", _
+                "VBA|{000204EF-0000-0000-C000-000000000046}", _
+                "VBIDE|{0002E157-0000-0000-C000-000000000046}", _
+                "VBScript_RegExp_55|{3F4DACA7-160D-11D2-A8E9-00104B365C9F}", _
+                "Word|{00020905-0000-0000-C000-000000000046}")
+  Set oShell = CreateObject("WScript.Shell")
+  For Each vRef In vRefs
+    strRefName = Split(vRef, "|")(0)
+    strGUID = Split(vRef, "|")(1)
+    Application.StatusBar = "Confirming VBA Reference: " & strRefName & "..."
+    If Not cptReferenceExists(strRefName) Then
+      Application.StatusBar = "Adding VBA Reference: " & strRefName & "..."
+      strCmd = "reg query ""HKCR\TypeLib\" & strGUID & """"
+      On Error Resume Next
+      Set oExec = oShell.Exec(strCmd)
+      If Err.Number <> 0 Then
+        cptHandleErr THIS_MODULE, "cptSetReferencesNew", Err
+        Exit Sub
+      End If
+      If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+      strOut = Trim$(Replace(oExec.StdOut.ReadAll, vbCrLf, ""))
+      strOut = Mid$(strOut, InStrRev(strOut, "\") + 1)
+      lngMaj = CLng(Split(strOut, ".")(0))
+      lngMin = CLng(Split(strOut, ".")(1))
+      ThisProject.VBProject.References.AddFromGuid strGUID, lngMaj, lngMin
+      Application.StatusBar = "Adding VBA Reference: " & strRefName & "...done."
+    Else
+      Application.StatusBar = "Confirming VBA Reference: " & strRefName & "...exists."
+    End If
+  Next vRef
+  
+exit_here:
+  On Error Resume Next
+  Application.StatusBar = ""
+  Set oExec = Nothing
+  Set oShell = Nothing
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptSetReferencesNew", Err)
+  Resume exit_here
 End Sub
 
 Sub cptSetReferences()
