@@ -1921,6 +1921,7 @@ End Sub
 
 Function cptSaveSetting(strFeature As String, strKey As String, strValue As Variant) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
+  strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
   If lngWorked Then
     cptSaveSetting = True
