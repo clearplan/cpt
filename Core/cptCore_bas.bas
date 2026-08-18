@@ -7,7 +7,7 @@ Private oMSPEvents As cptEvents_cls
   Private Declare PtrSafe Function cptGetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare PtrSafe Function cptSetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
   Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr '<issue53>
-  Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+  Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hWnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #Else
   Private Declare Function cptGetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
   Private Declare Function cptSetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
@@ -410,7 +410,7 @@ Sub cptGetReferences()
     Debug.Print "-- BuiltIn: " & oRef.BuiltIn
     Debug.Print "-- IsBroken: " & oRef.IsBroken
     Debug.Print "-- Type: " & oRef.Type
-    strRef = Join(Array(oRef.Name, oRef.Description, oRef.FullPath, oRef.Guid, oRef.Major, oRef.Minor, oRef.BuiltIn, oRef.IsBroken, oRef.Type), ",")
+    strRef = Join(Array(oRef.Name, Chr(34) & oRef.Description & Chr(34), oRef.FullPath, oRef.Guid, oRef.Major, oRef.Minor, oRef.BuiltIn, oRef.IsBroken, oRef.Type), ",")
     Print #lngFile, strRef & ","
   Next oRef
   Reset
@@ -1420,133 +1420,173 @@ End Sub
 
 Sub cptSetReferences()
   'this is a one-time shot to set all references currently required by the cp toolbar
-  Dim oExcel As Object
-  Dim strDir As String
-  Dim strRegEx As String
-  Dim vPath As Variant
-  Dim vApp As Variant
+  'REQUIRED:
+  '{B691E011-1797-432E-907A-4D8C69339129}  Microsoft ActiveX Data Objects 6.1 Library
+  '{00020813-0000-0000-C000-000000000046}  Microsoft Excel 16.0 Object Library
+  '{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}  Microsoft Windows Common Controls 6.0 (SP6)
+  '{BED7F4EA-1A96-11D2-8F08-00A0C9A6186D}  mscorlib.dll
+  '{0D452EE1-E08F-101A-852E-02608C4D0BB4}  Microsoft Forms 2.0 Object Library
+  '{A7107640-94DF-1068-855E-00DD01075445}  Microsoft Project . Object Library
+  '{F5078F18-C551-11D3-89B9-0000F81FE221}  Microsoft XML, v3.0
+  '{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}  Microsoft Office 16.0 Object Library
+  '{00062FFF-0000-0000-C000-000000000046}  Microsoft Outlook 16.0 Object Library
+  '{91493440-5A91-11CF-8700-00AA0060263B}  Microsoft PowerPoint 16.0 Object Library
+  '{420B2830-E718-11CF-893D-00A0C9054228}  Microsoft Scripting Runtime
+  '{00020430-0000-0000-C000-000000000046}  OLE Automation
+  '{000204EF-0000-0000-C000-000000000046}  Visual Basic For Applications
+  '{0002E157-0000-0000-C000-000000000046}  Microsoft Visual Basic for Applications Extensibility 5.3
+  '{3F4DACA7-160D-11D2-A8E9-00104B365C9F}  Microsoft VBScript Regular Expressions 5.5
+  '{00020905-0000-0000-C000-000000000046}  Microsoft Word 16.0 Object Library
+  'objects
+  Dim oExisting As Object
+  Dim oReg As Object
+  Dim oOfficeApp As Object
+  'strings
+  Dim strRefName As String
+  Dim strGuid As String
+  Dim strVersion As String
+  Dim strPath As String
+  'longs
+  Dim lngItem As Long
+  Dim lngMaj As Long
+  Dim lngMin As Long
+  Dim lngReg As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  Dim vRefs As Variant
+  Dim vRef As Variant
+  'dates
+  'constants
+  Const HKCR As Long = &H80000000
 
-  On Error Resume Next
-
-  'CommonProgramFiles
-  strDir = Environ("CommonProgramFiles")
-  If Not cptReferenceExists("Office") Then
-    ThisProject.VBProject.References.AddFromFile strDir & "\Microsoft Shared\OFFICE16\MSO.DLL"
-  End If
-  If Not cptReferenceExists("VBIDE") Then
-    #If Not Win64 Then
-      ThisProject.VBProject.References.AddFromFile strDir & "\Microsoft Shared\VBA\VBA6\VBE6EXT.OLB"
-    #Else
-      ThisProject.VBProject.References.AddFromFile "C:\Program Files (x86)\Common Files\Microsoft Shared\VBA\VBA6\VBE6EXT.OLB"
-    #End If
-  End If
-  If Not cptReferenceExists("VBA") Then
-    ThisProject.VBProject.References.AddFromFile strDir & "\Microsoft Shared\VBA\VBA7.1\VBE7.DLL"
-  End If
-  If Not cptReferenceExists("ADODB") Then
-    ThisProject.VBProject.References.AddFromFile strDir & "\System\ado\msado15.dll"
-  End If
-
-  'office applications
-  For Each vApp In Split("EXCEL.EXE,MSOUTL.OLB,MSPPT.OLB,MSWORD.OLB", ",")
-    strDir = cptGetOfficeDir2(CStr(vApp))
-    If Len(strDir) > 0 Then
-      ThisProject.VBProject.References.AddFromFile strDir & "\" & CStr(vApp)
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  'capture existing references - add by exception only
+  Set oExisting = CreateObject("Scripting.Dictionary")
+  For lngItem = 1 To ThisProject.VBProject.References.Count
+    oExisting.Add ThisProject.VBProject.References(lngItem).Name, ThisProject.VBProject.References(lngItem).Name
+  Next lngItem
+  
+  'define array of required references
+  'why early vs late binding? all the constants
+  vRefs = Array("ADODB|{B691E011-1797-432E-907A-4D8C69339129}", _
+                "Excel|{00020813-0000-0000-C000-000000000046}", _
+                "MSComctlLib|{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}", _
+                "mscorlib|{BED7F4EA-1A96-11D2-8F08-00A0C9A6186D}", _
+                "MSForms|{0D452EE1-E08F-101A-852E-02608C4D0BB4}", _
+                "MSProject|{A7107640-94DF-1068-855E-00DD01075445}", _
+                "MSXML2|{F5078F18-C551-11D3-89B9-0000F81FE221}", _
+                "Office|{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}", _
+                "Outlook|{00062FFF-0000-0000-C000-000000000046}", _
+                "PowerPoint|{91493440-5A91-11CF-8700-00AA0060263B}", _
+                "Scripting|{420B2830-E718-11CF-893D-00A0C9054228}", _
+                "stdole|{00020430-0000-0000-C000-000000000046}", _
+                "VBA|{000204EF-0000-0000-C000-000000000046}", _
+                "VBIDE|{0002E157-0000-0000-C000-000000000046}", _
+                "VBScript_RegExp_55|{3F4DACA7-160D-11D2-A8E9-00104B365C9F}", _
+                "Word|{00020905-0000-0000-C000-000000000046}")
+  
+  Set oReg = GetObject("winmgmts:\\.\root\default:StdRegProv")
+  
+  For Each vRef In vRefs
+    strRefName = Split(vRef, "|")(0)
+    Application.StatusBar = "Confirming VBA Reference: " & strRefName & "..."
+    If Not oExisting.Exists(strRefName) Then
+      strGuid = Split(vRef, "|")(1)
+      Application.StatusBar = "Adding VBA Reference: " & strRefName & "..."
+      If GetHighestTypeLibVersion(strGuid, lngMaj, lngMin) Then
+        strVersion = CStr(lngMaj) & "." & CStr(lngMin)
+        lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win64", "", strPath)
+        If lngReg <> 0 Or Len(strPath) = 0 Then
+          lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win32", "", strPath)
+        End If
+        On Error Resume Next
+        ThisProject.VBProject.References.AddFromFile strPath
+        Application.StatusBar = "Adding VBA Reference: " & strRefName & "...done."
+      Else
+        Application.StatusBar = "Error! Reference to '" & strRefName & "' not found!"
+        'todo: do what?
+      End If
+    Else
+      Application.StatusBar = "Confirming VBA Reference: " & strRefName & "...exists."
     End If
-  Next vApp
-
-windows_common:
-  If Not cptReferenceExists("MSForms") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\SysWOW64\FM20.DLL"
-  End If
-  If Not cptReferenceExists("Scripting") Then
-    ThisProject.VBProject.References.AddFromFile "C:\Windows\SysWOW64\scrrun.dll"
-  End If
-  If Not cptReferenceExists("stdole") Then
-    ThisProject.VBProject.References.AddFromFile "C:\Windows\SysWOW64\stdole2.tlb"
-  End If
-  If Not cptReferenceExists("mscorlib") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\mscorlib.tlb"
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\mscorlib.dll"
-  End If
-  If Not cptReferenceExists("MSComctlLib") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\SysWOW64\MSCOMCTL.OCX"
-  End If
-  If Not cptReferenceExists("MSXML2") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\SysWOW64\msxml3.dll"
-  End If
-  If Not cptReferenceExists("VBScript_RegExp_55") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\System32\vbscript.dll\3"
-  End If
+  Next vRef
   
 exit_here:
   On Error Resume Next
-  If Not oExcel Is Nothing Then oExcel.Quit
-  Set oExcel = Nothing
-
+  Application.StatusBar = ""
+  Set oReg = Nothing
+  Set oOfficeApp = Nothing
+  Set oExisting = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr(THIS_MODULE, "cptSetReferences", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSetReferencesNew", Err)
   Resume exit_here
-
 End Sub
 
-Function cptGetOfficeDir(strApp As String) As String
-  Dim strDir As String
-  Dim vPath As Variant
-  
-  strDir = ""
-  For Each vPath In Split(Environ("PATH"), ";")
-    If InStr(vPath, "Office") > 0 Then
-      If Dir(CStr(vPath) & strApp) <> vbNullString Then
-        strDir = vPath
-        Exit For
-      End If
-    End If
-  Next vPath
+Function GetHighestTypeLibVersion( _
+    ByVal strGuid As String, _
+    ByRef lngMajor As Long, _
+    ByRef lngMinor As Long) As Boolean
 
-  If Len(strDir) > 0 Then
-    cptGetOfficeDir = strDir
-  ElseIf Len(strDir) = 0 Then 'weird installation or Excel not installed
-    cptGetOfficeDir = strDir
-    MsgBox "Microsoft Office installation is not detetcted. Some features may not operate as expected." & vbCrLf & vbCrLf & "Please contact help@ClearPlanConsulting.com for specialized assistance.", vbCritical + vbOKOnly, "Microsoft Office Compatibility"
-  End If
-  
-End Function
+    Const HKCR As Long = &H80000000
 
-Function cptGetOfficeDir2(strApp As String) As String
-  Dim strDir As String
-  Dim vPath As Variant
-  Dim oFSO As Object 'Scripting.FileSystemObject
-  Dim oFolder As Object 'Scripting.Folder
-  strDir = ""
-  For Each vPath In Split(Environ("PATH"), ";")
-    strDir = cptRegEx(CStr(vPath), ".*Microsoft Office\\")
-    If Len(strDir) > 0 Then
-      Set oFSO = CreateObject("Scripting.FileSystemObject")
-      Set oFolder = oFSO.GetFolder(strDir)
-      cptGetOfficeDir2 = cptGetAppDir(oFolder, strApp)
-    End If
-  Next vPath
-  
-  Set oFSO = Nothing
-  Set oFolder = Nothing
-End Function
+    Dim reg As Object
+    Dim arrVersions As Variant
+    Dim i As Long
 
-Function cptGetAppDir(oFolder As Object, strApp As String) As String
-  Dim f As Object 'Scripting.File
-  Dim sf As Object 'Scripting.Folder
-  
-  If Dir(oFolder.Path & "\" & strApp) <> vbNullString Then
-    cptGetAppDir = oFolder.Path
-  Else
-    For Each sf In oFolder.SubFolders
-      If Len(cptGetAppDir) > 0 Then Exit Function
-      cptGetAppDir = cptGetAppDir(sf, strApp)
-    Next sf
-  End If
-  Set f = Nothing
-  Set sf = Nothing
+    Dim strVersion As String
+    Dim arrParts() As String
+
+    Dim lngMaj As Long
+    Dim lngMin As Long
+
+    Dim lngBestMaj As Long
+    Dim lngBestMin As Long
+
+    Set reg = GetObject("winmgmts:\\.\root\default:StdRegProv")
+
+    reg.EnumKey HKCR, "TypeLib\" & strGuid, arrVersions
+
+    If Not IsArray(arrVersions) Then Exit Function
+
+    For i = LBound(arrVersions) To UBound(arrVersions)
+
+        strVersion = arrVersions(i)
+
+        arrParts = Split(strVersion, ".")
+
+        If UBound(arrParts) = 1 Then
+
+            lngMaj = CLng(arrParts(0))
+
+            If IsNumeric(arrParts(1)) Then
+                lngMin = CLng(arrParts(1))
+            Else
+                lngMin = CLng("&H" & arrParts(1))
+            End If
+
+            If lngMaj > lngBestMaj _
+               Or (lngMaj = lngBestMaj And lngMin > lngBestMin) Then
+
+                lngBestMaj = lngMaj
+                lngBestMin = lngMin
+
+            End If
+
+        End If
+
+    Next i
+
+    lngMajor = lngBestMaj
+    lngMinor = lngBestMin
+
+    GetHighestTypeLibVersion = (lngBestMaj > 0 Or lngBestMin > 0)
+
 End Function
 
 Sub cptSubmitIssue()
