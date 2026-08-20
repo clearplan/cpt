@@ -116,6 +116,9 @@ Sub cptShowFiscal_frm()
     .cboImportField.Enabled = False
     .lboExceptions.Top = .lboHeaders.Top + .lboHeaders.Height - 1
     .lblCount.Top = .lboExceptions.Top + .lboExceptions.Height + 2
+    If .txtExceptions.Top + .txtExceptions.Height + 2 > .lboExceptions.Top + .lboExceptions.Height + 2 Then
+      .lblCount.Top = .txtExceptions.Top + .txtExceptions.Height + 2
+    End If
     .lblCount.Left = .lboExceptions.Left
     .chkShowFiscalPeriods.Top = .lboExceptions.Top + .lboExceptions.Height - .chkShowFiscalPeriods.Height
     
@@ -568,12 +571,12 @@ Sub cptAnalyzeEVT(ByRef myFiscal_frm As cptFiscal_frm, Optional lngImportField A
   Print #lngFile, "UID,WP,BLS,BLF," & strEVT & ","
   If oProject.Subprojects.Count > 0 Then
     lngTasks = oProject.Tasks.Count
-    Dim oSubProject As MSProject.SubProject
-    For Each oSubProject In oProject.Subprojects
-      Debug.Print oSubProject.SourceProject.Name & ": " & oSubProject.SourceProject.Tasks.Count
-      lngTasks = lngTasks + oSubProject.SourceProject.Tasks.Count
-    Next oSubProject
-    Set oSubProject = Nothing
+    Dim oSubproject As MSProject.SubProject
+    For Each oSubproject In oProject.Subprojects
+      Debug.Print oSubproject.SourceProject.Name & ": " & oSubproject.SourceProject.Tasks.Count
+      lngTasks = lngTasks + oSubproject.SourceProject.Tasks.Count
+    Next oSubproject
+    Set oSubproject = Nothing
   Else
     lngTasks = oProject.Tasks.Count
   End If
@@ -795,7 +798,7 @@ Function cptGetFiscalPeriods(ByRef oTasks As MSProject.Tasks) As Long
       Exit Function
     Else
       If dtBLS > 0 Then
-        dtBLS = WorksheetFunction.Min(dtBLS, oTask.BaselineStart)
+        dtBLS = WorksheetFunction.min(dtBLS, oTask.BaselineStart)
       Else
         dtBLS = oTask.BaselineStart
       End If
