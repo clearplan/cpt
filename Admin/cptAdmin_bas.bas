@@ -428,10 +428,10 @@ End Sub
 
 Function cptGetAllSettings(strSection)
   Dim vSettings As Variant
-  Dim intSetting As Integer
+  Dim lngSetting As Long
   vSettings = GetAllSettings("ClearPlanToolbar", strSection)
-  For intSetting = LBound(vSettings, 1) To UBound(vSettings, 1)
-    Debug.Print vSettings(intSetting, 0) & "=" & vSettings(intSetting, 1)
+  For lngSetting = LBound(vSettings, 1) To UBound(vSettings, 1)
+    Debug.Print vSettings(lngSetting, 0) & "=" & vSettings(lngSetting, 1)
   Next
 End Function
 

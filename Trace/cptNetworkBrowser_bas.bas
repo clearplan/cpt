@@ -642,7 +642,7 @@ Sub cptSortNetworkBrowserLinks(ByRef myNetworkBrowser_frm As cptNetworkBrowser_f
       .AddNew
       For lngCol = 0 To oListBox.ColumnCount - 1
         If .Fields(lngCol).Name = "Slack" Then
-          .Fields(lngCol) = CInt(Replace(oListBox.List(lngItem, lngCol), "d", ""))
+          .Fields(lngCol) = CLng(Replace(oListBox.List(lngItem, lngCol), "d", ""))
         ElseIf .Fields(lngCol).Name = "Critical" Then
           If IsNull(oListBox.List(lngItem, lngCol)) Then
             .Fields(lngCol) = False

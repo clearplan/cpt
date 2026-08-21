@@ -3541,7 +3541,7 @@ Function cptGetPosition(vList As Variant, vValue As Variant, Optional strDelimit
             lngTemp = lngPosition
           End If
         Case "Integer"
-          If vValue = CInt(vList(lngPosition - 1)) Then
+          If vValue = CLng(vList(lngPosition - 1)) Then
             lngTemp = lngPosition
           End If
         Case "Long"

@@ -31,8 +31,8 @@ Sub cptShowStatusSheetImport_frm()
   Dim lngAF As Long
   Dim lngAS As Long
   Dim lngField As Long
+  Dim lngFieldItem As Long
   'integers
-  Dim intField As Integer
   'doubles
   'booleans
   Dim blnRename As Boolean
@@ -66,8 +66,8 @@ Sub cptShowStatusSheetImport_frm()
     
     'start
     For Each vField In Array("Start", "Date")
-      For intField = 1 To 10
-        lngField = FieldNameToFieldConstant(vField & intField, pjTask)
+      For lngFieldItem = 1 To 10
+        lngField = FieldNameToFieldConstant(vField & lngFieldItem, pjTask)
         strCustomFieldName = CustomFieldGetName(lngField)
         .cboAS.AddItem
         .cboAS.List(.cboAS.ListCount - 1, 0) = lngField
@@ -75,14 +75,14 @@ Sub cptShowStatusSheetImport_frm()
         .cboFS.AddItem
         .cboFS.List(.cboFS.ListCount - 1, 0) = lngField
         .cboFS.List(.cboFS.ListCount - 1, 1) = FieldConstantToFieldName(lngField) & IIf(Len(strCustomFieldName) > 0, " (" & strCustomFieldName & ")", "")
-      Next intField
+      Next lngFieldItem
     Next vField
     'direct import to Actual Start removed in v1.3.0
     
     'finish
     For Each vField In Array("Finish", "Date")
-      For intField = 1 To 10
-        lngField = FieldNameToFieldConstant(vField & intField, pjTask)
+      For lngFieldItem = 1 To 10
+        lngField = FieldNameToFieldConstant(vField & lngFieldItem, pjTask)
         strCustomFieldName = CustomFieldGetName(lngField)
         .cboAF.AddItem
         .cboAF.List(.cboAF.ListCount - 1, 0) = lngField
@@ -90,14 +90,14 @@ Sub cptShowStatusSheetImport_frm()
         .cboFF.AddItem
         .cboFF.List(.cboFF.ListCount - 1, 0) = lngField
         .cboFF.List(.cboFF.ListCount - 1, 1) = FieldConstantToFieldName(lngField) & IIf(Len(strCustomFieldName) > 0, " (" & strCustomFieldName & ")", "")
-      Next intField
+      Next lngFieldItem
     Next vField
     'direct import to Actual Finish removed in v1.3.0
     
     'ev% and etc
     For Each vField In Array("Number")
-      For intField = 1 To 20
-        lngField = FieldNameToFieldConstant(vField & intField, pjTask)
+      For lngFieldItem = 1 To 20
+        lngField = FieldNameToFieldConstant(vField & lngFieldItem, pjTask)
         strCustomFieldName = CustomFieldGetName(lngField)
         .cboEV.AddItem
         .cboEV.List(.cboEV.ListCount - 1, 0) = lngField
@@ -105,7 +105,7 @@ Sub cptShowStatusSheetImport_frm()
         .cboETC.AddItem
         .cboETC.List(.cboETC.ListCount - 1, 0) = lngField
         .cboETC.List(.cboETC.ListCount - 1, 1) = FieldConstantToFieldName(lngField) & IIf(Len(strCustomFieldName) > 0, " (" & strCustomFieldName & ")", "")
-      Next intField
+      Next lngFieldItem
     Next vField
         
     'add enterprise custom fields? -> no

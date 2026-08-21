@@ -24,6 +24,8 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   Dim lngLookupCol As Long
   Dim lngItem As Long
   Dim lngItems As Long
+  Dim lngFieldItem As Long
+  Dim lngFieldItems As Long
   Dim lngListItem As Long
   Dim lngListItems As Long
   Dim lngCol As Long
@@ -31,8 +33,6 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   Dim lngRow  As Long
   Dim lngField As Long
   'integers
-  Dim intField As Integer
-  Dim intFields As Integer
   'doubles
   'booleans
   Dim blnHasFormula As Boolean
@@ -116,9 +116,9 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   'export local custom fields
   For Each vFieldScope In Array(0, 1) '0 = pjTask; 1 = pjResource; 2 = pjProject
     For Each vFieldType In Array("Cost", "Date", "Duration", "Flag", "Finish", "Number", "Outline Code", "Start", "Text")
-      If dFields.Exists(vFieldType) Then intFields = dFields(vFieldType) Else intFields = 10
-      For intField = 1 To intFields
-        lngField = FieldNameToFieldConstant(vFieldType & intField, vFieldScope)
+      If dFields.Exists(vFieldType) Then lngFieldItems = dFields(vFieldType) Else lngFieldItems = 10
+      For lngFieldItem = 1 To lngFieldItems
+        lngField = FieldNameToFieldConstant(vFieldType & lngFieldItem, vFieldScope)
         If blnExists Then 'check if field is ignored
           rstDictionary.Filter = "PROJECT_NAME='" & strProject & "' AND FIELD_ID=" & lngField
           If Not rstDictionary.EOF Then
@@ -140,7 +140,7 @@ Sub cptExportDataDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
         If Len(strFieldName) > 0 Or blnHasFormula Or blnHasPickList Then
           lngRow = lngRow + 1
           oWorksheet.Cells(lngRow, 1).Value = False
-          oWorksheet.Cells(lngRow, 2).Value = Choose(CInt(vFieldScope) + 1, "Task", "Resource", "Project")
+          oWorksheet.Cells(lngRow, 2).Value = Choose(CLng(vFieldScope) + 1, "Task", "Resource", "Project")
           oWorksheet.Cells(lngRow, 3).Value = CStr(vFieldType)
           oWorksheet.Cells(lngRow, 4).Value = FieldConstantToFieldName(lngField)
           oWorksheet.Cells(lngRow, 5).Value = strFieldName
@@ -253,7 +253,7 @@ next_field:
         myDataDictionary_frm.lblStatus.Caption = "Exporting Local Custom Fields..." & lngItem & "/" & lngItems & " (" & Format(lngItem / lngItems, "0%") & ")"
         myDataDictionary_frm.lblProgress.Width = (lngItem / lngItems) * myDataDictionary_frm.lblStatus.Width
         DoEvents
-      Next intField
+      Next lngFieldItem
     Next vFieldType
   Next vFieldScope
   
@@ -518,12 +518,12 @@ Sub cptRefreshDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
   Dim strCustomName As String
   Dim strGUID As String
   'longs
+  Dim lngFieldItem As Long
   Dim lngFieldCount As Long
   Dim lngItem As Long
   Dim lngField As Long
   Dim lngMax As Long
   'integers
-  Dim intField As Integer
   'doubles
   'booleans
   Dim blnErrorTrapping As Boolean
@@ -605,8 +605,8 @@ Sub cptRefreshDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
         
     For Each vFieldScope In Array(0, 1) '0 = pjTask; 1 = pjResource; 2 = pjProject
       For Each vFieldType In Array("Cost", "Date", "Duration", "Flag", "Finish", "Number", "Start", "Text", "Outline Code")
-        For intField = 1 To dTypes(vFieldType) 'lngMax
-          lngField = FieldNameToFieldConstant(vFieldType & intField, vFieldScope)
+        For lngFieldItem = 1 To dTypes(vFieldType) 'lngMax
+          lngField = FieldNameToFieldConstant(vFieldType & lngFieldItem, vFieldScope)
           strFieldName = FieldConstantToFieldName(lngField)
           strCustomName = CustomFieldGetName(lngField)
           If Len(strCustomName) = 0 Then 'include unnamed but has formula or pick list 'todo: what about has data?
@@ -642,7 +642,7 @@ Sub cptRefreshDictionary(ByRef myDataDictionary_frm As cptDataDictionary_frm)
           myDataDictionary_frm.lblStatus.Caption = "Refreshing...(" & Format(lngFieldCount / 2261, "0%") & ")"
           myDataDictionary_frm.lblProgress.Width = (lngFieldCount / 2261) * myDataDictionary_frm.lblStatus.Width
           DoEvents
-        Next intField
+        Next lngFieldItem
       Next vFieldType
     Next vFieldScope
     

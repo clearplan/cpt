@@ -30,10 +30,10 @@ Sub cptShowStatusSheet_frm()
   Dim rstEVP As ADODB.Recordset 'Object
   'longs
   Dim lngField As Long
+  Dim lngFieldItem As Long
   Dim lngItem As Long
   Dim lngSelectedItems As Long
   'integers
-  Dim intField As Integer
   'strings
   Dim strCptDir As String
   Dim strCustomFieldName As String
@@ -169,8 +169,8 @@ Sub cptShowStatusSheet_frm()
     Dim lngFieldCount As Long
     strFieldType = Split(vFieldType, "|")(0)
     lngFieldCount = Split(vFieldType, "|")(1)
-    For intField = 1 To lngFieldCount
-      lngField = FieldNameToFieldConstant(strFieldType & intField, pjTask)
+    For lngFieldItem = 1 To lngFieldCount
+      lngField = FieldNameToFieldConstant(strFieldType & lngFieldItem, pjTask)
       strFieldName = CustomFieldGetName(lngField)
       If Len(strFieldName) > 0 Then
         If strFieldType = "Number" Then
@@ -179,7 +179,7 @@ Sub cptShowStatusSheet_frm()
           rstFields.AddNew Array(0, 1, 2), Array(lngField, strFieldName, "Text")
         End If
       End If
-    Next intField
+    Next lngFieldItem
   Next vFieldType
   
   'add Physical % Complete
