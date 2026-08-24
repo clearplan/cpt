@@ -1,17 +1,18 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.18.0</cpt_version>
+'<cpt_version>v1.19.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCore_bas"
 Private oMSPEvents As cptEvents_cls
 #If Win64 And VBA7 Then
-  Private Declare PtrSafe Function GetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
-  Private Declare PtrSafe Function SetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
-  Public Declare PtrSafe Function GetTickCount Lib "kernel32" () As LongPtr '<issue53>
-  Public Declare PtrSafe Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+  Private Declare PtrSafe Function cptGetPrivateProfileString Lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
+  Private Declare PtrSafe Function cptSetPrivateProfileString Lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+  Public Declare PtrSafe Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As LongPtr '<issue53>
+  Public Declare PtrSafe Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hWnd As LongPtr, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #Else
-  Private Declare Function GetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
-  Private Declare Function SetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
-  Public Declare Function GetTickCount Lib "kernel32" () As Long '<issue53>
-  Public Declare Function ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
+  Private Declare Function cptGetPrivateProfileString lib "kernel32" Alias "GetPrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpDefault As String, ByVal lpReturnedString As String, ByVal nSize As Long, ByVal lpFileName As String) As Long
+  Private Declare Function cptSetPrivateProfileString lib "kernel32" Alias "WritePrivateProfileStringA" (ByVal lpApplicationName As String, ByVal lpKeyName As Any, ByVal lpString As Any, ByVal lpFileName As String) As Long
+  Public Declare Function cptGetTickCount Lib "kernel32" Alias "GetTickCount" () As Long '<issue53>
+  Public Declare Function cptShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (ByVal hwnd As Long, ByVal lpOperation As String, ByVal lpFile As String, ByVal lpParameters As String, ByVal lpDirectory As String, ByVal nShowCmd As Long) As Long
 #End If
 
 Sub cptStartEvents()
@@ -56,7 +57,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetUserForm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetUserForm", Err, Erl)
   Resume exit_here
 End Function
 
@@ -88,7 +89,7 @@ exit_here:
   Set objIndName = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetUserFullName", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetUserFullName", Err, Erl)
   Resume exit_here
 
 End Function
@@ -158,7 +159,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetVersions", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetVersions", Err, Erl)
   Resume exit_here
 
 End Function
@@ -251,11 +252,10 @@ exit_here:
   Application.StatusBar = ""
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptUpgrade", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpgrade", Err, Erl)
   Resume exit_here
 
 End Sub '<issue31>
-
 Sub cptShowAbout_frm()
   'objects
   Dim myAbout_frm As cptAbout_frm
@@ -294,20 +294,21 @@ Sub cptShowAbout_frm()
 
   'show/hide
   'myAbout_frm.lblScoreBoard.Visible = IIf(Now <= #10/25/2019#, False, True) '<issue19>
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b1" EWR > MSY '3/22/19 = 1
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b2" MSY > EWR '3/24/19 = 2
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b3" 'EWR > SAN '10/25/19 = 3
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b4" 'SAN > EWR '10/27/19 = 4
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b5" 'EWR > NAS '2/17/20 = 5
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b6" 'NAS > EWR '2/20/20 = 6
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b7" 'EWR > SAV '6/3/22 = 7
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b8" 'EWR > SAV '6/5/22 = 8
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b9" 'EWR > DFW '5/16/25 = 9	v1.9.0
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b10" 'DFW > EWR '5/18/25 = 10  	v1.9.1
-  'myAbout_frm.lblScoreBoard.Caption = "t0 : b11" 'EWR > SLC '4/10/2026 = 11	v1.13.0
-  myAbout_frm.lblScoreBoard.Caption = "t0 : b12" 'SLC > EWR '4/12/2026 = 12	v1.13.1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b1" EWR > MSY  '2019-03-22 = 1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b2" MSY > EWR  '2019-03-24 = 2
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b3" 'EWR > SAN '2019-10-25 = 3
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b4" 'SAN > EWR '2019-10-27 = 4
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b5" 'EWR > NAS '2020-02-17 = 5
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b6" 'NAS > EWR '2020-02-20 = 6
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b7" 'EWR > SAV '2022-06-03 = 7
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b8" 'EWR > SAV '2022-06-05 = 8
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b9" 'EWR > DFW '2025-05-16 = 9   v1.9.0
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b10" 'DFW > EWR '2025-05-18 = 10 v1.9.1
+  'myAbout_frm.lblScoreBoard.Caption = "t0 : b11" 'EWR > SLC '2026-04-10 = 11 v1.13.0
+  myAbout_frm.lblScoreBoard.Caption = "t0 : b12" 'SLC > EWR '2026-04-12 = 12  v1.13.1
+  'ALSO UPDATE lblScoreboard_Click!
   
-  myAbout_frm.Caption = "The ClearPlan Toolbar - " & cptGetVersion("cptAbout_frm")
+  myAbout_frm.Caption = "The ClearPlan Toolbar (" & cptGetVersion("cptAbout_frm") & ")"
   myAbout_frm.Show '<issue19>
 
 exit_here:
@@ -316,7 +317,7 @@ exit_here:
   Set myAbout_frm = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowAbout_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowAbout_frm", Err, Erl)
   Resume exit_here '</issue19>
 
 End Sub
@@ -377,7 +378,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptReferenceExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptReferenceExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -409,12 +410,12 @@ Sub cptGetReferences()
     Debug.Print "-- BuiltIn: " & oRef.BuiltIn
     Debug.Print "-- IsBroken: " & oRef.IsBroken
     Debug.Print "-- Type: " & oRef.Type
-    strRef = Join(Array(oRef.Name, oRef.Description, oRef.FullPath, oRef.Guid, oRef.Major, oRef.Minor, oRef.BuiltIn, oRef.IsBroken, oRef.Type), ",")
+    strRef = Join(Array(oRef.Name, Chr(34) & oRef.Description & Chr(34), oRef.FullPath, oRef.Guid, oRef.Major, oRef.Minor, oRef.BuiltIn, oRef.IsBroken, oRef.Type), ",")
     Print #lngFile, strRef & ","
   Next oRef
   Reset
   
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 End Sub
 
@@ -458,7 +459,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetDirectory()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetDirectory()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -477,7 +478,7 @@ Sub cptGetEnviron()
   Next
   Close #lngFile
   Reset
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   
 End Sub
 Function cptCheckReference(strReference As String) As Boolean
@@ -769,10 +770,200 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptResetAll", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptResetAll", Err, Erl)
   Resume exit_here
 
 End Sub
+
+Public Function cptGetOutlineParent(ByVal strOutlineChild As String, ByVal strDelimiter As String, Optional ByVal lngReturnLevel As Long = 0) As String
+  'assisted
+  Dim vLevels() As String
+  Dim lngChildLevels As Long
+  Dim lngItem As Long
+  Dim strResult As String
+
+  If Len(strOutlineChild) = 0 Then Exit Function
+
+  vLevels = Split(strOutlineChild, strDelimiter)
+  lngChildLevels = UBound(vLevels) + 1
+
+  'default = immediate parent
+  If lngReturnLevel = 0 Then
+      lngReturnLevel = lngChildLevels - 1
+  End If
+
+  'requested level does not exist
+  If lngReturnLevel < 1 Or lngReturnLevel > lngChildLevels Then
+      cptGetOutlineParent = strOutlineChild
+      Exit Function
+  End If
+
+  For lngItem = 0 To lngReturnLevel - 1
+      If lngItem > 0 Then strResult = strResult & strDelimiter
+      strResult = strResult & vLevels(lngItem)
+  Next lngItem
+
+  cptGetOutlineParent = strResult
+
+End Function
+
+Function cptGetOutlineCodeParent(strOutlineCode As String, strOutlineChild As String)
+  'this is very slow - build a cache/dictionary instead
+  Dim oOutlineCode As OutlineCode
+  Dim oLookupTable As LookupTable
+  Dim oLookupTableEntry As LookupTableEntry
+  Dim lngItem As Long
+  On Error Resume Next
+  Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
+  Set oLookupTable = oOutlineCode.LookupTable
+  For lngItem = 1 To oLookupTable.Count
+    Set oLookupTableEntry = oLookupTable.Item(lngItem)
+    If oLookupTableEntry.FullName = strOutlineChild Then
+      If oLookupTableEntry.Level = 1 Then
+        cptGetOutlineCodeParent = "*****"
+      Else
+        cptGetOutlineCodeParent = oLookupTableEntry.ParentEntry.FullName
+      End If
+      Exit For
+    End If
+  Next lngItem
+  Set oLookupTableEntry = Nothing
+  Set oLookupTable = Nothing
+  Set oOutlineCode = Nothing
+End Function
+
+Sub cptCleanCEI()
+  Dim strFileName As String
+  Dim oRecordset As New ADODB.Recordset
+  Dim vFind As Variant
+  strFileName = cptDir & "\settings\cpt-cei.adtg"
+  With oRecordset
+    .Open strFileName, , , , adCmdFile
+    If .RecordCount > 0 Then
+      For Each vFind In Array(",", Chr(34), vbCr, vbLf, vbCrLf, vbTab)
+        .Filter = "TASK_NAME LIKE '%" & vFind & "%' OR NOTE LIKE '%" & vFind & "%'"
+        Debug.Print "found " & .RecordCount & " records with " & Asc(vFind)
+        If .RecordCount > 0 Then
+          .MoveFirst
+          Do While Not .EOF
+            .Fields("TASK_NAME") = Replace(.Fields("TASK_NAME"), vFind, " ")
+            .Fields("NOTE") = Replace(.Fields("NOTE"), vFind, " ")
+            .MoveNext
+          Loop
+        End If
+        .Filter = 0
+      Next vFind
+      .Save strFileName, adPersistADTG
+    End If
+    .Close
+  End With
+  Set oRecordset = Nothing
+End Sub
+
+Function cptGetListBoxData(vOptions As Variant, lngListStyle As fmListStyle, lngMultiSelect As fmMultiSelect, strCaption As String, strColumnWidths As String, blnSearchEnabled As Boolean, blnAllEnabled As Boolean) As Variant
+  'returns comma-separated list of selected values (first column only)
+  'objects
+  Dim myListBox_frm As cptListBox_frm
+  'strings
+  Dim strResult As String
+  'longs
+  Dim lngColumnCount As Long
+  Dim lngItem As Long
+  Dim lngCol As Long
+  Dim lngRow As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  lngColumnCount = GetColumnCount(vOptions)
+  Set myListBox_frm = New cptListBox_frm
+  With myListBox_frm
+    .Caption = strCaption
+    .lboListBox.ListStyle = lngListStyle '0=Plain;1=Option
+    .lboListBox.ColumnCount = lngColumnCount
+    .lboListBox.ColumnWidths = strColumnWidths
+    .lboListBox.MultiSelect = lngMultiSelect '0=fmMultiSelectSingle;1=fmMultSelectMulti;2=fmMultiSelectExtended
+    If lngColumnCount = 1 Then
+      For lngItem = 0 To UBound(vOptions)
+        .lboListBox.AddItem vOptions(lngItem)
+      Next lngItem
+    ElseIf lngColumnCount > 1 Then
+      For lngRow = 0 To UBound(vOptions, 1)
+        .lboListBox.AddItem
+        For lngCol = 0 To UBound(vOptions, 2)
+          .lboListBox.List(.lboListBox.ListCount - 1, lngCol) = vOptions(lngRow, lngCol)
+        Next lngCol
+      Next lngRow
+    Else
+      'something is wrong
+    End If
+    If blnSearchEnabled Then
+      .txtFilter.SetFocus
+    Else
+      .txtFilter.Enabled = False
+    End If
+    .chkAll.Enabled = blnAllEnabled
+    .Show
+    'return a list of the selected values in col 0
+    For lngItem = 0 To .lboListBox.ListCount - 1
+      If .lboListBox.Selected(lngItem) Then
+        strResult = strResult & .lboListBox.List(lngItem) & ","
+      End If
+    Next lngItem
+    If Right(strResult, 1) = "," Then strResult = Left(strResult, Len(strResult) - 1)
+    cptGetListBoxData = strResult
+  End With
+
+exit_here:
+  On Error Resume Next
+
+  Exit Function
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptShowAllCodesForm", Err, Erl)
+  Resume exit_here
+
+End Function
+
+Function GetColumnCount(v As Variant) As Long
+    On Error GoTo OneDim
+    GetColumnCount = UBound(v, 2) - LBound(v, 2) + 1
+    Exit Function
+OneDim:
+    GetColumnCount = 1
+End Function
+ 
+Function cptTranspose(vArray As Variant) As Variant
+  Dim lngRow As Long
+  Dim lngCol As Long
+  Dim lngCols As Long
+  Dim vTemp As Variant
+  Dim vReturn() As Variant
+  
+  On Error GoTo OneDim
+  lngCols = UBound(vArray, 2)
+  
+  ReDim vReturn(0 To UBound(vArray, 2), 0 To UBound(vArray, 1))
+  For lngRow = 0 To UBound(vArray, 1)
+    For lngCol = 0 To UBound(vArray, 2)
+      vReturn(lngCol, lngRow) = vArray(lngRow, lngCol)
+    Next lngCol
+  Next lngRow
+  cptTranspose = vReturn
+  Exit Function
+  
+OneDim:
+  ReDim vReturn(0 To 0, 0 To UBound(vArray, 1))
+  For lngRow = 0 To UBound(vArray, 1)
+    vReturn(0, lngRow) = vArray(lngRow)
+  Next lngRow
+  cptTranspose = vReturn
+End Function
 
 Function cptGetOutlineParents(oTask As MSProject.Task) As String
   'objects
@@ -964,7 +1155,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowResetAll_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowResetAll_frm", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1140,7 +1331,7 @@ Sub cptShowUpgrades_frm()
   lngItem = 0
   Do While Not rstStatus.EOF
     strCurVer = rstStatus(2)
-    If Not IsNull(rstStatus(3)) Then
+    If Len(rstStatus(3)) > 0 Then
       strInstVer = rstStatus(3)
     Else
       strInstVer = "< missing >"
@@ -1190,12 +1381,14 @@ next_lngItem:
     For Each REMatch In REMatches
       myUpgrades_frm.cboBranches.AddItem Replace(REMatch, Chr(34) & "name" & Chr(34) & ":" & Chr(34), "")
     Next
-    myUpgrades_frm.cboBranches.Value = "master"
+    myUpgrades_frm.cboBranches.Value = Replace(cptRegEx(strGitHub, "[^/]*/$"), "/", "")
   Else
     myUpgrades_frm.cboBranches.Clear
     myUpgrades_frm.cboBranches.AddItem "<unavailable>"
   End If
   myUpgrades_frm.Caption = "Installation Status (" & cptGetVersion("cptUpgrades_frm") & ")"
+  myUpgrades_frm.cboBranches.Visible = True
+  myUpgrades_frm.cboBranches.Enabled = False
   Application.StatusBar = "Ready for user input..."
   DoEvents
   myUpgrades_frm.Show
@@ -1220,140 +1413,184 @@ exit_here:
   Set FindRecord = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowUpgrades_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowUpgrades_frm", Err, Erl)
   Resume exit_here
 
 End Sub
 
 Sub cptSetReferences()
   'this is a one-time shot to set all references currently required by the cp toolbar
-  Dim oExcel As Object
-  Dim strDir As String
-  Dim strRegEx As String
-  Dim vPath As Variant
-  Dim vApp As Variant
+  'REQUIRED:
+  '{B691E011-1797-432E-907A-4D8C69339129}  Microsoft ActiveX Data Objects 6.1 Library
+  '{00020813-0000-0000-C000-000000000046}  Microsoft Excel 16.0 Object Library
+  '{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}  Microsoft Windows Common Controls 6.0 (SP6)
+  '{BED7F4EA-1A96-11D2-8F08-00A0C9A6186D}  mscorlib.dll
+  '{0D452EE1-E08F-101A-852E-02608C4D0BB4}  Microsoft Forms 2.0 Object Library
+  '{A7107640-94DF-1068-855E-00DD01075445}  Microsoft Project . Object Library
+  '{F5078F18-C551-11D3-89B9-0000F81FE221}  Microsoft XML, v3.0
+  '{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}  Microsoft Office 16.0 Object Library
+  '{00062FFF-0000-0000-C000-000000000046}  Microsoft Outlook 16.0 Object Library
+  '{91493440-5A91-11CF-8700-00AA0060263B}  Microsoft PowerPoint 16.0 Object Library
+  '{420B2830-E718-11CF-893D-00A0C9054228}  Microsoft Scripting Runtime
+  '{00020430-0000-0000-C000-000000000046}  OLE Automation
+  '{000204EF-0000-0000-C000-000000000046}  Visual Basic For Applications
+  '{0002E157-0000-0000-C000-000000000046}  Microsoft Visual Basic for Applications Extensibility 5.3
+  '{3F4DACA7-160D-11D2-A8E9-00104B365C9F}  Microsoft VBScript Regular Expressions 5.5
+  '{00020905-0000-0000-C000-000000000046}  Microsoft Word 16.0 Object Library
+  'objects
+  Dim oExisting As Object
+  Dim oReg As Object
+  Dim oOfficeApp As Object
+  'strings
+  Dim strRefName As String
+  Dim strGuid As String
+  Dim strVersion As String
+  Dim strPath As String
+  'longs
+  Dim lngItem As Long
+  Dim lngMaj As Long
+  Dim lngMin As Long
+  Dim lngReg As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  Dim vRefs As Variant
+  Dim vRef As Variant
+  'dates
+  'constants
+  Const HKCR As Long = &H80000000
 
-  On Error Resume Next
-
-  'CommonProgramFiles
-  strDir = Environ("CommonProgramFiles")
-  If Not cptReferenceExists("Office") Then
-    ThisProject.VBProject.References.AddFromFile strDir & "\Microsoft Shared\OFFICE16\MSO.DLL"
-  End If
-  If Not cptReferenceExists("VBIDE") Then
-    #If Not Win64 Then
-      ThisProject.VBProject.References.AddFromFile strDir & "\Microsoft Shared\VBA\VBA6\VBE6EXT.OLB"
-    #Else
-      ThisProject.VBProject.References.AddFromFile "C:\Program Files (x86)\Common Files\Microsoft Shared\VBA\VBA6\VBE6EXT.OLB"
-    #End If
-  End If
-  If Not cptReferenceExists("VBA") Then
-    ThisProject.VBProject.References.AddFromFile strDir & "\Microsoft Shared\VBA\VBA7.1\VBE7.DLL"
-  End If
-  If Not cptReferenceExists("ADODB") Then
-    ThisProject.VBProject.References.AddFromFile strDir & "\System\ado\msado15.dll"
-  End If
-
-  'office applications
-  For Each vApp In Split("EXCEL.EXE,MSOUTL.OLB,MSPPT.OLB,MSWORD.OLB", ",")
-    strDir = cptGetOfficeDir2(CStr(vApp))
-    If Len(strDir) > 0 Then
-      ThisProject.VBProject.References.AddFromFile strDir & "\" & CStr(vApp)
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  'capture existing references - add by exception only
+  Set oExisting = CreateObject("Scripting.Dictionary")
+  For lngItem = 1 To ThisProject.VBProject.References.Count
+    oExisting.Add ThisProject.VBProject.References(lngItem).Name, ThisProject.VBProject.References(lngItem).Name
+  Next lngItem
+  
+  'define array of required references
+  'why early vs late binding? all the constants
+  vRefs = Array("ADODB|{B691E011-1797-432E-907A-4D8C69339129}", _
+                "Excel|{00020813-0000-0000-C000-000000000046}", _
+                "MSComctlLib|{831FDD16-0C5C-11D2-A9FC-0000F8754DA1}", _
+                "mscorlib|{BED7F4EA-1A96-11D2-8F08-00A0C9A6186D}", _
+                "MSForms|{0D452EE1-E08F-101A-852E-02608C4D0BB4}", _
+                "MSProject|{A7107640-94DF-1068-855E-00DD01075445}", _
+                "MSXML2|{F5078F18-C551-11D3-89B9-0000F81FE221}", _
+                "Office|{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}", _
+                "Outlook|{00062FFF-0000-0000-C000-000000000046}", _
+                "PowerPoint|{91493440-5A91-11CF-8700-00AA0060263B}", _
+                "Scripting|{420B2830-E718-11CF-893D-00A0C9054228}", _
+                "stdole|{00020430-0000-0000-C000-000000000046}", _
+                "VBA|{000204EF-0000-0000-C000-000000000046}", _
+                "VBIDE|{0002E157-0000-0000-C000-000000000046}", _
+                "VBScript_RegExp_55|{3F4DACA7-160D-11D2-A8E9-00104B365C9F}", _
+                "Word|{00020905-0000-0000-C000-000000000046}")
+  
+  Set oReg = GetObject("winmgmts:\\.\root\default:StdRegProv")
+  
+  For Each vRef In vRefs
+    strRefName = Split(vRef, "|")(0)
+    Application.StatusBar = "Confirming VBA Reference: " & strRefName & "..."
+    If Not oExisting.Exists(strRefName) Then
+      strGuid = Split(vRef, "|")(1)
+      Application.StatusBar = "Adding VBA Reference: " & strRefName & "..."
+      If GetHighestTypeLibVersion(strGuid, lngMaj, lngMin) Then
+        If strGuid = "{91493440-5A91-11CF-8700-00AA0060263B}" Then 'powerpoint is weird
+          strVersion = CStr(lngMaj) & "." & LCase$(Hex$(lngMin))
+        Else
+          strVersion = CStr(lngMaj) & "." & CStr(lngMin)
+        End If
+        lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win64", "", strPath)
+        If lngReg <> 0 Or Len(strPath) = 0 Then
+          lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win32", "", strPath)
+        End If
+        On Error Resume Next
+        ThisProject.VBProject.References.AddFromFile strPath
+        Application.StatusBar = "Adding VBA Reference: " & strRefName & "...done."
+      Else
+        Application.StatusBar = "Error! Reference to '" & strRefName & "' not found!"
+        'todo: do what?
+      End If
+    Else
+      Application.StatusBar = "Confirming VBA Reference: " & strRefName & "...exists."
     End If
-  Next vApp
-
-windows_common:
-  If Not cptReferenceExists("MSForms") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\SysWOW64\FM20.DLL"
-  End If
-  If Not cptReferenceExists("Scripting") Then
-    ThisProject.VBProject.References.AddFromFile "C:\Windows\SysWOW64\scrrun.dll"
-  End If
-  If Not cptReferenceExists("stdole") Then
-    ThisProject.VBProject.References.AddFromFile "C:\Windows\SysWOW64\stdole2.tlb"
-  End If
-  If Not cptReferenceExists("mscorlib") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\mscorlib.tlb"
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\Microsoft.NET\Framework\v4.0.30319\mscorlib.dll"
-  End If
-  If Not cptReferenceExists("MSComctlLib") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\SysWOW64\MSCOMCTL.OCX"
-  End If
-  If Not cptReferenceExists("MSXML2") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\SysWOW64\msxml3.dll"
-  End If
-  If Not cptReferenceExists("VBScript_RegExp_55") Then
-    ThisProject.VBProject.References.AddFromFile "C:\WINDOWS\System32\vbscript.dll\3"
-  End If
+  Next vRef
   
 exit_here:
   On Error Resume Next
-  If Not oExcel Is Nothing Then oExcel.Quit
-  Set oExcel = Nothing
-
+  Application.StatusBar = ""
+  Set oReg = Nothing
+  Set oOfficeApp = Nothing
+  Set oExisting = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptSetReferences", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSetReferencesNew", Err)
   Resume exit_here
-
 End Sub
 
-Function cptGetOfficeDir(strApp As String) As String
-  Dim strDir As String
-  Dim vPath As Variant
-  
-  strDir = ""
-  For Each vPath In Split(Environ("PATH"), ";")
-    If InStr(vPath, "Office") > 0 Then
-      If Dir(CStr(vPath) & strApp) <> vbNullString Then
-        strDir = vPath
-        Exit For
-      End If
-    End If
-  Next vPath
+Function GetHighestTypeLibVersion( _
+    ByVal strGuid As String, _
+    ByRef lngMajor As Long, _
+    ByRef lngMinor As Long) As Boolean
 
-  If Len(strDir) > 0 Then
-    cptGetOfficeDir = strDir
-  ElseIf Len(strDir) = 0 Then 'weird installation or Excel not installed
-    cptGetOfficeDir = strDir
-    MsgBox "Microsoft Office installation is not detetcted. Some features may not operate as expected." & vbCrLf & vbCrLf & "Please contact help@ClearPlanConsulting.com for specialized assistance.", vbCritical + vbOKOnly, "Microsoft Office Compatibility"
-  End If
-  
-End Function
+    Const HKCR As Long = &H80000000
 
-Function cptGetOfficeDir2(strApp As String) As String
-  Dim strDir As String
-  Dim vPath As Variant
-  Dim oFSO As Object 'Scripting.FileSystemObject
-  Dim oFolder As Object 'Scripting.Folder
-  strDir = ""
-  For Each vPath In Split(Environ("PATH"), ";")
-    strDir = cptRegEx(CStr(vPath), ".*Microsoft Office\\")
-    If Len(strDir) > 0 Then
-      Set oFSO = CreateObject("Scripting.FileSystemObject")
-      Set oFolder = oFSO.GetFolder(strDir)
-      cptGetOfficeDir2 = cptGetAppDir(oFolder, strApp)
-    End If
-  Next vPath
-  
-  Set oFSO = Nothing
-  Set oFolder = Nothing
-End Function
+    Dim reg As Object
+    Dim arrVersions As Variant
+    Dim i As Long
 
-Function cptGetAppDir(oFolder As Object, strApp As String) As String
-  Dim f As Object 'Scripting.File
-  Dim sf As Object 'Scripting.Folder
-  
-  If Dir(oFolder.Path & "\" & strApp) <> vbNullString Then
-    cptGetAppDir = oFolder.Path
-  Else
-    For Each sf In oFolder.SubFolders
-      If Len(cptGetAppDir) > 0 Then Exit Function
-      cptGetAppDir = cptGetAppDir(sf, strApp)
-    Next sf
-  End If
-  Set f = Nothing
-  Set sf = Nothing
+    Dim strVersion As String
+    Dim arrParts() As String
+
+    Dim lngMaj As Long
+    Dim lngMin As Long
+
+    Dim lngBestMaj As Long
+    Dim lngBestMin As Long
+
+    Set reg = GetObject("winmgmts:\\.\root\default:StdRegProv")
+
+    reg.EnumKey HKCR, "TypeLib\" & strGuid, arrVersions
+
+    If Not IsArray(arrVersions) Then Exit Function
+
+    For i = LBound(arrVersions) To UBound(arrVersions)
+
+        strVersion = arrVersions(i)
+
+        arrParts = Split(strVersion, ".")
+
+        If UBound(arrParts) = 1 Then
+
+            lngMaj = CLng(arrParts(0))
+
+            If IsNumeric(arrParts(1)) Then
+                lngMin = CLng(arrParts(1))
+            Else
+                lngMin = CLng("&H" & arrParts(1))
+            End If
+
+            If lngMaj > lngBestMaj _
+               Or (lngMaj = lngBestMaj And lngMin > lngBestMin) Then
+
+                lngBestMaj = lngMaj
+                lngBestMin = lngMin
+
+            End If
+
+        End If
+
+    Next i
+
+    lngMajor = lngBestMaj
+    lngMinor = lngBestMin
+
+    GetHighestTypeLibVersion = (lngBestMaj > 0 Or lngBestMin > 0)
+
 End Function
 
 Sub cptSubmitIssue()
@@ -1439,7 +1676,7 @@ Sub cptSendMail(strCategory As String)
       oMailItem.Subject = "Issue: <enter brief summary of the issue>"
       On Error Resume Next
       Err.Raise 1, "User", "User-submitted Issue"
-      cptHandleErr "cptCore_bas", "cptSendMail", Err
+      cptHandleErr THIS_MODULE, "cptSendMail", Err
       strHTML = "<h3>Please Describe Your Environment:</h3><p>"
       strHTML = strHTML & "<i>Operating System</i>: [operating system]<p>"
       strHTML = strHTML & "<i>Microsoft Project Version</i>: [Standard / Professional] [Year]<p>"
@@ -1469,7 +1706,7 @@ exit_here:
   Set oMailItem = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptSendMail", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSendMail", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1568,7 +1805,7 @@ exit_here:
 '  GoTo exit_here
 
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptWrapItUp", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptWrapItUp", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1694,7 +1931,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptVersionStatus", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptVersionStatus", Err, Erl)
   Resume exit_here
 
 End Function
@@ -1729,7 +1966,7 @@ End Sub
 Function cptSaveSetting(strFeature As String, strKey As String, strValue As Variant) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
-  lngWorked = SetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
+  lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
   If lngWorked Then
     cptSaveSetting = True
   Else
@@ -1742,7 +1979,7 @@ Function cptGetSetting(strFeature As String, strKey As String) As String
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
   strReturned = Space(255) 'this determines the length of the returned value, not the length of the stored value
   lngSize = Len(strReturned)
-  lngWorked = GetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
+  lngWorked = cptGetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
   If lngWorked Then
     cptGetSetting = Left$(strReturned, lngWorked)
   Else
@@ -1765,7 +2002,7 @@ End Function
 Function cptDeleteSetting(strFeature As String, strKey As String) As Boolean
   Dim strSettingsFile As String, lngWorked As Long
   strSettingsFile = cptDir & "\settings\cpt-settings.ini"
-  lngWorked = SetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
+  lngWorked = cptSetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
   If lngWorked Then
     cptDeleteSetting = True
   Else
@@ -1776,22 +2013,53 @@ End Function
 Function cptViewExists(strView As String) As Boolean
   'objects
   Dim oView As MSProject.View
+  Dim oTable As MSProject.Table
+  Dim oFilter As MSProject.Filter
+  Dim oGroup As MSProject.Group
+  Dim oViewSingle As MSProject.ViewSingle
+  Dim oViewCombo As MSProject.ViewCombination
+  'booleans
+  Dim blnExists As Boolean
 
+  blnExists = False 'until proven true
+
+  'does the view exist?
   On Error Resume Next
   Set oView = ActiveProject.Views(strView)
   If oView Is Nothing Then
     Set oView = Application.GlobalViews(strView)
   End If
+  blnExists = Not oView Is Nothing
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  cptViewExists = Not oView Is Nothing
+  'does the associated table/filter/group exist?
+  If blnExists Then
+    If oView.Single Then
+      Set oViewSingle = oView
+      If oViewSingle.Screen = pjGantt Or oViewSingle.Screen = pjTaskSheet Or oViewSingle.Screen = pjTaskUsage Then
+        blnExists = cptTableExists(oViewSingle.Table) And cptFilterExists(oViewSingle.Filter) And cptGroupExists(oViewSingle.Group)
+      Else
+        blnExists = True 'I guess?
+      End If
+    Else
+      Set oViewCombo = oView
+      blnExists = cptViewExists(oViewCombo.TopView) And cptViewExists(oViewCombo.BottomView)
+    End If
+  End If
+  
+  cptViewExists = blnExists
   
 exit_here:
   On Error Resume Next
+  Set oViewSingle = Nothing
+  Set oViewCombo = Nothing
+  Set oGroup = Nothing
+  Set oFilter = Nothing
+  Set oTable = Nothing
   Set oView = Nothing
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptViewExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptViewExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -1820,7 +2088,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptTableExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptTableExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -1849,7 +2117,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptFilterExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptFilterExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -1878,7 +2146,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGroupExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGroupExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -1888,7 +2156,7 @@ Sub cptCreateFilter(strFilter As String)
 
   Select Case strFilter
     Case "Marked"
-      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
+      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
       
   End Select
   
@@ -1897,7 +2165,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptCreateFilter", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCreateFilter", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1913,6 +2181,7 @@ Sub cptShowSettings_frm()
   Dim strSettingsFileNew As String
   Dim strSettingsFile As String
   Dim strProgramAcronym As String
+  Dim strSetting As String
   Dim strFeature As String
   Dim strLine As String
   'longs
@@ -2015,11 +2284,10 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptShowSettings_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowSettings_frm", Err, Erl)
   Resume exit_here
 End Sub
-
-Function cptGetProgramAcronym() As String
+Function cptGetProgramAcronym(Optional blnPrompt As Boolean = True) As String
   'objects
   Dim oCustomDocumentProperty As DocumentProperty
   'strings
@@ -2037,20 +2305,24 @@ Function cptGetProgramAcronym() As String
   Set oCustomDocumentProperty = ActiveProject.CustomDocumentProperties("cptProgramAcronym")
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If oCustomDocumentProperty Is Nothing Then
-    strMsg = "For some features, a unique program acronym is required to capture data (locally)." & vbCrLf & vbCrLf
-    strMsg = strMsg & "This program acronym is saved in a custom document property named 'cptProgramAcronym'." & vbCrLf & vbCrLf
-    strMsg = strMsg & "Please enter a program acronym for this file:"
-    vResponse = InputBox(strMsg, "Program Acronym")
-    If StrPtr(vResponse) = 0 Then
-      MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
-      cptGetProgramAcronym = ""
-    ElseIf vResponse = vbNullString Then
-      MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
-      cptGetProgramAcronym = ""
+    If blnPrompt Then
+      strMsg = "For some features, a unique program acronym is required to capture data (locally)." & vbCrLf & vbCrLf
+      strMsg = strMsg & "This program acronym is saved in a custom document property named 'cptProgramAcronym'." & vbCrLf & vbCrLf
+      strMsg = strMsg & "Please enter a program acronym for this file:"
+      vResponse = InputBox(strMsg, "Program Acronym")
+      If StrPtr(vResponse) = 0 Then
+        MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
+        cptGetProgramAcronym = ""
+      ElseIf vResponse = vbNullString Then
+        MsgBox "No Program Acronym saved.", vbCritical + vbOKOnly, "Invalid Response"
+        cptGetProgramAcronym = ""
+      Else
+        Set oCustomDocumentProperty = ActiveProject.CustomDocumentProperties.Add("cptProgramAcronym", False, msoPropertyTypeString, CStr(vResponse))
+        cptGetProgramAcronym = CStr(vResponse)
+        MsgBox "Program Acronym '" & CStr(vResponse) & "' saved!", vbInformation + vbOKOnly, "Success"
+      End If
     Else
-      Set oCustomDocumentProperty = ActiveProject.CustomDocumentProperties.Add("cptProgramAcronym", False, msoPropertyTypeString, CStr(vResponse))
-      cptGetProgramAcronym = CStr(vResponse)
-      MsgBox "Program Acronym '" & CStr(vResponse) & "' saved!", vbInformation + vbOKOnly, "Success"
+      cptGetProgramAcronym = ""
     End If
   Else
     cptGetProgramAcronym = ActiveProject.CustomDocumentProperties("cptProgramAcronym").Value
@@ -2061,14 +2333,14 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetProgramAcronym", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetProgramAcronym", Err, Erl)
   Resume exit_here
 End Function
 
 Sub cptOpenSettingsFile()
   Dim strFileName As String
   strFileName = cptDir & "\settings\cpt-settings.ini"
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
 End Sub
 
 Function cptGetMyHeaders(strTitle As String, Optional blnRequired As Boolean = False) As String
@@ -2145,7 +2417,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetMyHeaders", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetMyHeaders", Err, Erl)
   Resume exit_here
 
 End Function
@@ -2205,7 +2477,7 @@ exit_here:
   Set oSubprojects = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptConvertToMasterUIDs", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptConvertToMasterUIDs", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2238,7 +2510,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetShowStatusBarCountFirstRun", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetShowStatusBarCountFirstRun", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2312,7 +2584,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptAppendColumn", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAppendColumn", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2554,7 +2826,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetSums", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetSums", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2670,7 +2942,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetCustomFields", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetCustomFields", Err, Erl)
   Resume exit_here
   
 End Function
@@ -2912,8 +3184,14 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
         If IsEmpty(oComboBox.List(oComboBox.ListCount - 1, 0)) Then oComboBox.RemoveItem (oComboBox.ListCount - 1)
       End If
       If lngField > 0 And InStr(strSetting, "|") > 0 Then
-        If lngField > 188776000 And FieldConstantToFieldName(lngField) = "<Unavailable>" Then 'this happens when it's an ECF; but offline
-          MsgBox "The saved mapping field for element '" & vControl & "' is an Enterprise Custom Field (ECF) named '" & Split(strSetting, "|")(1) & "' but ECFs are only available when connected to PWA." & vbCrLf & vbCrLf & "Import of saved field mapping for '" & vControl & "' will be skipped.", vbExclamation + vbOKOnly, "Integration: " & vControl
+        If lngField > 188776000 And FieldConstantToFieldName(lngField) = "<Unavailable>" Then
+          If FieldNameToFieldConstant(Split(strSetting, "|")(1)) > 0 Then
+            lngField = FieldNameToFieldConstant(Split(strSetting, "|")(1))
+            cptSaveSetting "Integration", CStr(vControl), lngField & "|" & Split(strSetting, "|")(1)
+            oComboBox.Value = lngField
+          Else
+            MsgBox "The saved mapping field for element '" & vControl & "' is an Enterprise Custom Field (ECF) named '" & Split(strSetting, "|")(1) & "' but it could not be found." & vbCrLf & vbCrLf & "Import of saved field mapping for '" & vControl & "' will be skipped.", vbExclamation + vbOKOnly, "Integration: " & vControl
+          End If
         ElseIf InStr(strSetting, "|") > 0 Then
           If LCase(FieldConstantToFieldName(lngField)) <> LCase(Split(strSetting, "|")(1)) Then
             If LCase(CustomFieldGetName(lngField)) <> LCase(Split(strSetting, "|")(1)) Then
@@ -2991,7 +3269,19 @@ next_control:
     Else
       .chkSyncSettings.Enabled = False
     End If
-        
+
+    strSetting = cptGetSetting("Integration", "chkCAParent")
+    If Len(strSetting) > 0 Then
+      .chkCAParent = CBool(strSetting)
+      If .chkCAParent = True Then
+        .cboWBS.Width = 108
+      End If
+    End If
+    If .cboWBS <> .cboCA And .chkCAParent = True Then
+      .cboWBS.Width = 126
+      .chkCAParent = False
+    End If
+
     If Not blnValid Or blnConfirmationRequired Then
       .Show
       cptValidMap = .blnValidIntegrationMap
@@ -3010,7 +3300,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptValidMap", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidMap", Err, Erl)
   Resume exit_here
     
 End Function
@@ -3086,7 +3376,7 @@ exit_here:
   End If
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptValidPath()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidPath()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3138,7 +3428,7 @@ exit_here:
   
 err_here:
   On Error Resume Next
-  cptHandleErr "cptCore_bas", "cptGetShortPath", Err, Erl
+  cptHandleErr THIS_MODULE, "cptGetShortPath", Err, Erl
   strShortPath = ""
   Resume exit_here
 
@@ -3170,7 +3460,7 @@ exit_here:
 '  Call cptCore_bas.cptStartEvents
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptErrorTrapping", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptErrorTrapping", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3255,7 +3545,7 @@ Function cptGetPosition(vList As Variant, vValue As Variant, Optional strDelimit
             lngTemp = lngPosition
           End If
         Case "Integer"
-          If vValue = CInt(vList(lngPosition - 1)) Then
+          If vValue = CLng(vList(lngPosition - 1)) Then
             lngTemp = lngPosition
           End If
         Case "Long"
@@ -3336,7 +3626,7 @@ exit_here:
   Set oCalendar = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptCalendarExists", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCalendarExists", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3416,38 +3706,23 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptCheckMetadata", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCheckMetadata", Err, Erl)
   Resume exit_here
 End Sub
 
-Sub cptAddBorders(ByRef rng As Object, Optional blnHorizontal As Boolean = True)
-  rng.Borders(xlDiagonalDown).LineStyle = xlNone
-  rng.Borders(xlDiagonalUp).LineStyle = xlNone
-  With rng.Borders(xlEdgeLeft)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlEdgeTop)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlEdgeBottom)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlEdgeRight)
-    .LineStyle = xlContinuous
-    .ThemeColor = 2
-    .TintAndShade = 0.499984740745262
-    .Weight = xlThin
-  End With
-  With rng.Borders(xlInsideVertical)
+Sub cptAddBorders(ByRef oRange As Object, Optional blnHorizontal As Boolean = True)
+  Dim vBorder As Variant
+  oRange.Borders(xlDiagonalDown).LineStyle = xlNone
+  oRange.Borders(xlDiagonalUp).LineStyle = xlNone
+  For Each vBorder In Array(xlEdgeLeft, xlEdgeTop, xlEdgeBottom, xlEdgeRight)
+    With oRange.Borders(vBorder)
+      .LineStyle = xlContinuous
+      .ThemeColor = 2
+      .TintAndShade = 0.499984740745262
+      .Weight = xlThin
+    End With
+  Next vBorder
+  With oRange.Borders(xlInsideVertical)
     .LineStyle = xlContinuous
     .ThemeColor = 1
     .TintAndShade = -0.249946592608417
@@ -3455,16 +3730,18 @@ Sub cptAddBorders(ByRef rng As Object, Optional blnHorizontal As Boolean = True)
   End With
   'optional horizontal lines
   If blnHorizontal Then
-    rng.Borders(xlInsideHorizontal).LineStyle = xlContinuous
-    rng.Borders(xlInsideHorizontal).ThemeColor = 1
-    rng.Borders(xlInsideHorizontal).TintAndShade = -0.249946592608417
-    rng.Borders(xlInsideHorizontal).Weight = xlThin
+    With oRange.Borders(xlInsideHorizontal)
+      .LineStyle = xlContinuous
+      .ThemeColor = 1
+      .TintAndShade = -0.249946592608417
+      .Weight = xlThin
+    End With
   Else
-    rng.Borders(xlInsideHorizontal).LineStyle = xlNone
+    oRange.Borders(xlInsideHorizontal).LineStyle = xlNone
   End If
 End Sub
 
-Sub cptAddShading(ByRef oRange As Object, Optional blnLight = False)
+Sub cptAddShading(ByRef oRange As Object, Optional blnLight As Boolean = False)
   If blnLight Then
     With oRange.Interior
       .Pattern = xlSolid
@@ -3635,7 +3912,7 @@ exit_here:
   Set oOutlineCode = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptHasLookup()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptHasLookup()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3727,6 +4004,71 @@ exit_here:
   Set oReturn = Nothing
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptGetCustomFieldInfo", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetCustomFieldInfo", Err, Erl)
   Resume exit_here
 End Function
+
+Function cptConvertADODBtoCSV(ByRef oRecordset As Object, strToCSVFileName As String) As Boolean
+  'objects
+  'strings
+  Dim strFileName As String
+  Dim strHeader As String
+  'longs
+  Dim lngFile As Long
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  strFileName = Environ("tmp") & "\Schema.ini"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  lngFile = FreeFile
+  Open strFileName For Output As #lngFile
+  Print #lngFile, "[" & strToCSVFileName & "]"
+  Print #lngFile, "Format=CSVDelimited"
+  Print #lngFile, "ColNameHeader=True"
+  
+  With oRecordset
+    For lngItem = 0 To .Fields.Count - 1
+      Select Case .Fields(lngItem).Type
+        Case adInteger '3=integer
+          Print #lngFile, "Col" & lngItem + 1 & "=" & .Fields(lngItem).Name & " Integer"
+        Case adDate '7=date
+          Print #lngFile, "Col" & lngItem + 1 & "=" & .Fields(lngItem).Name & " DateTime"
+        Case adVarChar '200=text
+          Print #lngFile, "Col" & lngItem + 1 & "=" & .Fields(lngItem).Name & " Text Width " & .Fields(lngItem).DefinedSize
+      End Select
+    Next lngItem
+  End With
+  Close #lngFile
+  
+  lngFile = FreeFile
+  strFileName = Environ("tmp") & "\" & strToCSVFileName
+  Open strFileName For Output As #lngFile
+  For lngItem = 0 To oRecordset.Fields.Count - 1
+    If lngItem > 0 Then strHeader = strHeader & ","
+    strHeader = strHeader & oRecordset(lngItem).Name
+  Next lngItem
+  Print #lngFile, strHeader
+  Print #lngFile, oRecordset.GetString(adClipString, , ",", vbCrLf, vbNullString)
+  Close #lngFile
+
+  cptConvertADODBtoCSV = True
+
+exit_here:
+  On Error Resume Next
+  
+  Exit Function
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptConvertADODBtoCSV", Err, Erl)
+  cptConvertADODBtoCSV = False
+  Resume exit_here
+
+End Function
+

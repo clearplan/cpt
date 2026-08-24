@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptFiscal_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptFiscal_bas"
 
 Sub cptShowFiscal_frm()
   'objects
@@ -19,7 +20,7 @@ Sub cptShowFiscal_frm()
   'dates
   
   'prevent spawning
-  If Not cptGetUserForm("cptFiscal_frm") Is Nothing Then Exit Sub
+  If Not cptGetUserForm(THIS_MODULE) Is Nothing Then Exit Sub
   
   'get/create fiscal calendar
   On Error Resume Next
@@ -49,7 +50,7 @@ Sub cptShowFiscal_frm()
   With myFiscal_frm
     
     .lboExceptions.Clear
-    .Caption = "Fiscal Calendar (" & cptGetVersion("cptFiscal_bas") & ")"
+    .Caption = "Fiscal Calendar (" & cptGetVersion(THIS_MODULE) & ")"
     'load exceptions
     '.lboExceptions.ColumnWidths = 45
     For Each oException In oCal.Exceptions
@@ -74,7 +75,7 @@ Sub cptShowFiscal_frm()
     
     .cmdImport.Enabled = False
     
-    .lblCount.Caption = oCal.Exceptions.Count & " exception" & IIf(oCal.Exceptions.Count = 1, "", "s") & "."
+    .lblCount.Caption = oCal.Exceptions.Count & " exception" & IIf(oCal.Exceptions.Count = 1, "", "s")
     
     'warn if baseline or forecast finish exceends fiscal calendar
     If oCal.Exceptions.Count > 0 Then
@@ -106,6 +107,20 @@ Sub cptShowFiscal_frm()
       .cboUse.List(.cboUse.ListCount - 1, 2) = Split(strSetting, "|")(1)
       .cmdAnalyzeEVT.Enabled = True
     End If
+    strSetting = cptGetSetting("Fiscal", "chkShowStatusBarFiscalPeriodCount")
+    If Len(strSetting) > 0 Then
+      .chkShowFiscalPeriods = CBool(strSetting)
+    Else
+      .chkShowFiscalPeriods = False 'default
+    End If
+    .cboImportField.Enabled = False
+    .lboExceptions.Top = .lboHeaders.Top + .lboHeaders.Height - 1
+    .lblCount.Top = .lboExceptions.Top + .lboExceptions.Height + 2
+    If .txtExceptions.Top + .txtExceptions.Height + 2 > .lboExceptions.Top + .lboExceptions.Height + 2 Then
+      .lblCount.Top = .txtExceptions.Top + .txtExceptions.Height + 2
+    End If
+    .lblCount.Left = .lboExceptions.Left
+    .chkShowFiscalPeriods.Top = .lboExceptions.Top + .lboExceptions.Height - .chkShowFiscalPeriods.Height
     
     .Show 'Modal=True
     
@@ -120,7 +135,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal_bas", "cptShowFiscal_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowFiscal_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -191,7 +206,7 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptFiscal_bas", "cptExportCalendarExceptions", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportCalendarExceptions", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -253,7 +268,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal_bas", "cptExportExceptionsTemplate", Err)
+  Call cptHandleErr(THIS_MODULE, "cptExportExceptionsTemplate", Err)
   Resume exit_here
 End Sub
 
@@ -369,7 +384,7 @@ next_record:
   
   'kick out an error report
   If lngErrorCount > 0 Then
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
 exit_here:
@@ -387,7 +402,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal_bas", "cptImportCalendarExceptions", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptImportCalendarExceptions", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -425,7 +440,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal_bas", "cptUpdateFiscal", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateFiscal", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -732,7 +747,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFiscal_bas", "cptAnalyzeEVT", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAnalyzeEVT", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -764,6 +779,58 @@ exit_here:
   Exit Function
 err_here:
   On Error Resume Next
-  Call cptHandleErr("cptFiscal_bas", "cptCalendarMonthsAsFiscalperiods", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCalendarMonthsAsFiscalperiods", Err, Erl)
   Resume exit_here
 End Function
+
+Function cptGetFiscalPeriods(ByRef oTasks As MSProject.Tasks) As Long
+  Dim oTask As MSProject.Task
+  Dim oCalendar As MSProject.Calendar
+  Dim lngCount As Long
+  Dim dtBLS As Date
+  Dim dtBLF As Date
+  Dim oException As MSProject.Exception
+    
+  For Each oTask In oTasks
+    If Not oTask.Active Then GoTo next_task
+    If Not IsDate(oTask.BaselineStart) Then
+      lngCount = 0
+      Exit Function
+    Else
+      If dtBLS > 0 Then
+        dtBLS = WorksheetFunction.min(dtBLS, oTask.BaselineStart)
+      Else
+        dtBLS = oTask.BaselineStart
+      End If
+    End If
+    If Not IsDate(oTask.BaselineFinish) Then
+      lngCount = 0
+      Exit Function
+    Else
+      dtBLF = WorksheetFunction.Max(dtBLF, oTask.BaselineFinish)
+    End If
+next_task:
+  Next oTask
+  If dtBLS > 0 And dtBLF > 0 Then
+    Set oCalendar = ActiveProject.BaseCalendars("cptFiscalCalendar")
+    For Each oException In oCalendar.Exceptions
+      If oException.Start >= dtBLS And oException.Finish < dtBLF Then
+        lngCount = lngCount + 1
+      End If
+    Next oException
+    lngCount = lngCount + 1
+  End If
+
+  cptGetFiscalPeriods = lngCount
+  Set oTask = Nothing
+  Set oException = Nothing
+  Set oCalendar = Nothing
+End Function
+
+Sub cptSetShowFiscalPeriodCount()
+  If MsgBox("Show Fiscal Period Count in Status Bar?", vbQuestion + vbYesNo, "Fiscal Periods") = vbYes Then
+    cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", 1
+  Else
+    cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", 0
+  End If
+End Sub

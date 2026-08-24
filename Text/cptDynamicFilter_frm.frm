@@ -13,8 +13,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.6.6</cpt_version>
+
+'<cpt_version>v1.6.7</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptDynamicFilter_frm"
 
 Private Sub cboField_Change()
   If Me.Visible Then Me.txtFilter_Change
@@ -147,14 +149,16 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDynamicFilter_frm", "lblURL", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -365,16 +369,16 @@ Sub txtFilter_Change()
   'build custom filter on the fly and apply it
   If Len(strFilterText) > 0 And Len(strOperator) > 0 Then
     If strField = "Task Name" Then strField = "Name"
-    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=strField, test:=strOperator, Value:=strFilterText, operation:=IIf(blnKeepSelected Or blnHideSummaryTasks, "Or", "None"), ShowInMenu:=False, ShowSummaryTasks:=blnShowRelatedSummaries
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=strField, Test:=strOperator, Value:=strFilterText, Operation:=IIf(blnKeepSelected Or blnHideSummaryTasks, "Or", "None"), ShowInMenu:=False, ShowSummaryTasks:=blnShowRelatedSummaries
   Else
     If strField = "Task Name" Then strField = "Name"
-    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=strField, test:="equals", Value:=strFilterText, operation:=IIf(blnKeepSelected Or blnHideSummaryTasks, "Or", "None"), ShowInMenu:=False, ShowSummaryTasks:=blnShowRelatedSummaries
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=strField, Test:="equals", Value:=strFilterText, Operation:=IIf(blnKeepSelected Or blnHideSummaryTasks, "Or", "None"), ShowInMenu:=False, ShowSummaryTasks:=blnShowRelatedSummaries
   End If
   If blnKeepSelected Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Unique ID", test:="equals", Value:=lngOriginalUID, operation:="Or"
+    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Unique ID", Test:="equals", Value:=lngOriginalUID, Operation:="Or"
   End If
   If blnHideSummaryTasks Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", test:="equals", Value:="No", operation:="And", parenthesis:=blnKeepSelected
+    FilterEdit Name:=strFilter, TaskFilter:=True, NewFieldName:="Summary", Test:="equals", Value:="No", Operation:="And", Parenthesis:=blnKeepSelected
     OptionsViewEx DisplaySummaryTasks:=True
   End If
 
@@ -383,18 +387,18 @@ Sub txtFilter_Change()
     If blnShowRelatedSummaries Then OptionsViewEx DisplaySummaryTasks:=True
   Else
     'build a sterile filter to retain existing autofilters
-    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Summary", test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True
-    FilterEdit Name:=strFilter, TaskFilter:=True, FieldName:="", NewFieldName:="Summary", test:="equals", Value:="No", operation:="Or", ShowSummaryTasks:=True
+    FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Summary", Test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True
+    FilterEdit Name:=strFilter, TaskFilter:=True, FieldName:="", NewFieldName:="Summary", Test:="equals", Value:="No", Operation:="Or", ShowSummaryTasks:=True
   End If
   
   If Application.Edition = pjEditionProfessional Then
     If blnActiveOnly Then
-      FilterEdit Name:=strFilter, TaskFilter:=True, parenthesis:=True, NewFieldName:="Active", test:="equals", Value:="Yes", operation:="And"
+      FilterEdit Name:=strFilter, TaskFilter:=True, Parenthesis:=True, NewFieldName:="Active", Test:="equals", Value:="Yes", Operation:="And"
     End If
   End If
   
   If blnHighlight And Len(strFilterText) = 0 Then
-    FilterEdit Name:=strFilter, TaskFilter:=True, parenthesis:=True, FieldName:="", NewFieldName:="Name", test:="equals", Value:="xxx_force-no-match_xxx", operation:="And", ShowSummaryTasks:=True
+    FilterEdit Name:=strFilter, TaskFilter:=True, Parenthesis:=True, FieldName:="", NewFieldName:="Name", Test:="equals", Value:="xxx_force-no-match_xxx", Operation:="And", ShowSummaryTasks:=True
   End If
   
   FilterClear

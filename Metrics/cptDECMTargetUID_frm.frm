@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v8.1.2</cpt_version>
+'<cpt_version>v8.1.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECMTargetUID_frm"
 Public lngTargetTaskUID As Long
@@ -31,8 +31,9 @@ Private Sub cmdSubmit_Click()
   Me.Hide
 End Sub
 
-Private Sub lboTasks_AfterUpdate()
+Sub lboTasks_AfterUpdate()
   If IsNull(Me.lboTasks.Value) Then Exit Sub
+  If Me.lboTasks.Value = "" Then Exit Sub
   If Me.lboTasks.Value > 0 Then
     Me.cmdSubmit.Caption = "Use " & Me.lboTasks.Value
     Me.cmdSubmit.Enabled = True
@@ -42,13 +43,14 @@ Private Sub lboTasks_AfterUpdate()
   End If
 End Sub
 
-Private Sub txtTaskName_Change()
+Private Sub txtTaskFilter_Change()
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
   Dim strCon As String
   Dim strDir As String
   Dim strSQL As String
+  Dim strFilter As String
   'longs
   'integers
   'doubles
@@ -64,8 +66,13 @@ Private Sub txtTaskName_Change()
   strDir = Environ("tmp")
   strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
   strSQL = "SELECT UID,TASK_NAME FROM [targets.csv] "
-  If Len(Me.txtTaskName.Text) > 0 Then
-    strSQL = strSQL & "WHERE LCASE(TASK_NAME) Like '%" & LCase(Me.txtTaskName.Text) & "%'"
+  strFilter = Me.txtTaskFilter.Text
+  If Len(strFilter) > 0 Then
+    If cptRxTest(strFilter, "^\d+$") Then
+      strSQL = strSQL & "WHERE UID LIKE '%" & strFilter & "%'"
+    Else
+      strSQL = strSQL & "WHERE LCASE(TASK_NAME) LIKE '%" & LCase(strFilter) & "%'"
+    End If
   End If
   With oRecordset
     .Open strSQL, strCon, adOpenKeyset, adLockReadOnly
@@ -80,65 +87,23 @@ Private Sub txtTaskName_Change()
     .Close
   End With
   
-exit_here:
-  On Error Resume Next
-  Set oRecordset = Nothing
-
-  Exit Sub
-err_here:
-  Call cptHandleErr("cptDECMTargetUID_frm", "txtTaskName_Change", Err, Erl)
-  Resume exit_here
-End Sub
-
-Private Sub txtUID_Change()
-  'objects
-  Dim oRecordset As ADODB.Recordset
-  'strings
-  Dim strCon As String
-  Dim strDir As String
-  Dim strSQL As String
-  'longs
-  Dim lngUID As Long
-  'integers
-  'doubles
-  'booleans
-  'variants
-  'dates
-  
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-  Me.lboTasks.Clear
-  
-  Set oRecordset = CreateObject("ADODB.Recordset")
-  strDir = Environ("tmp")
-  strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & strDir & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
-  strSQL = "SELECT UID,TASK_NAME FROM [targets.csv] "
-  If Len(Me.txtUID.Text) > 0 Then
-    'first, clean the input
-    lngUID = cptRegEx(Me.txtUID.Text, "[0-9]{1,}")
-    Me.txtUID.Text = lngUID
-    strSQL = strSQL & "WHERE UID Like '%" & lngUID & "%'"
+  If Me.lboTasks.ListCount = 1 Then
+    Me.lboTasks.SetFocus
+    Me.lboTasks.Value = Me.lboTasks.List(0, 0)
+    Me.lboTasks_AfterUpdate
+  Else
+    Me.lboTasks.Value = Null
+    Me.cmdSubmit.Enabled = False
+    Me.cmdSubmit.Caption = "Use"
   End If
-  With oRecordset
-    .Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-    If .RecordCount = 0 Then Exit Sub
-    .MoveFirst
-    Do While Not .EOF
-      Me.lboTasks.AddItem
-      Me.lboTasks.List(Me.lboTasks.ListCount - 1, 0) = oRecordset("UID")
-      Me.lboTasks.List(Me.lboTasks.ListCount - 1, 1) = oRecordset("TASK_NAME")
-      .MoveNext
-    Loop
-    .Close
-  End With
-
+  
 exit_here:
   On Error Resume Next
   Set oRecordset = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECMTargetUID_frm", "txtUID_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTaskFilter_Change", Err, Erl)
   Resume exit_here
 End Sub
 

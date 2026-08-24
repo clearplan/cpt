@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptFilterByClipboard_bas"
-'<cpt_version>v1.4.0</cpt_version>
+'<cpt_version>v1.4.2</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptFilterByClipboard_bas"
 
@@ -106,7 +106,7 @@ exit_here:
   Set myFilterByClipboard_frm = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_bas", "cptShowFilterByClipboard_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowFilterByClipboard_frm", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -140,7 +140,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_bas", "cptCliipboardJump", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCliipboardJump", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -318,7 +318,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_bas", "cptUpdateClipboard", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateClipboard", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -353,7 +353,8 @@ Function cptGuessDelimiter(ByRef vData As Variant, strRegEx As String) As Long
   Set dScores = CreateObject("Scripting.Dictionary")
   
   'check all "^([^\t\,\;]*[\t\,\;])"
-  RE.Pattern = "^([^\t\,\;]*[\t\,\;])"
+  If Len(strRegEx) = 0 Then strRegEx = "^([^\t\,\;]*[\t\,\;])"
+  RE.Pattern = strRegEx '"^([^\t\,\;]*[\t\,\;])"
   For lngItem = 0 To UBound(vData)
     Set REMatches = RE.Execute(CStr(vData(lngItem)))
     For Each REMatch In REMatches
@@ -410,7 +411,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_bas", "cptGuessDelimiter", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGuessDelimiter", Err, Erl)
   If Err.Number = 5 Then
     cptGuessDelimiter = 0
     Err.Clear
@@ -523,7 +524,7 @@ next_field:
   TableEdit "cpt-temp-table", True, True, True, , "Unique ID"
   If cptViewExists("cpt-temp-view") Then ActiveProject.Views("cpt-temp-view").Delete
   ViewEditSingle "cpt-temp-view", True, , pjTaskUsage, False, False, "cpt-temp-table", "All Tasks", "No Group"
-  Application.WindowNewWindow ActiveProject, "cpt-temp-view"
+  Application.WindowNewWindow ActiveProject.FullName, "cpt-temp-view"
   FilterClear
   GroupClear
   SelectAll
@@ -591,7 +592,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_bas", "cptGetFreeField", Err)
+  Call cptHandleErr(THIS_MODULE, "cptGetFreeField", Err)
   Resume exit_here
 End Function
 
@@ -633,9 +634,22 @@ Sub cptClearFreeField(ByRef myFilterByClipboard_frm As cptFilterByClipboard_frm,
         cptDeleteSetting "FilterByClipboard", "cboFreeField" 'legacy
       End If
     End If
+    'clear the borrowed field
+    If cptTableExists("cpt-temp-table") Then ActiveProject.TaskTables("cpt-temp-table").Delete
+    TableEdit "cpt-temp-table", True, True, True, , "Unique ID"
+    If cptViewExists("cpt-temp-view") Then ActiveProject.Views("cpt-temp-view").Delete
+    ViewEditSingle "cpt-temp-view", True, , pjTaskUsage, False, False, "cpt-temp-table", "All Tasks", "No Group"
+    Application.WindowNewWindow ActiveProject.FullName, "cpt-temp-view"
+    FilterClear
+    GroupClear
+    Sort "ID", , , , , , , True
+    OptionsViewEx DisplaySummaryTasks:=True 'won't work without Sort first
+    OutlineShowAllTasks 'this won't work unless summary tasks are showing
     SelectAll
     SetField FieldConstantToFieldName(lngFreeField), 0
-    SelectBeginning
+    Application.ActiveWindow.Close
+    ActiveProject.Views("cpt-temp-view").Delete
+    ActiveProject.TaskTables("cpt-temp-table").Delete
   End If
   
 exit_here:
@@ -646,7 +660,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptFilterByClipboard_bas", "cptClearFreeField", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptClearFreeField", Err, Erl)
   Resume exit_here
   
 End Sub

@@ -4,3 +4,17 @@
 *.frm binary diff=text
 *.frx binary
 *.sql text eol=crlf
+*.xml text eol=lf
+
+# for posterity
+# VBA extensions - Preserve CRLF and use CP1252 encoding
+#*.bas text eol=crlf working-tree-encoding=CP1252
+#*.cls text eol=crlf working-tree-encoding=CP1252
+#*.frm text eol=crlf working-tree-encoding=CP1252
+
+# VBA extensions - Mark as binary
+#*.frx binary
+#
+#*.md text eol=lf
+#.gitattributes text eol=lf
+#.gitignore text eol=lf

@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.7.0</cpt_version>
+'<cpt_version>v1.7.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptText_bas"
 
@@ -160,12 +160,12 @@ err_here:
 End Sub
 
 Sub cptMyReplace()
-  'fields affected: Marked, Task Name, Text Fields, Outline Code Fields
+  'fields affected: Task Name, Text Fields, Outline Code Fields
   'objects
-  Dim rstReplaced As Object 'ADODB.Recordset
   Dim oTasks As MSProject.Tasks, oTask As MSProject.Task
   'strings
   Dim strMsg As String
+  Dim strReplaced As String
   'longs
   Dim lngItem As Long
   Dim lngFound As Long
@@ -194,10 +194,6 @@ Sub cptMyReplace()
   
   Application.OpenUndoTransaction "MyReplace"
 
-  Set rstReplaced = CreateObject("ADODB.Recordset")
-  rstReplaced.Fields.Append "UID", adBigInt
-  rstReplaced.Open
-
   For Each oTask In oTasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.ExternalTask Then GoTo next_task
@@ -206,8 +202,7 @@ Sub cptMyReplace()
       If Len(cptRegEx(FieldConstantToFieldName(vField), "Text|Name")) > 0 Then
         If InStr(oTask.GetField(vField), CStr(vFind)) > 0 Then
           oTask.SetField vField, Replace(oTask.GetField(vField), CStr(vFind), CStr(vReplace))
-          rstReplaced.AddNew Array("UID"), Array(oTask.UniqueID)
-          rstReplaced.Update
+          strReplaced = strReplaced & oTask.UniqueID & ";"
           lngFound = lngFound + 1
         End If
       End If
@@ -218,30 +213,24 @@ next_task:
   If lngFound = 0 Then
     MsgBox "No instances of '" & CStr(vFind) & "' found in selected cells.", vbExclamation + vbOKOnly, "MyReplace"
   Else
-    rstReplaced.MoveFirst
-    FilterEdit "cptMyReplace", True, True, True, False, , "Unique ID", , "equals", rstReplaced(0), "Or", True
-    Do While Not rstReplaced.EOF
-      FilterEdit "cptMyReplace", TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID", Test:="equals", Value:=rstReplaced(0), Operation:="Or", ShowInMenu:=True
-      rstReplaced.MoveNext
-    Loop
-    FilterApply "cptMyReplace", True
-    rstReplaced.MoveFirst
-    Application.Find "Unique ID", "equals", rstReplaced(0)
+    strReplaced = Left(strReplaced, Len(strReplaced) - 1) 'trim trailing semi-colon
+    strReplaced = Replace(strReplaced, ";", vbTab) 'replace with vbTab
+    SetAutoFilter "Unique ID", pjAutoFilterIn, "contains", strReplaced
     cptSpeed False
+    Application.Find "Unique ID", "equals", Split(strReplaced, vbTab)(0)
     strMsg = "Replaced " & Format(lngFound, "#,##0") & " instance" & IIf(lngFound = 1, "", "s") & " of '" & CStr(vFind) & "' with '" & CStr(vReplace) & "'" & vbCrLf & vbCrLf
-    strMsg = strMsg & "Keep highlighted?"
-    If MsgBox(strMsg, vbQuestion + vbYesNo, "Replace") = vbNo Then
+    strMsg = strMsg & "- AutoFilter applied to [Unique ID]" & vbCrLf & vbCrLf
+    strMsg = strMsg & "Keep AutoFilter applied to [Unique ID]?"
+    If MsgBox(strMsg, vbQuestion + vbYesNo, "cptMyReplace") = vbNo Then
       cptSpeed True
-      FilterApply "All Tasks", True
-      Application.Find "Unique ID", "equals", rstReplaced(0)
+      SetAutoFilter "Unique ID", pjAutoFilterClear
+      Application.Find "Unique ID", "equals", Split(strReplaced, vbTab)(0)
       cptSpeed False
     End If
   End If
   
 exit_here:
   On Error Resume Next
-  If rstReplaced.State Then rstReplaced.Close
-  Set rstReplaced = Nothing
   Application.CloseUndoTransaction
   cptSpeed False
   Set oTasks = Nothing
@@ -966,7 +955,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "HINT: Copy list(s) of UIDs, then paste into FilterByClipboard to review and fix."
       Close #lngFile
-      ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+      cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     End If
   End If
   
@@ -981,5 +970,4 @@ err_here:
   Call cptHandleErr("cptText_bas", "cptCheckAnnoyances", Err, Erl)
   Resume exit_here
 End Sub
-
 

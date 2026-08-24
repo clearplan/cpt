@@ -13,8 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-
-'<cpt_version>v1.3.2</cpt_version>
+'<cpt_version>v1.4.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptBackbone_frm"
 
@@ -63,6 +62,12 @@ Private Sub cboImport_Change()
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  If IsNull(Me.cboOutlineCodes.Value) Then
+    MsgBox "Please select an Outline Code.", vbExclamation + vbOKOnly, "No Code Selected"
+    Me.cboOutlineCodes.SetFocus
+    GoTo exit_here
+  End If
   
   Me.cmdExportTemplate.Visible = False
   Me.lblNote.Caption = ""
@@ -127,7 +132,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "cboImport_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboImport_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -161,6 +166,11 @@ Private Sub cmdExport_Click()
   'dates
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If IsNull(Me.cboOutlineCodes.Value) Then
+    MsgBox "Please select an Outline Code.", vbExclamation + vbOKOnly, "No Code Selected"
+    Me.cboOutlineCodes.SetFocus
+    GoTo exit_here
+  End If
   lngOutlineCode = Me.cboOutlineCodes.List(Me.cboOutlineCodes.Value, 0)
   Select Case Me.cboExport
     Case "To Excel Workbook"
@@ -178,7 +188,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "cmdExport_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdExport_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -215,6 +225,11 @@ Private Sub cmdImport_Click()
   Else
     strOutlineCode = Me.txtNameIt
   End If
+  If IsNull(Me.cboOutlineCodes.Value) Then
+    MsgBox "Please select an Outline Code.", vbExclamation + vbOKOnly, "No Code Selected"
+    Me.cboOutlineCodes.SetFocus
+    GoTo exit_here
+  End If
   lngOutlineCode = Me.cboOutlineCodes.List(Me.cboOutlineCodes.Value, 0)
   CustomFieldRename lngOutlineCode, strOutlineCode
   Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
@@ -241,7 +256,7 @@ Private Sub cmdImport_Click()
           Application.StatusBar = "Backing up " & strOutlineCode & " pick-list...(" & Format(lngItem / lngItems, "0%") & ")"
         Next lngItem
         Close #lngFile
-        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         Application.StatusBar = ""
         
         'backup task data
@@ -265,7 +280,7 @@ next_task:
           Application.StatusBar = "Backing up task data...(" & Format(lngItem / lngItems, "0%") & ")"
         Next oTask
         Close #lngFile
-        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         Application.StatusBar = ""
         
         'delete lookup table and start fresh
@@ -295,13 +310,7 @@ next_task:
       
     Case "From MSP Server Outline Code Export"
       Call cptImportCWBSFromServer(Me, lngOutlineCode)
-    
-    Case "From MIL-STD-881D Appendix B"
-      Call cptImportAppendixB(Me, lngOutlineCode)
-      
-    Case "From MIL-STD-881D Appendix E"
-      Call cptImportAppendixE(Me, lngOutlineCode)
-      
+          
     Case "From Existing Tasks"
       Call cptCreateCode(Me, lngOutlineCode)
     
@@ -322,7 +331,7 @@ exit_here:
   Exit Sub
 
 err_here:
-  Call cptHandleErr("cptOutlineCodes_bas", "cmdGo_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdGo_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -341,14 +350,16 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
-
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+  
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -379,6 +390,16 @@ End Sub
 Private Sub txtReplace_Change()
   Dim lngEntry As Long
   Dim lngSelected As Long
+  Dim blnErrorTrapping As Boolean
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  If IsNull(Me.cboOutlineCodes.Value) And Me.lboOutlineCode.ListCount > 0 Then
+    MsgBox "Please select an Outline Code.", vbExclamation + vbOKOnly, "No Code Selected"
+    Me.cboOutlineCodes.SetFocus
+    GoTo exit_here
+  End If
 
   lngSelected = 0
   For lngEntry = 0 To Me.lboOutlineCode.ListCount - 1
@@ -392,7 +413,12 @@ Private Sub txtReplace_Change()
   Next lngEntry
   If lngSelected = 0 Then Me.lboOutlineCode.TopIndex = 0
   Me.lblFeedback.Caption = Format(lngSelected, "#,##0") & " found"
-  
+
+exit_here:
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "txtReplace_Change", Err, Erl)
+  Resume exit_here
 End Sub
 
 Private Sub txtReplacement_Change()
@@ -412,7 +438,11 @@ Private Sub txtReplacement_Change()
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  If IsNull(Me.cboOutlineCodes.Value) Then
+    MsgBox "Please select an Outline Code.", vbExclamation + vbOKOnly, "No Code Selected"
+    Me.cboOutlineCodes.SetFocus
+    GoTo exit_here
+  End If
   strOutlineCode = CustomFieldGetName(Me.cboOutlineCodes.List(Me.cboOutlineCodes.Value, 0))
   Set oOutlineCode = ActiveProject.OutlineCodes(strOutlineCode)
   On Error Resume Next
@@ -437,34 +467,32 @@ exit_here:
   Set oLookupTable = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "txtReplacement_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtReplacement_Change", Err, Erl)
   Resume exit_here
 End Sub
 
 Private Sub txtNameIt_Change()
-  'longs
-  Dim lngField As Long
   'booleans
   Dim blnErrorTrapping As Boolean
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  If IsNull(Me.cboOutlineCodes.Value) Then
+    MsgBox "Please select an Outline Code.", vbExclamation + vbOKOnly, "No Code Selected"
+    Me.cboOutlineCodes.SetFocus
+    GoTo exit_here
+  End If
   'reset to default
   Me.txtNameIt.BorderColor = -2147483642
   Me.txtNameIt.ForeColor = -2147483640
   Me.lblStatus.Caption = "Ready..."
   
   'if name already exists then flag it
-  lngField = 0
-  On Error Resume Next
-  lngField = FieldNameToFieldConstant(Me.txtNameIt.Text)
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If lngField <> 0 Then 'exists
+  If cptCustomFieldExists(Me.txtNameIt.Text) <> 0 Then 'exists
     If FieldNameToFieldConstant(Me.txtNameIt.Text) <> CLng(Me.cboOutlineCodes.List(Me.cboOutlineCodes.Value, 0)) Then
       Me.txtNameIt.BorderColor = 255
       Me.txtNameIt.ForeColor = 255
-      Me.lblStatus.Caption = FieldConstantToFieldName(FieldNameToFieldConstant(Me.txtNameIt.Text)) & " is already named '" & Me.txtNameIt.Text & "'!"
+      Me.lblStatus.Caption = "'" & Me.txtNameIt.Text & "' is " & FieldConstantToFieldName(FieldNameToFieldConstant(Me.txtNameIt.Text)) & "!"
     End If
   End If
   
@@ -473,7 +501,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "txtNameIt_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtNameIt_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -551,7 +579,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "UserForm_MouseMove", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "UserForm_MouseMove", Err, Erl)
   Resume exit_here
 
 End Sub

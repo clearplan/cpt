@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptAdvancedFilter_bas"
-'<cpt_version>v0.3.3</cpt_version>
+'<cpt_version>v0.3.4</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptAdvancedFilter_bas"
 Private filterForm As cptAdvancedFilter_frm

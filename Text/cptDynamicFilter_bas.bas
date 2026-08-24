@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptDynamicFilter_bas"
-'<cpt_version>v1.6.6</cpt_version>
+'<cpt_version>v1.6.7</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptDynamicFilter_bas"
 Private pCachedRegexes As Scripting.Dictionary
 
 Sub cptShowDynamicFilter_frm()
@@ -17,12 +18,15 @@ Sub cptShowDynamicFilter_frm()
   'variants
   Dim vArray As Variant
   'dates
-
+  
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+  
   'prevent spawning
   If Not cptGetUserForm("cptDynamicFilter_frm") Is Nothing Then Exit Sub
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-
+  
   '===
   'Validate users selected view type
   If ActiveProject.Application.ActiveWindow.ActivePane.View.Type <> pjTaskItem Then
@@ -103,7 +107,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDynamicFilter_bas", "cptShowDynamicFilter_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowDynamicFilter_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -180,7 +184,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDynamicFilter_bas", "cptGoRegEx", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGoRegEx", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -228,7 +232,7 @@ Public Function cptRxTest( _
     Optional ByVal MultiLine As Boolean = True) As Boolean
     
     ' Wow, that was easy:
-    cptRxTest = cptGetRegex(Pattern, IgnoreCase, MultiLine, False).test(SourceString)
+    cptRxTest = cptGetRegex(Pattern, IgnoreCase, MultiLine, False).Test(SourceString)
     
 End Function
 
@@ -272,4 +276,18 @@ Public Function cptRxMatches( _
     End With
  
     cptRxMatches = arrMatches
+End Function
+
+Public Function cptRxReplace( _
+    ByVal SourceString As String, _
+    ByVal Pattern As String, _
+    ByVal ReplaceWith As String, _
+    Optional ByVal IgnoreCase As Boolean = True, _
+    Optional ByVal MultiLine As Boolean = True, _
+    Optional ByVal MatchGlobal As Boolean = True) As String
+
+    With cptGetRegex(Pattern, IgnoreCase, MultiLine, True)
+      cptRxReplace = .Replace(SourceString, ReplaceWith)
+    End With
+
 End Function

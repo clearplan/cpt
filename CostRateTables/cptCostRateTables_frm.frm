@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.2.0</cpt_version>
+'<cpt_version>v1.2.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptCostRateTables_frm"
 
@@ -64,6 +64,24 @@ End Sub
 
 Private Sub cmdGo_KeyPress(ByVal KeyAscii As MSForms.ReturnInteger)
   If KeyAscii = 27 Then Me.Hide
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 Private Sub tglExport_Click()

@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptBackbone_bas"
-'<cpt_version>v1.3.2</cpt_version>
+'<cpt_version>v1.4.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptBackbone_bas"
 
@@ -8,14 +8,14 @@ Sub cptImportCWBSFromExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCo
   Dim oValid As Scripting.Dictionary
   Dim oInvalid As Scripting.Dictionary
   Dim oTask As MSProject.Task
-  Dim oLookupTable As LookupTable
-  Dim oOutlineCode As OutlineCode
-  Dim c As Object
-  Dim oRange As Object
-  Dim oFileDialog As Object 'FileDialog
-  Dim oWorksheet As Object
-  Dim oWorkbook As Object
-  Dim oExcel As Object 'Excel.Application
+  Dim oLookupTable As MSProject.LookupTable
+  Dim oOutlineCode As MSProject.OutlineCode
+  Dim c As Excel.Range
+  Dim oRange As Excel.Range
+  Dim oFileDialog As Office.FileDialog
+  Dim oWorksheet As Excel.Worksheet
+  Dim oWorkbook As Excel.Workbook
+  Dim oExcel As Excel.Application
   'strings
   Dim strMsg As String
   Dim strOutlineCode As String
@@ -178,21 +178,21 @@ exit_here:
   Set oExcel = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptImportCWBSFromExcel", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptImportCWBSFromExcel", Err, Erl)
   Resume exit_here
 End Sub
 
 Sub cptImportCWBSFromServer(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
   'objects
-  Dim c As Object
+  Dim c As Excel.Range
   Dim oTask As MSProject.Task
-  Dim oRange As Object
-  Dim oWorksheet As Object
-  Dim oWorkbook As Object
-  Dim oLookupTable As LookupTable
-  Dim oOutlineCode As OutlineCode
-  Dim oFileDialog As Object 'FileDialog
-  Dim oExcel As Object
+  Dim oRange As Excel.Range
+  Dim oWorksheet As Excel.Worksheet
+  Dim oWorkbook As Excel.Workbook
+  Dim oLookupTable As MSProject.LookupTable
+  Dim oOutlineCode As MSProject.OutlineCode
+  Dim oFileDialog As Office.FileDialog
+  Dim oExcel As Excel.Application
   'strings
   Dim strDescription As String
   Dim strCode As String
@@ -283,329 +283,12 @@ exit_here:
   Set oLookupTable = Nothing
   Set oOutlineCode = Nothing
   Set oFileDialog = Nothing
-  oExcel.Quit False
+  oExcel.Quit
   Set oExcel = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptImportCWBSFromServer", Err, Erl)
-  Resume exit_here
-End Sub
-
-Sub cptImportAppendixB(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
-  'objects
-  Dim oTaskTable As Object 'TaskTable
-  Dim oTask As MSProject.Task
-  'strings
-  Dim strDir As String
-  'longs
-  Dim lngItem As Long
-  Dim lngField As Long
-  Dim lngOutlineLevel As Long
-  'integers
-  'doubles
-  'booleans
-  'variants
-  'dates
-
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  strDir = cptDir
-  Application.OpenUndoTransaction "Import Appendix B"
-  
-  For lngItem = 1 To 10
-    CustomOutlineCodeEditEx FieldID:=lngOutlineCode, Level:=lngItem, Sequence:=pjCustomOutlineCodeCharacters, Length:="Any", Separator:="."
-  Next lngItem
-  CustomOutlineCodeEditEx FieldID:=lngOutlineCode, OnlyLookUpTableCodes:=False, OnlyLeaves:=False, LookupDefault:=False, SortOrder:=0
-
-  With CreateObject("ADODB.Recordset")
-    'delete existing
-    If Dir(strDir & "\cwbs-appendix-b.adtg") <> vbNullString Then
-      Kill strDir & "\cwbs-appendix-b.adtg"
-    End If
-    .Fields.Append "CWBS", adVarChar, 10
-    .Fields.Append "CWBS TITLE", adVarChar, 75
-    .Open
-    .AddNew Array("CWBS", "CWBS Title"), Array("1", "Electronic System/Generic System")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1", "Prime Mission Product (PMP) 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.1", "PMP Integration, Assembly, Test, and Checkout")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.2", "PMP Subsystem 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.2.1", "Subsystem Integration, Assembly, Test, and Checkout")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.2.2", "Subsystem Hardware 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.2.3", "Subsystem Software Release 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.3", "PMP Software Release 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.3.1", "Computer Software Configuration Item (CSCI) 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.3.2", "PMP Software Integration, Assembly, Test, and Checkout")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2", "Platform Integration, Assembly, Test, and Checkout")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3", "Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.1", "Software Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.2", "Integrated Logistics Support (ILS) Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.3", "Cybersecurity Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.4", "Core Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.5", "Other Systems Engineering 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4", "Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.1", "Software Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.2", "Integrated Logistics Support (ILS) Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.3", "Cybersecurity Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.4", "Core Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.5", "Other Program Management 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5", "System Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.1", "Development Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.2", "Operational Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.3", "Cybersecurity Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.4", "Mock-ups/System Integration Labs (SILs)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.5", "Test and Evaluation Support")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.6", "Test Facilities")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6", "Training")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.1", "Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.1.1", "Operator Instructional Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.1.2", "Maintainer Instructional Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.2", "Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.2.1", "Operator Instructional Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.2.2", "Maintainer Instructional Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.3", "Facilities")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.4", "Training Software 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7", "Data")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.1", "Data Deliverables 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.2", "Data Repository")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.3", "Data Rights 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8", "Peculiar Support Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1", "Test and Measurement Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.1", "Test and Measurement Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.2", "Test and Measurement Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.3", "Test and Measurement Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.4", "Test and Measurement Equipment (Other Major Subsystems 1...n (Sif))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2", "Support and Handling Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.1", "Support and Handling Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.2", "Support and Handling Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.3", "Support and Handling Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.4", "Support and Handling Equipment (Other Major Subsystems 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9", "Common Support Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.1", "Test and Measurement Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.1.1", "Test and Measurement Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.1.2", "Test and Measurement Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.1.3", "Test and Measurement Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.1.4", "Test and Measurement Equipment (Other Major Subsystems 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.2", "Support and Handling Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.2.1", "Support and Handling Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.2.2", "Support and Handling Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.2.3", "Support and Handling Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.2.4", "Support and Handling Equipment (Other Major Subsystems 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10", "Operational/Site Activation by Site 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10.1", "System Assembly, Installation, and Checkout on Site")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10.2", "Contractor Technical Support")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10.3", "Site Construction")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10.4", "Site /Ship/Vehicle Conversion")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10.5", "Interim Contractor Support (ICS)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.11", "Contractor Logistics Support (CLS)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.12", "Industrial Facilities")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.12.1", "Construction/Conversion/Expansion")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.12.2", "Equipment Acquisition or Modernization")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.12.3", "Maintenance (Industrial Facilities)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.13", "Initial Spares and Repair Parts")
-    .Save strDir & "\cwbs-appendix-b.adtg"
-    .MoveFirst
-    lngItem = 0
-    Do While Not .EOF
-      lngItem = lngItem + 1
-      Set oTask = ActiveProject.Tasks.Add(.Fields(1).Value)
-      oTask.SetField lngOutlineCode, .Fields(0)
-      ActiveProject.OutlineCodes(CustomFieldGetName(lngOutlineCode)).LookupTable.Item(lngItem).Description = .Fields(1).Value
-
-      lngOutlineLevel = Len(.Fields(0).Value) - Len(Replace(.Fields(0).Value, ".", ""))
-      If lngOutlineLevel > 0 Then
-        oTask.OutlineLevel = lngOutlineLevel + 1
-      End If
-      
-      .MoveNext
-    Loop
-    .Close
-  End With
-  
-  'pretty up the task table
-  If Len(ActiveProject.CurrentTable) > 0 Then
-    SelectBeginning
-    SetRowHeight 1, "all"
-    Set oTaskTable = ActiveProject.TaskTables(ActiveProject.CurrentTable)
-    For lngField = 1 To oTaskTable.TableFields.Count
-      If FieldConstantToFieldName(oTaskTable.TableFields(lngField).Field) = "Name" Then
-        ColumnBestFit lngField
-        Exit For
-      End If
-    Next lngField
-  End If
-  
-  'reset outline code to disallow new entries
-  CustomOutlineCodeEditEx FieldID:=lngOutlineCode, OnlyLookUpTableCodes:=True, OnlyLeaves:=True, LookupDefault:=False, SortOrder:=0
-  Call cptRefreshOutlineCodePreview(myBackbone_frm, CustomFieldGetName(lngOutlineCode))
-  
-exit_here:
-  On Error Resume Next
-  Application.CloseUndoTransaction
-  Set oTaskTable = Nothing
-  Set oTask = Nothing
-
-  Exit Sub
-err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptImportAppendixB", Err, Erl)
-  Resume exit_here
-End Sub
-
-Sub cptImportAppendixE(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
-  'objects
-  Dim oTaskTable As Object 'TaskTable
-  Dim oTask As MSProject.Task
-  'strings
-  Dim strDir As String
-  'longs
-  Dim lngItem As Long
-  Dim lngField As Long
-  Dim lngOutlineLevel As Long
-  'integers
-  'doubles
-  'booleans
-  'variants
-  'dates
-
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  strDir = cptDir
-  
-  Application.OpenUndoTransaction "Import Appendix E"
-  
-  For lngItem = 1 To 10
-    CustomOutlineCodeEditEx FieldID:=lngOutlineCode, Level:=lngItem, Sequence:=pjCustomOutlineCodeCharacters, Length:="Any", Separator:="."
-  Next lngItem
-  CustomOutlineCodeEditEx FieldID:=lngOutlineCode, OnlyLookUpTableCodes:=False, OnlyLeaves:=False, LookupDefault:=False, SortOrder:=0
-
-  With CreateObject("ADODB.Recordset")
-    'delete existing
-    If Dir(strDir & "\cwbs-appendix-e.adtg") <> vbNullString Then
-      Kill strDir & "\cwbs-appendix-e.adtg"
-    End If
-    .Fields.Append "CWBS", adVarChar, 10
-    .Fields.Append "CWBS TITLE", adVarChar, 75
-    .Open
-    .AddNew Array("CWBS", "CWBS Title"), Array("1", "Sea System")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1", "Ship")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.1", "Hull Structure")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.2", "Propulsion Plant")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.3", "Electric Plant")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.4", "Command, Communications, and Surveillance")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.5", "Auxiliary Systems")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.6", "Outfit and Furnishings")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.7", "Armament")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.8", "Total Ship Integration/Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.1.9", "Ship Assembly and Support Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2", "Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2.1", "Software Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2.2", "Integrated Logistics Support (ILS) Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2.3", "Cybersecurity Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2.4", "Core Systems Engineering")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.2.5", "Other Systems Engineering 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3", "Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.1", "Software Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.2", "Integrated Logistics Support (ILS) Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.3", "Cybersecurity Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.4", "Core Program Management")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.3.5", "Other Program Management 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4", "System Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.1", "Development Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.2", "Operational Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.3", "Cybersecurity Test and Evaluation")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.4", "Mock-ups/System Integration Labs (SILs)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.5", "Test and Evaluation Support")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.4.6", "Test Facilities")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5", "Training")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.1", "Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.1.1", "Operator Instructional Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.1.2", "Maintainer Instructional Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.2", "Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.2.1", "Operator Instructional Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.2.2", "Maintainer Instructional Services")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.3", "Facilities")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.5.4", "Training Software 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6", "Data")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.1", "Data Deliverables 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.2", "Data Repository")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.6.3", "Data Rights 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7", "Peculiar Support Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.1", "Test and Measurement Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.1.1", "Test and Measurement Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.1.2", "Test and Measurement Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.1.3", "Test and Measurement Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.1.4", "Test and Measurement Equipment (Other Major Subsystem 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.2", "Support and Handling Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.2.1", "Support and Handling Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.2.2", "Support and Handling Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.2.3", "Support and Handling Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.7.2.4", "Support and Handling Equipment (Other Major Subsystem 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8", "Common Support Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1", "Test and Measurement Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.1", "Test and Measurement Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.2", "Test and Measurement Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.3", "Test and Measurement Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.1.4", "Test and Measurement Equipment (Other Major Subsystem 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2", "Support and Handling Equipment")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.1", "Support and Handling Equipment (Airframe/Hull/Vehicle)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.2", "Support and Handling Equipment (Propulsion)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.3", "Support and Handling Equipment (Electronics/Avionics)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.8.2.4", "Support and Handling Equipment (Other Major Subsystem 1...n (Specify))")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9", "Operational/Site Activation by Site 1...n (Specify)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.1", "System Assembly, Installation, and Checkout")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.2", "Contractor Technical Support")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.3", "Site Construction")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.4", "Site/Ship/Vehicle Conversion")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.9.5", "Interim Contractor Support (ICS)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.10", "Contractor Logistics Support (CLS)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.11", "Industrial Facilities")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.11.1", "Construction/Conversion/Expansion")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.11.2", "Equipment Acquisition or Modernization")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.11.3", "Maintenance (Industrial Facilities)")
-    .AddNew Array("CWBS", "CWBS Title"), Array("1.12", "Initial Spares and Repair Parts")
-    .Save strDir & "\cwbs-appendix-e.adtg"
-    .MoveFirst
-    lngItem = 0
-    Do While Not .EOF
-      lngItem = lngItem + 1
-      Set oTask = ActiveProject.Tasks.Add(.Fields(1).Value)
-      oTask.SetField lngOutlineCode, .Fields(0)
-      ActiveProject.OutlineCodes(CustomFieldGetName(lngOutlineCode)).LookupTable.Item(lngItem).Description = .Fields(1).Value
-
-      lngOutlineLevel = Len(.Fields(0).Value) - Len(Replace(.Fields(0).Value, ".", ""))
-      If lngOutlineLevel > 0 Then
-        oTask.OutlineLevel = lngOutlineLevel + 1
-      End If
-      
-      .MoveNext
-    Loop
-    .Close
-  End With
-  
-  'pretty up the task table
-  If Len(ActiveProject.CurrentTable) > 0 Then
-    SelectBeginning
-    SetRowHeight 1, "all"
-    Set oTaskTable = ActiveProject.TaskTables(ActiveProject.CurrentTable)
-    For lngField = 1 To oTaskTable.TableFields.Count
-      If FieldConstantToFieldName(oTaskTable.TableFields(lngField).Field) = "Name" Then
-        ColumnBestFit lngField
-        Exit For
-      End If
-    Next lngField
-  End If
-  
-  'reset outline code to disallow new entries
-  CustomOutlineCodeEditEx FieldID:=lngOutlineCode, OnlyLookUpTableCodes:=True, OnlyLeaves:=True, LookupDefault:=False, SortOrder:=0
-  Call cptRefreshOutlineCodePreview(myBackbone_frm, CustomFieldGetName(lngOutlineCode))
-  
-exit_here:
-  On Error Resume Next
-  Application.CloseUndoTransaction
-  Set oTaskTable = Nothing
-  Set oTask = Nothing
-
-  Exit Sub
-err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptImportAppendixE", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptImportCWBSFromServer", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -693,7 +376,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptImportAppendix", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptImportAppendix", Err, Erl)
   Resume exit_here
   
   
@@ -701,12 +384,12 @@ End Sub
 
 Sub cptExportOutlineCodeToExcel(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
   'objects
-  Dim oExcel As Object 'Excel.Application
-  Dim oWorkbook As Object 'Workbook
-  Dim oWorksheet As Object 'Worksheet
-  Dim oListObject As Object 'ListObject
-  Dim oLookupTable As LookupTable
-  Dim oOutlineCode As OutlineCode
+  Dim oExcel As Excel.Application
+  Dim oWorkbook As Excel.Workbook
+  Dim oWorksheet As Excel.Worksheet
+  Dim oListObject As Excel.ListObject
+  Dim oLookupTable As MSProject.LookupTable
+  Dim oOutlineCode As MSProject.OutlineCode
   'strings
   Dim strOutlineCode As String
   'longs
@@ -841,22 +524,22 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "ExportOutlineCode", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "ExportOutlineCode", Err, Erl)
   Resume exit_here
   
 End Sub
 
 Sub cptExport81334D(ByRef myBackbone_frm As cptBackbone_frm, lngOutlineCode As Long)
   'objects
-  Dim oMailItem As Object 'MailItem
-  Dim oOutlook As Object 'Outlook.Application
-  Dim oLookupTable As LookupTable
-  Dim oOutlineCode As OutlineCode
-  Dim wsDictionary As Object 'Worksheet
-  Dim wsIndex As Object 'Worksheet
-  Dim oWorkbook As Object 'Workbok
-  Dim oExcel As Object 'Excel.Application
-  Dim oStream As Object 'ADODB.Stream
+  Dim oMailItem As Outlook.MailItem
+  Dim oOutlook As Outlook.Application
+  Dim oLookupTable As MSProject.LookupTable
+  Dim oOutlineCode As MSProject.OutlineCode
+  Dim wsDictionary As Excel.Worksheet
+  Dim wsIndex As Excel.Worksheet
+  Dim oWorkbook As Excel.Workbook
+  Dim oExcel As Excel.Application
+  Dim oStream As ADODB.Stream
   Dim oXMLHttpDoc As Object
   Dim oShell As Object
   'strings
@@ -1021,7 +704,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptExport81334D", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExport81334D", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1073,7 +756,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptExportTemplate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportTemplate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1203,7 +886,7 @@ exit_here:
   Set myBackbone_frm = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptShowBackbone_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowBackbone_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1268,7 +951,7 @@ exit_here:
   Set oTask = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptCreateCode", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCreateCode", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1299,7 +982,7 @@ exit_here:
   Set oLookupTable = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptRenameInsideOutlineCode", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptRenameInsideOutlineCode", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1358,7 +1041,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptRefreshOutlineCodePreview", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptRefreshOutlineCodePreview", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1454,7 +1137,7 @@ Sub cptExportOutlineCodeForMPM(ByRef myBackbone_frm As cptBackbone_frm, lngOutli
   Close #lngFile
   
   'open it in notepad
-  ShellExecute 0, "open", "notepad.exe", strDir & strFileName, vbNullString, 1
+  cptShellExecute 0, "open", "notepad.exe", strDir & strFileName, vbNullString, 1
   
 exit_here:
   On Error Resume Next
@@ -1470,7 +1153,7 @@ kill_file:
   Resume exit_here
   
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptExportOutlineCodeForMPM", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportOutlineCodeForMPM", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1583,7 +1266,7 @@ Sub cptExportOutlineCodeForCOBRA(ByRef myBackbone_frm As cptBackbone_frm, lngOut
 
   Close #lngFile
   
-  ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+  cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
 
 exit_here:
   On Error Resume Next
@@ -1599,7 +1282,7 @@ kill_file:
   Resume exit_here
   
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptExportOutlineCodeForCOBRA", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportOutlineCodeForCOBRA", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1614,6 +1297,7 @@ Sub cptExportAllCodes()
   Dim oLookupTable As LookupTable
   Dim oLookupTableEntry As LookupTableEntry
   'strings
+  Dim strOptions As String
   Dim strDescription As String
   Dim strValue As String
   Dim strFileName As String
@@ -1634,40 +1318,79 @@ Sub cptExportAllCodes()
   'dates
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    
+  'gather list of potential exports
+  'first: outline codes
+  For Each oOutlineCode In ActiveProject.OutlineCodes
+    Set oLookupTable = oOutlineCode.LookupTable
+    If oLookupTable.Count > 0 Then strOptions = strOptions & oOutlineCode.Name & ","
+  Next oOutlineCode
+  'second: LCFs
+  Set oFieldCounts = CreateObject("Scripting.Dictionary")
+  oFieldCounts.Add "Text", 30
+  oFieldCounts.Add "Number", 20
+  For Each vFieldType In Array("Cost", "Date", "Duration", "Finish", "Number", "Start", "Text") 'Flag has no picklist
+    If oFieldCounts.Exists(vFieldType) Then
+      lngItems = oFieldCounts(vFieldType)
+    Else
+      lngItems = 10
+    End If
+    For lngItem = 1 To lngItems
+      strFN = vFieldType & lngItem
+      lngCF = FieldNameToFieldConstant(strFN)
+      strCFN = CustomFieldGetName(lngCF)
+      If Len(strCFN) > 0 Then
+        strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
+      Else
+        GoTo next_cf1
+      End If
+      On Error Resume Next
+      If Len(CustomFieldValueListGetItem(lngCF, pjValueListValue, 1)) = 0 Then
+        GoTo next_cf1
+      Else
+        strValue = CustomFieldValueListGetItem(lngCF, pjValueListValue, 1)
+        If Len(strValue) >= 1 Then strOptions = strOptions & strCFN & ","
+      End If
+      If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+next_cf1:
+    Next lngItem
+  Next vFieldType
+  If Right(strOptions, 1) = "," Then strOptions = Left(strOptions, Len(strOptions) - 1)
+  
+  strOptions = cptGetListBoxData(Split(strOptions, ","), fmListStylePlain, fmMultiSelectExtended, "Export which fields:", "", True, True)
   
   cptSpeed True
   
   'first do outline codes, because they're different
   For Each oOutlineCode In ActiveProject.OutlineCodes
-    lngCF = oOutlineCode.FieldID
-    strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
-    Set oLookupTable = oOutlineCode.LookupTable
-    lngItems = oLookupTable.Count
-    If lngItems > 0 Then
-      Application.StatusBar = "Exporting Code file for " & strCFN & "..."
-      lngFile = FreeFile
-      strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
-      Open strFileName For Output As #lngFile
-      Print #lngFile, "CODE,DESCRIPTION,PARENT"
-      For lngItem = 1 To oLookupTable.Count
-        Set oLookupTableEntry = oLookupTable(lngItem)
-        If oLookupTableEntry.Level = 1 Then
-          Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & ",*****"
-        Else
-          Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & "," & oLookupTableEntry.ParentEntry.FullName
-        End If
-      Next lngItem
-      Close #lngFile
-      ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
-      Application.StatusBar = "Exporting Code file for " & strCFN & "...done."
-      lngCodes = lngCodes + 1
+    Debug.Print oOutlineCode.Name
+    If cptGetPosition(Split(strOptions, ","), oOutlineCode.Name) >= 0 Then
+      lngCF = oOutlineCode.FieldID
+      strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
+      Set oLookupTable = oOutlineCode.LookupTable
+      lngItems = oLookupTable.Count
+      If lngItems > 0 Then
+        Application.StatusBar = "Exporting Code file for " & strCFN & "..."
+        lngFile = FreeFile
+        strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
+        Open strFileName For Output As #lngFile
+        Print #lngFile, "CODE,DESCRIPTION,PARENT"
+        For lngItem = 1 To oLookupTable.Count
+          Set oLookupTableEntry = oLookupTable(lngItem)
+          If oLookupTableEntry.Level = 1 Then
+            Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & ",*****"
+          Else
+            Print #lngFile, oLookupTableEntry.FullName & "," & Chr(34) & oLookupTableEntry.Description & Chr(34) & "," & oLookupTableEntry.ParentEntry.FullName
+          End If
+        Next lngItem
+        Close #lngFile
+        cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+        Application.StatusBar = "Exporting Code file for " & strCFN & "...done."
+        lngCodes = lngCodes + 1
+      End If
     End If
   Next oOutlineCode
-  
-  Set oFieldCounts = CreateObject("Scripting.Dictionary")
-  oFieldCounts.Add "Text", 30
-  oFieldCounts.Add "Number", 20
-  
+    
   Set oCodes = CreateObject("Scripting.Dictionary")
   
   For Each vFieldType In Array("Cost", "Date", "Duration", "Finish", "Number", "Start", "Text") 'Flag has no picklist
@@ -1683,41 +1406,45 @@ Sub cptExportAllCodes()
       If Len(strCFN) > 0 Then
         strCFN = cptRemoveIllegalCharacters(CustomFieldGetName(lngCF))
       Else
-        GoTo next_cf
+        GoTo next_cf2
       End If
-      On Error Resume Next
-      If Len(CustomFieldValueListGetItem(lngCF, pjValueListValue, 1)) = 0 Then GoTo next_cf
-      For lngListItem = 1 To 1000 'capped at 1000, hopefully that's enough...
-        strValue = CustomFieldValueListGetItem(lngCF, pjValueListValue, lngListItem)
-        strDescription = CustomFieldValueListGetItem(lngCF, pjValueListDescription, lngListItem)
-        If strValue <> "" Then
-          oCodes.Add strValue, strDescription
-        Else
-          Exit For
-        End If
-        strValue = ""
-        strDescription = ""
-      Next lngListItem
-      If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-      If oCodes.Count > 0 Then
-        lngFile = FreeFile
-        strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
-        Open strFileName For Output As #lngFile
-        Print #lngFile, "CODE,DESCRIPTION"
-        For lngListItem = 0 To oCodes.Count - 1
-          Print #lngFile, oCodes.Keys(lngListItem) & "," & Chr(34) & oCodes.Items(lngListItem) & Chr(34)
+      If cptGetPosition(Split(strOptions, ","), strCFN) >= 0 Then
+        On Error Resume Next
+        If Len(CustomFieldValueListGetItem(lngCF, pjValueListValue, 1)) = 0 Then GoTo next_cf2
+        For lngListItem = 1 To 1000 'capped at 1000, hopefully that's enough...
+          strValue = CustomFieldValueListGetItem(lngCF, pjValueListValue, lngListItem)
+          strDescription = CustomFieldValueListGetItem(lngCF, pjValueListDescription, lngListItem)
+          If strValue <> "" Then
+            oCodes.Add strValue, strDescription
+          Else
+            Exit For
+          End If
+          strValue = ""
+          strDescription = ""
         Next lngListItem
-        Close #lngFile
-        ShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
-        lngCodes = lngCodes + 1
+        If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        If oCodes.Count > 0 Then
+          lngFile = FreeFile
+          strFileName = Environ("tmp") & "\" & Replace(strCFN, " ", "_") & ".csv"
+          Open strFileName For Output As #lngFile
+          Print #lngFile, "CODE,DESCRIPTION"
+          For lngListItem = 0 To oCodes.Count - 1
+            Print #lngFile, oCodes.Keys(lngListItem) & "," & Chr(34) & oCodes.Items(lngListItem) & Chr(34)
+          Next lngListItem
+          Close #lngFile
+          cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+          lngCodes = lngCodes + 1
+        End If
+        oCodes.RemoveAll
       End If
-      oCodes.RemoveAll
-next_cf:
+next_cf2:
     Next lngItem
   Next vFieldType
   
-  Application.StatusBar = lngCodes & " codes exported."
-  MsgBox lngCodes & " codes exported.", vbInformation + vbOKOnly, "Code Export"
+  If lngCodes > 0 Then
+    Application.StatusBar = lngCodes & " code" & IIf(lngCodes = 1, "", "s") & " exported."
+    MsgBox lngCodes & " code" & IIf(lngCodes = 1, "", "s") & " exported.", vbInformation + vbOKOnly, "Code Export"
+  End If
 
 exit_here:
   On Error Resume Next
@@ -1732,6 +1459,8 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_bas", "cptExportAllCodes", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportAllCodes", Err, Erl)
   Resume exit_here
 End Sub
+
+

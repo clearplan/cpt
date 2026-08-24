@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptMetrics_bas"
-'<cpt_version>v1.5.4</cpt_version>
+'<cpt_version>v1.5.5</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptMetrics_bas"
 
 Sub cptGetBAC()
   MsgBox Format(cptGetMetric("bac"), "#,##0.00h"), vbInformation + vbOKOnly, "Budget at Complete (BAC) - hours"
@@ -24,7 +25,7 @@ Sub cptGetBCWR()
   strMsg = "BCWR = (BAC - BCWP)" & vbCrLf
   strMsg = strMsg & "BCWR = (" & Format(dblBAC, "#,##0.0") & " - " & Format(dblBCWP, "#,##0.0") & ")" & vbCrLf & vbCrLf
   strMsg = strMsg & "BCWR = " & Format(dblBAC - dblBCWP, "#,##0.0") & "h"
-  MsgBox strMsg, vbInformation + vbOKOnly, "Budgeted Cost of Work Remainning (BCWR) - hours"
+  MsgBox strMsg, vbInformation + vbOKOnly, "Budgeted Cost of Work Remaining (BCWR) - hours"
   
 End Sub
 
@@ -263,10 +264,9 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetCPLI", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetCPLI", Err, Erl)
   Resume exit_here
 End Sub
-
 Sub cptGET(strWhat As String)
   'objects
   Dim oTask As Object
@@ -288,6 +288,7 @@ Sub cptGET(strWhat As String)
   'booleans
   Dim blnErrorTrapping As Boolean
   'variants
+  Dim vPrevious As Variant
   'dates
   Dim dtStatus As Date, dtPrevious As Date
 
@@ -337,52 +338,49 @@ Sub cptGET(strWhat As String)
         MsgBox "No data file found. You must 'Capture Week' on previous period's file before you can run CEI on current period's statused IMS.", vbExclamation + vbOKOnly, "File Not Found"
         GoTo exit_here
       End If
+      cptCleanCEI 'clean the data just in case
       'get program acronym
+      Application.StatusBar = "get program acronym..."
       strProgram = cptGetProgramAcronym
       If Len(strProgram) = 0 Then GoTo exit_here
-      'connect to data source
+      Application.StatusBar = "get unique list of status periods..."
+      vPrevious = cptGetPreviousPeriod(strProgram, ActiveProject.StatusDate, "CEI: select previous period:", fmMultiSelectSingle)
+      Application.StatusBar = "calculating cei..."
+      If Not IsDate(vPrevious) Then
+        GoTo exit_here 'and do nothing
+      Else
+        dtPrevious = CDate(vPrevious)
+      End If
       Set oRecordset = CreateObject("ADODB.Recordset")
-      'get list of tasks & count
-      oRecordset.Open strDir & "\settings\cpt-cei.adtg"
-      dtStatus = ActiveProject.StatusDate
       With oRecordset
-        .Sort = "STATUS_DATE desc"
-        .MoveFirst
-        'get most previous week_ending 'todo: why not filter and then sort?
-        dtPrevious = .Fields("STATUS_DATE")
-        Do While Not .EOF
-          If .Fields("PROJECT") = strProgram Then
-            If .Fields("STATUS_DATE") < dtStatus Then
-              dtPrevious = .Fields("STATUS_DATE")
-              Exit Do
-            End If
-          End If
-          .MoveNext
-        Loop
         'test each one to see if complete and get count
+        .Open strDir & "\settings\cpt-cei.adtg", , , , adCmdFile
         .MoveFirst
+        .Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & dtPrevious & "# AND IS_LOE=0"
         Do While Not .EOF
-          If CBool(.Fields("IS_LOE")) Then GoTo next_record
-          If .Fields("PROJECT") = strProgram And .Fields("STATUS_DATE") = dtPrevious Then
-            If .Fields("TASK_FINISH") > dtPrevious And .Fields("TASK_FINISH") <= dtStatus Then
-              lngFF = lngFF + 1
-              Set oTask = Nothing
-              On Error Resume Next
-              Set oTask = ActiveProject.Tasks.UniqueID(CLng(.Fields(1)))
-              If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-              If Not oTask Is Nothing Then
-                If IsDate(oTask.ActualFinish) Then
-                  lngAF = lngAF + 1
-                End If
-              Else
-                MsgBox "Task UID " & .Fields(1) & " '" & .Fields(2) & "' not found in this IMS.", vbExclamation + vbOKOnly, "CEI Invalid"
-                strNotFound = strNotFound & .Fields(1) & ","
+          If .Fields("TASK_FINISH") > dtPrevious And .Fields("TASK_FINISH") <= dtStatus Then
+            'todo: would it be faster to compare against the latest capture-period data?
+            lngFF = lngFF + 1
+            Set oTask = Nothing
+            On Error Resume Next
+            Set oTask = ActiveProject.Tasks.UniqueID(CLng(.Fields(1)))
+            If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+            If Not oTask Is Nothing Then
+              If IsDate(oTask.ActualFinish) Then
+                lngAF = lngAF + 1
               End If
+            Else
+              strNotFound = strNotFound & .Fields("TASK_UID") & ","
             End If
           End If
 next_record:
           .MoveNext
         Loop
+        If Len(strNotFound) > 0 Then
+          If MsgBox(UBound(Split(strNotFound, ",")) & " UIDs from previous period not found in current period." & vbCrLf & vbCrLf & "Proceed anyway?", vbExclamation + vbYesNo, "Missing UIDs") = vbNo Then
+            GoTo skip_cei
+          End If
+        End If
         strMsg = "Comparing against previous period: " & FormatDateTime(dtPrevious, vbShortDate) & ":" & vbCrLf & vbCrLf
         strMsg = strMsg & "CEI = Tasks completed in current period / Tasks forecasted to complete in current period" & vbCrLf & vbCrLf
         strMsg = strMsg & "CEI = " & lngAF & " / " & lngFF & vbCrLf
@@ -391,7 +389,9 @@ next_record:
         strMsg = strMsg & "- Does not include tasks completed in current period but not forecasted to complete in current period." & vbCrLf
         strMsg = strMsg & "- See NDIA Predictive Measures Guide for more information."
         Call cptCaptureMetric(strProgram, dtStatus, "CEI", Round(lngAF / IIf(lngFF = 0, 1, lngFF), 2))
+        Application.StatusBar = ""
         MsgBox strMsg, vbInformation + vbOKOnly, "Current Execution Index"
+skip_cei:
         If Len(strNotFound) > 0 Then InputBox "The following UIDs were not found:", "Where did these go?", strNotFound
         .Close
       End With
@@ -434,15 +434,15 @@ next_record:
     
   End Select
   
-  
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
   Set oTask = Nothing
   Set oRecordset = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGet", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGet", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -506,7 +506,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetHitTask", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetHitTask", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -665,7 +665,7 @@ next_task:
   cptGetMetric = dblResult
   If blnVerbose Then
     Close #lngFile
-    ShellExecute 0, "open", strVerbose, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strVerbose, vbNullString, vbNullString, 1
   End If
 
 exit_here:
@@ -681,7 +681,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetMetric", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetMetric", Err, Erl)
   Resume exit_here
 
 End Function
@@ -869,7 +869,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptCaptureWeek", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCaptureWeek", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1318,7 +1318,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptLateStartsFinishes", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptLateStartsFinishes", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1374,7 +1374,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptCaptureMetric", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCaptureMetric", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1535,7 +1535,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetSPIDetail", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetSPIDetail", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1546,7 +1546,6 @@ End Sub
 Sub cptGetTrend_CPLI()
   cptGetTrend "CPLI"
 End Sub
-
 Sub cptGetTrend_CEI()
   'objects
   Dim oRange As Excel.Range
@@ -1590,10 +1589,11 @@ Sub cptGetTrend_CEI()
   Dim vBanding As Variant
   Dim vBorder As Variant
   Dim vTable As Variant
+  Dim vPrevious As Variant
   'dates
-  Dim dtLastWeek As Date
-  Dim dtThisWeek As Date
-  Dim dtNextWeek As Date
+  Dim dtLastPeriod As Date
+  Dim dtThisPeriod As Date
+  Dim dtNextPeriod As Date
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -1624,7 +1624,7 @@ Sub cptGetTrend_CEI()
       GoTo exit_here
     End If
   End If
-  dtThisWeek = FormatDateTime(ActiveProject.StatusDate, vbGeneralDate)
+  dtThisPeriod = FormatDateTime(ActiveProject.StatusDate, vbGeneralDate)
   
   'ensure cei file exists
   Application.StatusBar = "Confirming cpt-cei.adtg exists..."
@@ -1635,13 +1635,14 @@ Sub cptGetTrend_CEI()
     GoTo exit_here
   End If
   
-  'check for data and capture most previous status date in cpt-cei.adtg
-  Application.StatusBar = "Fetching most recent CEI status date for " & strProgram & "..."
+  'check for data in cpt-cei.adtg
+  cptCleanCEI
+  Application.StatusBar = "validating cpt-cei task history " & strProgram & "..."
   DoEvents
   Set oRecordset = CreateObject("ADODB.REcordset")
   With oRecordset
     .Open strFileName
-    .Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE<#" & FormatDateTime(dtThisWeek, vbGeneralDate) & "#"
+    .Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE<#" & FormatDateTime(dtThisPeriod, vbGeneralDate) & "#"
     .Sort = "STATUS_DATE DESC"
     If .EOF Then
       MsgBox "No prior records found for " & strProgram & "..." & vbCrLf & vbCrLf & "Please open a previous version of this schedule and run Schedule > Status > Capture Week before processing.", vbExclamation + vbOKOnly, "No Data"
@@ -1649,41 +1650,27 @@ Sub cptGetTrend_CEI()
       .Close
       GoTo exit_here
     End If
-    .MoveFirst
-    dtLastWeek = oRecordset("STATUS_DATE")
     .Filter = 0
     .Close
   End With
   Set oRecordset = Nothing
   
   'get latest date of cei from cpt-metrics.adtg
+  vPrevious = cptGetPreviousPeriod(strProgram, dtThisPeriod, "CEI Trend: select previous period(s):", fmMultiSelectMulti)
+  If Len(vPrevious) = 0 Then GoTo exit_here
+  If UBound(Split(vPrevious, ",")) > 0 Then
+    dtLastPeriod = CDate(Split(vPrevious, ",")(0))
+  Else
+    dtLastPeriod = CDate(vPrevious)
+  End If
+  
   strFileName = strCptDir & "\settings\cpt-metrics.adtg"
-  Set oRecordset = CreateObject("ADODB.Recordset")
-  With oRecordset
-    .Open strFileName
-    .Filter = "PROGRAM='" & strProgram & "'"
-    .Sort = "STATUS_DATE DESC"
-    If .EOF Then
-      MsgBox "No metrics data found for " & strProgram & "..." & vbCrLf & vbCrLf & "Please run Schedule > Metrics > Current Execution Index (CEI)", vbExclamation + vbOKOnly, "No Data"
-      GoTo exit_here
-    End If
-    .MoveFirst
-    strMsg = "Current Status Date: " & FormatDateTime(dtThisWeek, vbShortDate) & vbCrLf & vbCrLf
-    strMsg = strMsg & "CEI last captured: " & FormatDateTime(.Fields("STATUS_DATE"), vbShortDate) & vbCrLf
-    strMsg = strMsg & "- this should match the Status Date. To run:" & vbCrLf
-    strMsg = strMsg & "> Schedule Metrics > Current Execution Index (CEI)" & vbCrLf & vbCrLf
-    strMsg = strMsg & "Previous Status Date: " & FormatDateTime(dtLastWeek, vbShortDate) & vbCrLf
-    strMsg = strMsg & "- this should match your most recent status period. To catch up, open archived versions of this IMS and run:" & vbCrLf
-    strMsg = strMsg & "> Schedule > Status > Capture Week" & vbCrLf & vbCrLf
-    strMsg = strMsg & "Ready to proceed?"
-    If MsgBox(strMsg, vbQuestion + vbYesNo, "Confirm") = vbNo Then
-      .Filter = 0
-      .Close
-      GoTo exit_here
-    End If
-    .Close
-  End With
-  Set oRecordset = Nothing
+  strMsg = "Current Status Date: " & FormatDateTime(dtThisPeriod, vbShortDate) & vbCrLf
+  strMsg = strMsg & "Previous Status Date: " & FormatDateTime(dtLastPeriod, vbShortDate) & vbCrLf & vbCrLf
+  strMsg = strMsg & "Ready to proceed?"
+  If MsgBox(strMsg, vbQuestion + vbYesNo, "CEI Trend") = vbNo Then
+    GoTo exit_here
+  End If
   
   'get custom headers
   strMyHeaders = cptGetMyHeaders("CEI Trend")
@@ -1709,17 +1696,17 @@ Sub cptGetTrend_CEI()
   oWorksheet.[A1].Font.Size = 16
   oWorksheet.[A1].Font.Bold = True
   
-  oWorksheet.[A2].Value = dtThisWeek
+  oWorksheet.[A2].Value = dtThisPeriod
   oWorksheet.[A2].NumberFormat = "m/d/yyyy"
   
-  Application.StatusBar = "Setting up table for This Week..."
+  Application.StatusBar = "Setting up table for This Period..."
   DoEvents
-  oWorksheet.[A4].Value = "Tasks previously forecast to finish This Week:"
+  oWorksheet.[A4].Value = "Tasks previously forecast to finish This Period:"
   oWorksheet.[A4:E4].Merge
   oWorksheet.[A4].Font.Bold = True
   oWorksheet.[A4].Font.Italic = True
   
-  'set up table THIS_WEEK
+  'set up table THIS_PERIOD
   strHeaders = "UID,"
   strHeaders = strHeaders & strMyHeaders
   strHeaders = strHeaders & "TASK,FF,AF"
@@ -1728,22 +1715,22 @@ Sub cptGetTrend_CEI()
   Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.[A5], oWorksheet.[A5].End(xlToRight)), , xlYes)
   lngNameCol = oWorksheet.Rows(5).Find(what:="TASK", lookat:=xlWhole).Column
   oListObject.TableStyle = ""
-  oListObject.Name = "THIS_WEEK"
+  oListObject.Name = "THIS_PERIOD"
   oListObject.ShowTotals = True
   strFileName = strCptDir & "\settings\cpt-cei.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
   oRecordset.Open strFileName
   If oRecordset.RecordCount > 0 Then
-    oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & FormatDateTime(dtLastWeek, vbGeneralDate) & "#"
+    oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & FormatDateTime(dtLastPeriod, vbGeneralDate) & "#"
     If oRecordset.EOF Then 'this cannot happen given what's happened above
-      MsgBox "No data found for WE " & FormatDateTime(dtLastWeek, vbShortDate), vbExclamation + vbOKOnly, "No Data"
+      MsgBox "No data found for WE " & FormatDateTime(dtLastPeriod, vbShortDate), vbExclamation + vbOKOnly, "No Data"
       GoTo exit_here
     Else
       lngItems = oRecordset.RecordCount
       oRecordset.MoveFirst
       Do While Not oRecordset.EOF
         If oRecordset("IS_LOE") = 1 Then GoTo next_record
-        If oRecordset("PROJECT") = strProgram And oRecordset("TASK_FINISH") > dtLastWeek And oRecordset("TASK_FINISH") <= dtThisWeek And oRecordset("TASK_AF") = 0 Then
+        If oRecordset("PROJECT") = strProgram And oRecordset("TASK_FINISH") > dtLastPeriod And oRecordset("TASK_FINISH") <= dtThisPeriod And oRecordset("TASK_AF") = 0 Then
           lngFF = lngFF + 1
           Set oTask = Nothing
           On Error Resume Next
@@ -1759,7 +1746,11 @@ Sub cptGetTrend_CEI()
           For Each vHeader In Split(strMyHeaders, ",")
             If vHeader = "" Then Exit For
             lngCol = lngCol + 1
-            oListRow.Range(1, lngCol) = oTask.GetField(FieldNameToFieldConstant(vHeader))
+            If Not oTask Is Nothing Then
+              oListRow.Range(1, lngCol) = oTask.GetField(FieldNameToFieldConstant(vHeader))
+            Else
+              oListRow.Range(1, lngCol) = "'-"
+            End If
           Next vHeader
           If Not oTask Is Nothing Then
             oListRow.Range(1, lngCol + 1) = oTask.Name
@@ -1805,7 +1796,7 @@ next_record:
   oRange.Merge
   oRange.HorizontalAlignment = xlCenter
   oRange.NumberFormat = "0.00"
-  oRange.FormulaR1C1 = "=IFERROR(THIS_WEEK[[#Totals],[AF]]/THIS_WEEK[[#Totals],[FF]],0)"
+  oRange.FormulaR1C1 = "=IFERROR(THIS_PERIOD[[#Totals],[AF]]/THIS_PERIOD[[#Totals],[FF]],0)"
   If oRange(0, 0).Value < 0.7 Then
     oRange.Style = "Bad"
   ElseIf oRange(0, 0).Value <= 0.75 Then
@@ -1834,13 +1825,13 @@ next_record:
     .FormatConditions(1).StopIfTrue = False
   End With
       
-  'set up table NEXT_WEEK
+  'set up table NEXT_PERIOD
   'update upcoming tasks list
   Application.StatusBar = "Updating next week's tasks..."
   DoEvents
   
   lngLastRow = oWorksheet.Cells(oWorksheet.Rows.Count, 1).End(xlUp).Row + 3
-  oWorksheet.Cells(lngLastRow, 1).Value = "Tasks forecast to complete Next Week:"
+  oWorksheet.Cells(lngLastRow, 1).Value = "Tasks forecast to complete Next Period:"
   oWorksheet.Cells(lngLastRow, 1).Font.Bold = True
   oWorksheet.Cells(lngLastRow, 1).Font.Italic = True
   oWorksheet.Range(oWorksheet.Cells(lngLastRow, 1), oWorksheet.Cells(lngLastRow, 5)).Merge
@@ -1850,12 +1841,12 @@ next_record:
   Set oListObject = oWorksheet.ListObjects.Add(xlSrcRange, oWorksheet.Range(oWorksheet.Cells(lngLastRow, 1), oWorksheet.Cells(lngLastRow, 1).End(xlToRight)), , xlYes)
   oListObject.ListColumns("AF").Delete
   oListObject.TableStyle = ""
-  oListObject.Name = "NEXT_WEEK"
+  oListObject.Name = "NEXT_PERIOD"
   oListObject.ShowTotals = True
   lngFF = 0
     
-  dtThisWeek = ActiveProject.StatusDate
-  dtNextWeek = DateAdd("d", 7, dtThisWeek)
+  dtThisPeriod = ActiveProject.StatusDate
+  dtNextPeriod = DateAdd("d", 7, dtThisPeriod) 'todo: define next period?
   lngItems = ActiveProject.Tasks.Count
   lngItem = 0
   For Each oTask In ActiveProject.Tasks
@@ -1864,7 +1855,7 @@ next_record:
     If oTask.ExternalTask Then GoTo next_task
     If Not oTask.Active Then GoTo next_task
     If oTask.GetField(lngEVT) = strLOE Then GoTo next_task 'exclude LOE based on 2019 PASEG3
-    If oTask.Finish > dtThisWeek And oTask.Finish <= dtNextWeek Then
+    If oTask.Finish > dtThisPeriod And oTask.Finish <= dtNextPeriod Then
       lngFF = lngFF + 1
       If lngFF = 1 And oListObject.ListRows.Count = 1 Then
         Set oListRow = oListObject.ListRows(1)
@@ -1910,21 +1901,16 @@ next_task:
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
     .Open strFileName, , adOpenKeyset, adLockReadOnly
-    .Filter = "PROGRAM='" & strProgram & "'"
-    'todo: limit number of periods on cei trend?
-    If .EOF Then
-      'todo: warn & goto where?
-      .Filter = 0
-      .Close
-    End If
-    .Sort = "STATUS_DATE"
-    .MoveFirst
-    Do While Not .EOF
+    Dim vPreviousPeriod As Variant
+    For Each vPreviousPeriod In Split(vPrevious, ",")
+      .Filter = "PROGRAM='" & strProgram & "' AND STATUS_DATE=#" & vPreviousPeriod & "#"
       Set oListRow = oListObject.ListRows.Add
-      oListRow.Range = Array(.Fields("STATUS_DATE"), .Fields("CEI"), 0.69, 0.05, 0.26)
-      .MoveNext
-    Loop
-    .Filter = 0
+      If Not .EOF Then
+        oListRow.Range = Array(.Fields("STATUS_DATE"), .Fields("CEI"), 0.69, 0.05, 0.26)
+      Else
+        oListRow.Range = Array(vPreviousPeriod, 0, 0.69, 0.05, 0.26)
+      End If
+    Next vPreviousPeriod
     .Close
   End With
   oListObject.DataBodyRange.Style = "Comma"
@@ -1932,7 +1918,7 @@ next_task:
   oListObject.ListColumns("STATUS_DATE").DataBodyRange.HorizontalAlignment = xlCenter
   
   'format tables
-  For Each vTable In Array("THIS_WEEK", "NEXT_WEEK", "CEI_DATA")
+  For Each vTable In Array("THIS_PERIOD", "NEXT_PERIOD", "CEI_DATA")
     Set oListObject = oWorksheet.ListObjects(vTable)
     'clear formatting
     oListObject.TableStyle = ""
@@ -1995,10 +1981,10 @@ next_task:
       .TintAndShade = -0.149998474074526
       .PatternTintAndShade = 0
     End With
-    If vTable = "THIS_WEEK" Then
+    If vTable = "THIS_PERIOD" Then
       oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("FF").Range.Column).NumberFormat = "0"
       oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("AF").Range.Column).NumberFormat = "0"
-    ElseIf vTable = "NEXT_WEEK" Then
+    ElseIf vTable = "NEXT_PERIOD" Then
       oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("UID").Range.Column).Value = "Total"
       oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("FF").Range.Column).FormulaR1C1 = "=SUBTOTAL(103,[FF])"
       oListObject.TotalsRowRange(ColumnIndex:=oListObject.ListColumns("FF").Range.Column).NumberFormat = "0"
@@ -2008,9 +1994,9 @@ next_task:
       'sort by first custom field,FF or by only FF
       oListObject.Sort.SortFields.Clear
       If UBound(Split(strMyHeaders, ",")) > 0 Then
-        oListObject.Sort.SortFields.Add Key:=oWorksheet.Range("THIS_WEEK[" & Split(strMyHeaders, ",")(0) & "]"), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+        oListObject.Sort.SortFields.Add Key:=oWorksheet.Range("THIS_PERIOD[" & Split(strMyHeaders, ",")(0) & "]"), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
       End If
-      oListObject.Sort.SortFields.Add Key:=oWorksheet.Range("THIS_WEEK[FF]"), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
+      oListObject.Sort.SortFields.Add Key:=oWorksheet.Range("THIS_PERIOD[FF]"), SortOn:=xlSortOnValues, Order:=xlAscending, DataOption:=xlSortNormal
       With oListObject.Sort
         .Header = xlYes
         .MatchCase = False
@@ -2044,7 +2030,7 @@ next_task:
   oChart.SetElement (msoElementLegendRight)
   oChart.ChartArea.Format.TextFrame2.TextRange.Font.Size = 11
   oChart.SetElement (msoElementChartTitleAboveChart)
-  oChart.ChartTitle.Text = strProgram & " IMS - CEI Trend" & vbCr & Format(dtThisWeek, "m/d/yyyy")
+  oChart.ChartTitle.Text = strProgram & " IMS - CEI Trend" & vbCr & Format(dtThisPeriod, "m/d/yyyy")
   oChart.ChartTitle.Characters.Font.Bold = False
   oChart.ChartTitle.Characters(1, Len(strProgram & " IMS - CEI Trend")).Font.Bold = True
   oChart.ChartTitle.Format.TextFrame2.TextRange.Font.Size = 16
@@ -2128,7 +2114,9 @@ next_task:
   End With
 
   'final cleanup
-  oWorksheet.[A2].Columns.AutoFit
+  oWorksheet.Rows(3).Insert
+  oWorksheet.[A2] = "Current Period: " & FormatDateTime(dtThisPeriod, vbShortDate)
+  oWorksheet.[A3] = "Previous Period: " & FormatDateTime(dtLastPeriod, vbShortDate)
   oWorksheet.Range("CEI").Select
   
   Application.StatusBar = "Complete."
@@ -2157,7 +2145,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetTrend_CEI", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetTrend_CEI", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2444,7 +2432,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetTrend", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetTrend", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2474,6 +2462,7 @@ Sub cptExportMetricsData()
   'doubles
   'booleans
   'variants
+  Dim vCol As Variant
   'dates
   
   Application.StatusBar = "Exporting..."
@@ -2497,26 +2486,39 @@ Sub cptExportMetricsData()
     GoTo exit_here
   End If
   
+  On Error Resume Next
+  Set oExcel = GetObject(, "Excel.Application")
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If oExcel Is Nothing Then
+    Set oExcel = CreateObject("Excel.Application")
+  End If
+  'oExcel.Visible = True
+  Set oWorkbook = oExcel.Workbooks.Add
+  oExcel.ScreenUpdating = False
+  oExcel.Calculation = xlCalculationManual
+  
   strFileName = strDir & "\settings\cpt-metrics.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
   oRecordset.Open strFileName
   oRecordset.Filter = "PROGRAM='" & strProgram & "'"
   If oRecordset.RecordCount > 0 Then
-    On Error Resume Next
-    Set oExcel = GetObject(, "Excel.Application")
-    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-    If oExcel Is Nothing Then
-      Set oExcel = CreateObject("Excel.Application")
-    End If
-    'oExcel.Visible = True
-    Set oWorkbook = oExcel.Workbooks.Add
+    Application.StatusBar = "exporting cpt-metrics.adtg..."
+    oRecordset.Sort = "STATUS_DATE DESC"
     Set oWorksheet = oWorkbook.Sheets(1)
     oWorksheet.Name = strProgram & " METRICS"
     For lngField = 0 To oRecordset.Fields.Count - 1
       oWorksheet.Cells(1, lngField + 1) = oRecordset.Fields(lngField).Name
     Next lngField
     oWorksheet.[A2].CopyFromRecordset cptConvertFilteredRecordset(oRecordset)
-    oWorksheet.Columns(2).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
+    For Each vCol In Array(2, 9)
+      oWorksheet.Columns(vCol).Replace "1/0/1900", "NA", xlWhole 'replace 1/0/1900
+      If vCol = 9 Then
+        oWorksheet.Columns(vCol).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
+      Else
+        oWorksheet.Columns(vCol).NumberFormat = "[$-en-US]m/d/yy h:mm AM/PM;@"
+      End If
+      oWorksheet.Columns(vCol).HorizontalAlignment = xlCenter
+    Next vCol
     oExcel.ActiveWindow.Zoom = 85
     oWorksheet.Columns.AutoFit
     oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
@@ -2536,6 +2538,7 @@ Sub cptExportMetricsData()
   oRecordset.Open strFileName
   oRecordset.Filter = "PROJECT='" & strProgram & "'"
   If oRecordset.RecordCount > 0 Then
+    Application.StatusBar = "exporting cpt-cei.adtg..."
     On Error Resume Next
     Set oWorksheet = oWorkbook.Sheets.Add(After:=oWorkbook.Sheets(oWorkbook.Sheets.Count))
     oWorksheet.Name = strProgram & " CEI"
@@ -2546,14 +2549,15 @@ Sub cptExportMetricsData()
     'todo: display alerts
     oWorksheet.Columns(4).Replace "0", False
     oWorksheet.Columns(4).Replace "1", True
-    oWorksheet.Columns(5).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    oWorksheet.Columns(7).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    oWorksheet.Columns(8).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    oWorksheet.Columns(10).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    oWorksheet.Columns(11).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    oWorksheet.Columns(13).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    oWorksheet.Columns(14).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
-    
+    For Each vCol In Array(5, 7, 8, 10, 11, 13, 14)
+      oWorksheet.Columns(vCol).Replace "1/0/1900", "NA", xlWhole 'replace 1/0/1900
+      If vCol = 14 Then
+        oWorksheet.Columns(vCol).NumberFormat = "[$-en-US]m/d/yy h:mm AM/PM;@"
+      Else
+        oWorksheet.Columns(vCol).NumberFormat = "m/d/yyyy" '"[$-en-US]m/d/yy h:mm AM/PM;@"
+      End If
+      oWorksheet.Columns(vCol).HorizontalAlignment = xlCenter
+    Next vCol
     oExcel.ActiveWindow.Zoom = 85
     oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
     oWorksheet.Columns.AutoFit
@@ -2567,7 +2571,7 @@ Sub cptExportMetricsData()
   End If
   oRecordset.Filter = ""
   oRecordset.Close
-  
+    
   oWorkbook.Sheets(1).Activate
   
 exit_here:
@@ -2575,12 +2579,146 @@ exit_here:
   Application.StatusBar = ""
   Set oRecordset = Nothing
   Set oWorksheet = Nothing
+  oExcel.ScreenUpdating = True
+  oExcel.Calculation = xlCalculationAutomatic
   Set oWorkbook = Nothing
   Set oExcel = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptExportMetricsData", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportMetricsData", Err, Erl)
+  Resume exit_here
+End Sub
+
+Sub cptDeleteMetricsData(ByRef myMetricsData_frm As cptMetricsData_frm)
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strDir As String
+  Dim strProgram As String
+  Dim strFileName As String
+  Dim strFilter As String
+  'longs
+  Dim lngItem As Long
+  Dim lngCol As Long
+  'integers
+  'doubles
+  'booleans
+  'variants
+  'dates
+  Dim dtStatus As Date
+  
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  strDir = cptDir
+  
+  With myMetricsData_frm
+        
+    'loop through and delete selected
+    For lngItem = .lboMetricsData.ListCount - 1 To 0 Step -1
+      If .lboMetricsData.Selected(lngItem) Then
+        strProgram = .lboMetricsData.List(lngItem, 0)
+        dtStatus = CDate(.lboMetricsData.List(lngItem, 1))
+        
+        'what are we deleting?
+        If .optSummary Then
+          strFileName = strDir & "\settings\cpt-metrics.adtg"
+          strFilter = "PROGRAM='" & strProgram & "'"
+        ElseIf .optDetail Then
+          strFileName = strDir & "\settings\cpt-cei.adtg"
+          strFilter = "PROJECT='" & strProgram & "'"
+        End If
+        
+        'confirm
+        If MsgBox("Permanently delete record(s) for " & strProgram & " - " & dtStatus & "?", vbExclamation + vbYesNo, "Confirm") = vbYes Then
+          If Dir(strFileName) = vbNullString Then
+            MsgBox "File suddenly disappeared!", vbCritical + vbOKOnly, "File Not Found"
+            GoTo exit_here
+          End If
+          Set oRecordset = CreateObject("ADODB.Recordset")
+          oRecordset.Open strFileName
+          If oRecordset.RecordCount = 0 Then
+            MsgBox "No Records", vbExclamation + vbOKOnly, "No Data"
+            oRecordset.Close
+            GoTo exit_here
+          End If
+          oRecordset.MoveFirst
+'          oRecordset.Filter = strFilter & " AND STATUS_DATE>=#" & dtStatus & "# AND STATUS_DATE<#" & DateAdd("d", 1, dtStatus) & "#"
+          oRecordset.Filter = strFilter & " AND STATUS_DATE=#" & dtStatus & "#"
+          'summary has single record; detail has many
+          If .optSummary Then
+            If Not oRecordset.EOF Then
+              oRecordset.Delete adAffectCurrent
+              oRecordset.Filter = 0
+              oRecordset.Save strFileName, adPersistADTG
+              'also delete cei data?
+              If MsgBox("Also delete detail (CEI) data for '" & strProgram & "' Status Period " & FormatDateTime(dtStatus, vbShortDate) & "?", vbQuestion + vbYesNo, "Please confirm") = vbYes Then
+                oRecordset.Close
+                Set oRecordset = CreateObject("ADODB.Recordset")
+                oRecordset.Open Replace(strFileName, "metrics", "cei")
+                If oRecordset.RecordCount = 0 Then
+                  MsgBox "No detail (CEI) records found for '" & strProgram & "' Status Period " & FormatDateTime(dtStatus, vbShortDate) & ".", vbExclamation + vbOKOnly, "No Data"
+                  oRecordset.Close
+                  GoTo next_item
+                End If
+                oRecordset.MoveFirst
+                'oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE>=#" & dtStatus & "# AND STATUS_DATE<#" & DateAdd("d", 1, dtStatus) & "#"
+                oRecordset.Filter = "PROJECT='" & strProgram & "' AND STATUS_DATE=#" & dtStatus & "#"
+                If Not oRecordset.EOF Then
+                  oRecordset.MoveFirst
+                  Do While Not oRecordset.EOF
+                    oRecordset.Delete adAffectCurrent
+                    oRecordset.MoveNext
+                  Loop
+                  oRecordset.Filter = 0
+                  oRecordset.Save Replace(strFileName, "metrics", "cei"), adPersistADTG
+                  'rebuild the csv
+                  If Dir(Environ("tmp") & "\cpt-cei-summary.csv") <> vbNullString Then Kill Environ("tmp") & "\cpt-cei-summary.csv"
+                  MsgBox "Detail data deleted for '" & strProgram & "' for Status Period " & FormatDateTime(dtStatus, vbShortDate) & ".", vbInformation + vbOKOnly, "Metrics Detail Deleted"
+                End If
+                oRecordset.Filter = 0
+              End If
+              .lboMetricsData.RemoveItem (lngItem)
+            Else
+              MsgBox "This record cannot be found.", vbExclamation + vbOKOnly, "Record Not Found"
+              oRecordset.Close
+              GoTo exit_here
+            End If
+          ElseIf .optDetail Then
+            If Not oRecordset.EOF Then
+              oRecordset.MoveFirst
+              Do While Not oRecordset.EOF
+                oRecordset.Delete adAffectCurrent
+                oRecordset.MoveNext
+              Loop
+              .lboMetricsData.RemoveItem (lngItem)
+            End If
+            oRecordset.Filter = 0
+            oRecordset.Save strFileName, adPersistADTG
+            'rebuild the csv
+            If Dir(Environ("tmp") & "\cpt-cei-summary.csv") <> vbNullString Then Kill Environ("tmp") & "\cpt-cei-summary.csv"
+          End If
+          'refresh results
+          oRecordset.Close
+        End If
+      End If
+next_item:
+    Next lngItem
+  End With
+
+  'cptUpdateMetricsDataForm myMetricsData_frm
+
+exit_here:
+  On Error Resume Next
+  If oRecordset.State Then
+    oRecordset.Filter = 0
+    oRecordset.Close
+  End If
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptDeleteMetricsData", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3004,16 +3142,14 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptGetEarnedSchedule", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetEarnedSchedule", Err, Erl)
   Resume exit_here
 End Sub
 
 Sub cptShowMetricsData_frm()
   'objects
   Dim myMetricsData_frm As cptMetricsData_frm
-  Dim oRecordset As ADODB.Recordset 'Object
   'strings
-  Dim strPrograms As String
   Dim strProgram As String
   Dim strFileName As String
   'longs
@@ -3023,81 +3159,281 @@ Sub cptShowMetricsData_frm()
   'booleans
   'variants
   'dates
-  
+    
   'prevent spawning
   If Not cptGetUserForm("cptMetricsData_frm") Is Nothing Then Exit Sub
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    
+  Set myMetricsData_frm = New cptMetricsData_frm
+  With myMetricsData_frm
+    .Caption = "cpt Metrics Data (" & cptGetVersion("cptMetricsData_frm") & ")"
+    .optSummary = True
+    cptUpdateMetricsDataForm myMetricsData_frm
+    .Show
+  End With
+  
+exit_here:
+  On Error Resume Next
+  If Dir(Environ("tmp") & "\Schema.ini") <> vbNullString Then Kill Environ("tmp") & "\Schema.ini"
+  If Dir(Environ("tmp") & "\cpt-cei-summary.csv") <> vbNullString Then Kill Environ("tmp") & "\cpt-cei-summary.csv"
+  Set myMetricsData_frm = Nothing
+  Unload myMetricsData_frm
+  
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptShowMetricsData_frm", Err, Erl)
+  Resume exit_here
+End Sub
+
+Sub cptUpdateMetricsDataForm(ByRef myMetricsData_frm As cptMetricsData_frm)
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strProgramAcronym As String
+  Dim strDir As String
+  Dim strFileName As String
+  Dim strCon As String
+  Dim strSQL As String
+  Dim strColumnWidths As String
+  'longs
+  Dim lngColumnCount As Long
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  'ensure program name
+  strProgramAcronym = cptGetProgramAcronym
+
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  
+  strDir = cptDir
+  If myMetricsData_frm.optSummary Then
+    strFileName = strDir & "\settings\cpt-metrics.adtg"
+    oRecordset.Open strFileName
+    oRecordset.Filter = "PROGRAM='" & strProgramAcronym & "'"
+    oRecordset.Sort = "STATUS_DATE DESC"
+    strColumnWidths = "45 pt;120 pt;35 pt;40 pt;35 pt;35 pt;35 pt;35 pt;120 pt"
+  ElseIf myMetricsData_frm.optDetail Then
+    strFileName = strDir & "\settings\cpt-cei.adtg"
+    If Dir(Environ("tmp") & "\cpt-cei-summary.csv") = vbNullString Then
+      oRecordset.Open strFileName
+      oRecordset.Filter = "PROJECT='" & strProgramAcronym & "'"
+      If oRecordset.RecordCount = 0 Then
+        MsgBox "No detailed records found for '" & strProgramAcronym & "'!", vbExclamation + vbOKOnly, "Metrics Data"
+        GoTo exit_here
+      End If
+      'convert
+      If Not cptConvertADODBtoCSV(oRecordset, "cpt-cei-summary.csv") Then
+        MsgBox "Error exporting cei details.", vbExclamation + vbOKOnly, "Metrics Data"
+        GoTo exit_here
+      End If
+      'close
+      oRecordset.Filter = 0
+      oRecordset.Close
+    End If
+    strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("tmp") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
+    strSQL = "SELECT PROJECT,STATUS_DATE,COUNT(TASK_UID) AS [CEI RECORDS] "
+    strSQL = strSQL & "FROM [cpt-cei-summary.csv] "
+    strSQL = strSQL & "WHERE STATUS_DATE IS NOT NULL "
+    strSQL = strSQL & "GROUP BY PROJECT,STATUS_DATE "
+    strSQL = strSQL & "ORDER BY STATUS_DATE DESC"
+    oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
+    strColumnWidths = ""
+  End If
   
   'ensure file exists
-  strFileName = cptDir & "\settings\cpt-metrics.adtg"
   If Dir(strFileName) = vbNullString Then
     MsgBox strFileName & " does not exist.", vbExclamation + vbOKOnly, "File Not Found"
     GoTo exit_here
   End If
   
-  'ensure program name
-  strProgram = cptGetProgramAcronym
-  
-  Set oRecordset = CreateObject("ADODB.Recordset")
-  With oRecordset
-    .Open strFileName
-    If .RecordCount = 0 Then
+  With myMetricsData_frm
+    .lblDir.Caption = Replace(strFileName, strDir, "%USERPROFILE%")
+    'ensure records exist
+    If oRecordset.RecordCount = 0 Then
       MsgBox "No records found.", vbExclamation + vbOKOnly, "No Data"
       GoTo exit_here
     End If
-    'gather unique programs
-    .Sort = "PROGRAM"
-    .MoveFirst
-    Do While Not .EOF
-      If InStr(strPrograms, .Fields("PROGRAM")) = 0 Then
-        strPrograms = .Fields("PROGRAM") & ","
-      End If
-      .MoveNext
-    Loop
-    Set myMetricsData_frm = New cptMetricsData_frm
-    myMetricsData_frm.Caption = "cpt Metrics Data (" & cptGetVersion("cptMetricsData_frm") & ")"
-    'myMetricsData_frm.lblDir.Caption = strFileName
-    .MoveFirst
-    .Sort = "STATUS_DATE DESC"
-    .Filter = "PROGRAM='" & strProgram & "'"
-    If Not .EOF Then
-      'populate headers
-      myMetricsData_frm.lboHeader.AddItem
-      For lngItem = 0 To .Fields.Count - 1
-        myMetricsData_frm.lboHeader.List(myMetricsData_frm.lboHeader.ListCount - 1, lngItem) = .Fields(lngItem).Name
+    lngColumnCount = oRecordset.Fields.Count
+    'update column counts and sizes
+    .lboHeader.ColumnCount = lngColumnCount
+    .lboMetricsData.ColumnCount = lngColumnCount
+    .lboHeader.ColumnWidths = strColumnWidths
+    'update lboHeader
+    .lboHeader.Clear
+    .lboHeader.IntegralHeight = False
+    'populate headers
+    .lboHeader.AddItem
+    For lngItem = 0 To oRecordset.Fields.Count - 1
+      .lboHeader.List(.lboHeader.ListCount - 1, lngItem) = oRecordset.Fields(lngItem).Name
+    Next lngItem
+    .lboHeader.Height = 14.25
+    'update lboMetricsData
+    .lboMetricsData.Clear
+    .lboMetricsData.ColumnWidths = strColumnWidths
+    oRecordset.MoveFirst
+    Do While Not oRecordset.EOF
+      .lboMetricsData.AddItem
+      For lngItem = 0 To lngColumnCount - 1
+        If lngItem = 8 Then
+          .lboMetricsData.List(.lboMetricsData.ListCount - 1, lngItem) = IIf(CLng(oRecordset.Fields(8)) = 0, "-", oRecordset.Fields(8))
+        Else
+'          If oRecordset.Fields(lngItem).Type = adDate Then
+'            .lboMetricsData.List(.lboMetricsData.ListCount - 1, lngItem) = FormatDateTime(oRecordset.Fields(lngItem), vbShortDate)
+'          Else
+            .lboMetricsData.List(.lboMetricsData.ListCount - 1, lngItem) = oRecordset.Fields(lngItem)
+'          End If
+        End If
       Next lngItem
-      'populate data
+      oRecordset.MoveNext
+    Loop
+    .lboMetricsData.Top = .lboHeader.Top + .lboHeader.Height
+  End With
+
+exit_here:
+  On Error Resume Next
+  oRecordset.Filter = 0
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptUpdateMetricsDataForm", Err, Erl)
+  Resume exit_here
+
+End Sub
+
+Function cptGetPreviousPeriod(strProgramAcronym As String, dtCurrentPeriod As Date, strListBoxTitle As String, lngMultiSelect As fmMultiSelect)
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strDir As String
+  Dim strHeader As String
+  Dim strSchema As String
+  Dim strCSV As String
+  Dim strCon As String
+  'longs
+  Dim lngSchema As Long
+  Dim lngCSV As Long
+  Dim lngField As Long
+  Dim lngItem As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  Dim blnFiscal As Boolean
+  Dim blnFiscalEnd As Boolean
+  'variants
+  Dim vPeriods()
+  Dim vPrevious As Variant
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  Application.StatusBar = "get unique list of status periods..."
+  'get unique list of previous periods
+  
+  'connect to data source
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  'get list of tasks & count
+  Application.StatusBar = "get unique list of status periods: open cpt-cei.adtg..."
+  strDir = cptDir
+  oRecordset.Open strDir & "\settings\cpt-cei.adtg"
+  With oRecordset
+    Application.StatusBar = "get unique list of status periods: filter cpt-cei.adtg..."
+    .Filter = "PROJECT='" & strProgramAcronym & "' AND STATUS_DATE<#" & dtCurrentPeriod & "#"
+    If .RecordCount > 0 Then
+      Application.StatusBar = "get unique list of status periods: export cpt-cei.adtg to cpt-cei.csv..."
+      'export to CSV for SQL DISTINCT query
+      lngCSV = FreeFile
+      strCSV = Environ("TMP") & "\cpt-cei.csv"
+      Open strCSV For Output As #lngCSV
+      lngSchema = FreeFile
+      strSchema = Environ("TMP") & "\Schema.ini"
+      Open strSchema For Output As #lngSchema
+      Print #lngSchema, "[cpt-cei.csv]"
+      Print #lngSchema, "Format=CSVDelimited"
+      Print #lngSchema, "ColNameHeader=True"
+      'export headers/cols
+       For lngField = 0 To .Fields.Count - 1
+        strHeader = strHeader & .Fields(lngField).Name & IIf(lngField < .RecordCount, ",", "")
+        If .Fields(lngField).Type = 200 Then 'text
+          Print #lngSchema, "Col" & lngField + 1 & "=" & .Fields(lngField).Name & " text width " & .Fields(lngField).DefinedSize
+        ElseIf .Fields(lngField).Type = 3 Then 'integer
+          Print #lngSchema, "Col" & lngField + 1 & "=" & .Fields(lngField).Name & " integer"
+        ElseIf .Fields(lngField).Type = 7 Then 'date
+          Print #lngSchema, "Col" & lngField + 1 & "=" & .Fields(lngField).Name & " date"
+        End If
+      Next
+      Print #lngCSV, strHeader
+      Close #lngSchema
       .MoveFirst
+      Print #lngCSV, .GetString(adClipString, , ",", vbCrLf, vbNullString)
+      Close #lngCSV
+      .Filter = 0
+      .Close
+      Application.StatusBar = "get unique list of status periods: query distinct status_date..."
+      'query the csv
+      strCon = "Provider=Microsoft.ACE.OLEDB.12.0;Data Source='" & Environ("TMP") & "';Extended Properties='text;HDR=Yes;FMT=Delimited';"
+      .Open "SELECT DISTINCT STATUS_DATE FROM [cpt-cei.csv] ORDER BY STATUS_DATE desc", strCon
+      'todo: cptCreateSchema(strFileName:="cpt-cei.csv") - pipe everything through there
+      .MoveFirst
+      blnFiscal = cptCalendarExists("cptFiscalCalendar")
       Do While Not .EOF
-        myMetricsData_frm.lboMetricsData.AddItem
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 0) = .Fields(0)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 1) = .Fields(1)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 2) = .Fields(2)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 3) = .Fields(3)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 4) = .Fields(4)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 5) = .Fields(5)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 6) = .Fields(6)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 7) = .Fields(7)
-        myMetricsData_frm.lboMetricsData.List(myMetricsData_frm.lboMetricsData.ListCount - 1, 8) = IIf(CLng(.Fields(8)) = 0, "-", .Fields(8))
+        If Not IsNull(.Fields(0)) Then
+        ReDim Preserve vPeriods(0 To lngItem)
+        If blnFiscal Then
+          blnFiscalEnd = Not ActiveProject.BaseCalendars("cptFiscalCalendar").Period(CDate(.Fields(0))).Working
+        End If
+        vPeriods(lngItem) = .Fields(0) & IIf(blnFiscalEnd, " *", "")
+        lngItem = lngItem + 1
+        End If
         .MoveNext
       Loop
-      myMetricsData_frm.lboMetricsData.Top = myMetricsData_frm.lboHeader.Top + myMetricsData_frm.lboHeader.Height
-      myMetricsData_frm.Show
+      .Close
     Else
-      MsgBox "No records found for Program '" & strProgram & "'", vbExclamation + vbOKOnly, "No Records Found"
-      GoTo exit_here
+      .Close
     End If
   End With
   
+  If lngMultiSelect = fmMultiSelectSingle Then
+    vPrevious = cptGetListBoxData(vPeriods, fmListStylePlain, fmMultiSelectSingle, strListBoxTitle, "40 pt;", False, False)
+  ElseIf lngMultiSelect = fmMultiSelectMulti Then
+    vPrevious = cptGetListBoxData(vPeriods, fmListStylePlain, fmMultiSelectMulti, strListBoxTitle, "40 pt;", True, True)
+  End If
+  
+  If InStr(vPrevious, "*") > 0 Then
+    vPrevious = Replace(vPrevious, " *", "")
+  End If
+
+  If blnErrorTrapping Then
+    If Dir(Environ("TMP") & "\Schema.ini") <> vbNullString Then Kill Environ("TMP") & "\Schema.ini"
+    If Dir(Environ("TMP") & "\cpt-cei.csv") <> vbNullString Then Kill Environ("TMP") & "\cpt-cei.csv"
+  Else
+    cptShellExecute 0, "open", "notepad.exe", Environ("TMP") & "\Schema.ini", vbNullString, 1
+    cptShellExecute 0, "open", "notepad.exe", Environ("TMP") & "\cpt-cei.csv", vbNullString, 1
+  End If
+
+  cptGetPreviousPeriod = vPrevious
+
 exit_here:
   On Error Resume Next
+  If oRecordset.State Then oRecordset.Close
   Set oRecordset = Nothing
-  Unload myMetricsData_frm
-  Set myMetricsData_frm = Nothing
-  
-  Exit Sub
+  Reset
+
+  Exit Function
 err_here:
-  Call cptHandleErr("cptMetrics_bas", "cptShowMetricsData_frm", Err, Erl)
+  Call cptHandleErr("cptMetrics_bas", "cptGetPreviousPeriod", Err, Erl)
   Resume exit_here
-End Sub
+
+End Function
+

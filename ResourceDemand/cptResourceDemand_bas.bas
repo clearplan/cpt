@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.6.0</cpt_version>
+'<cpt_version>v1.6.1</cpt_version>
 Option Explicit
 Private Const MODULE_NAME = "cptResourceDemand_bas"
 
@@ -1275,7 +1275,7 @@ next_saved_field:
         Print #lngFile, "The following saved fields do not exist in this project:"
         Print #lngFile, strMissing
         Close #lngFile
-        ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+        cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
         MsgBox "There are " & UBound(Split(strMissing, vbCrLf)) & " saved fields that do not exist in this project.", vbCritical + vbOKOnly, "Saved Settings"
       Else
         MsgBox "The following saved fields do not exist in this project:" & vbCrLf & strMissing, vbInformation + vbOKOnly, "Saved Settings"

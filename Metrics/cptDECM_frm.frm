@@ -1,6 +1,6 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptDECM_frm 
-   Caption         =   "DECM v8.0"
+   Caption         =   "DECM v8.1"
    ClientHeight    =   4980
    ClientLeft      =   120
    ClientTop       =   465
@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v8.1.2</cpt_version>
+'<cpt_version>v8.1.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECM_frm"
 
@@ -54,7 +54,7 @@ Private Sub cmdDone_Click()
     End If
     If Dir(strFileName) <> vbNullString Then Kill strFileName
   Next vFile
-  cptResetAll
+  cptResetAll 'todo: do something smarter here
 
   'git grep 'strGroup =' | grep -v "grep" | awk -F"strGroup = " '{ print $2}' | sed 's/"//g' | tr -s '\n' ','
   strGroups = "cpt 05A101a 1 CA : 1 OBS,cpt 05A102a 1 CA : 1 CAM,cpt 05A103a 1 CA : 1 WBS,cpt 1wp_1ca,cpt 10A102a 1 WP : 1 EVT,cpt 11A101a CA BAC = SUM(WP BAC),cpt 06A210a LOE driving Discrete"
@@ -69,28 +69,47 @@ exit_here:
   Set oSubMap = Nothing
   Exit Sub
 err_here:
-  cptHandleErr "cptDECM_frm", "cmdDone_Click", Err, Erl
+  cptHandleErr THIS_MODULE, "cmdDone_Click", Err, Erl
   Resume exit_here
-  
-  
+    
 End Sub
 
 Private Sub cmdExport_Click()
   cptDECM_EXPORT Me
 End Sub
 
-Private Sub lblURL_Click()
+Private Sub lblInfo_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "http://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.dcma.mil/HQ/EVMS/"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblInfo_Click", Err, Erl)
+  Resume exit_here
+
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -146,7 +165,7 @@ Public Sub lboMetrics_AfterUpdate()
   Else
     strScore = "-"
   End If
-  strDescription = strMetric & vbCrLf
+  strDescription = strMetric & " (" & cptGetPriority(strMetric) & ")" & vbCrLf
   strDescription = strDescription & strTitle & vbCrLf & vbCrLf
   strDescription = strDescription & "TARGET: " & strTarget & vbCrLf
   strDescription = strDescription & "X: " & lngX & vbCrLf
@@ -184,7 +203,7 @@ Public Sub lboMetrics_AfterUpdate()
           oFile.Write strMsg
           oFile.Close
           strFileName = strDir & "\wp-ev-sql.txt"
-          ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+          cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
           GoTo exit_here
         ElseIf lngResponse = vbYes Then
           Me.txtTitle.Value = Me.txtTitle.Text & vbCrLf & "please paste data here (w/o headers):" & vbCrLf
@@ -219,7 +238,7 @@ Public Sub lboMetrics_AfterUpdate()
       strDescription = strDescription & vbCrLf & vbCrLf & "NOTE: filter shows both LOE pred and Non-LOE successor."
       strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "06A212a"
-      strDescription = strMetric & vbCrLf
+      strDescription = strMetric & " (" & cptGetPriority(strMetric) & ")" & vbCrLf
       strDescription = strDescription & strTitle & vbCrLf & vbCrLf
       strDescription = strDescription & "TARGET: " & strTarget & vbCrLf
       strDescription = strDescription & "X: " & lngX & vbCrLf & vbCrLf
@@ -251,13 +270,13 @@ Public Sub lboMetrics_AfterUpdate()
         strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
       End If
     Case "06A401a" 'critical path
-      strDescription = strMetric & vbCrLf
+      strDescription = strMetric & " (" & cptGetPriority(strMetric) & ")" & vbCrLf
       strDescription = strDescription & strTitle & vbCrLf & vbCrLf
       strDescription = strDescription & "TARGET: " & strTarget & vbCrLf
       strDescription = strDescription & "X: " & lngX & vbCrLf
       strDescription = strDescription & "SCORE: " & lngX & vbCrLf & vbCrLf
       strDescription = strDescription & "UID Targeted: " & Split(oDECM(strMetric), "|")(0) & vbCrLf
-      strDescription = strDescription & "NOTE: subtract # of tasks that *are* on the this schedule's critical path."
+      strDescription = strDescription & "NOTE: subtract # of tasks that *are* on this schedule's critical path."
       strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "06A504a"
       strDescription = strDescription & "SCORE: " & strScore
@@ -275,6 +294,7 @@ Public Sub lboMetrics_AfterUpdate()
       strDescription = strDescription & vbCrLf & vbCrLf & "...requires CPT > Status > Capture Week, two periods"
      strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "06A212a"
+      strDescription = strDescription & "SCORE: " & strScore
       strDescription = strDescription & vbCrLf & "...pairs exported to Excel" & vbCrLf & "...select to filter"
       strDescription = strDescription & vbCrLf & vbCrLf & cptGetDECMDescription(strMetric)
     Case "10A103a"
@@ -327,7 +347,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_frm", "lboMetrics_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboMetrics_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -448,7 +468,9 @@ Private Sub txtTitle_BeforeDropOrPaste(ByVal Cancel As MSForms.ReturnBoolean, By
     oFile.Close
     oRecordset.Close
     Kill strDir & "\wp-ev.csv"
+    cptSleep 3000
     Name strDir & "\wp-ev-distinct.csv" As strDir & "\wp-ev.csv"
+    cptSleep 3000
   Else
     'user pasted nothing
   End If
@@ -634,7 +656,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptDECM_frm", "txtTitle_BeforeDropOrPaste", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtTitle_BeforeDropOrPaste", Err, Erl)
   Resume exit_here
 End Sub
 

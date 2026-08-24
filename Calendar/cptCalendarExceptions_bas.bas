@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptCalendarExceptions_bas"
-'<cpt_version>v1.2.0</cpt_version>
+'<cpt_version>v1.2.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCalendarExceptions_bas"
 
 Sub cptShowCalendarExceptions_frm()
   'objects
@@ -19,6 +20,9 @@ Sub cptShowCalendarExceptions_frm()
   'variants
   'dates
   
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+
   'prevent spawning
   If Not cptGetUserForm("cptCalendarExceptions_frm") Is Nothing Then Exit Sub
   
@@ -73,7 +77,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptShowCalendarExceptions_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowCalendarExceptions_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -235,7 +239,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptionsMain", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportCalendarExceptionsMain", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -761,7 +765,7 @@ exit_here:
   Set oCalendar = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptExportCalendarExceptions", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportCalendarExceptions", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -807,7 +811,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptGetShifts", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetShifts", Err, Erl)
   Resume exit_here
 End Function
 
@@ -820,7 +824,7 @@ Sub cptCalendarCompareMain()
   Dim oExcel As Excel.Application
   Dim oMaster As MSProject.Project
   Dim oException As MSProject.Exception
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oCalendar As MSProject.Calendar
   'strings
   'longs
@@ -866,7 +870,7 @@ Sub cptCalendarCompareMain()
   'first export the master
   Set oMaster = ActiveProject
   Application.StatusBar = "Exporting Master project..."
-  oRecordset.AddNew Array(0), Array(oMaster.Name)
+  oRecordset.AddNew Array(0), Array("0_" & oMaster.Name)
   lngCalendars = oMaster.BaseCalendars.Count
   lngCalendar = 0
   For Each oCalendar In oMaster.BaseCalendars
@@ -875,7 +879,7 @@ Sub cptCalendarCompareMain()
         If oException.Occurrences > 1 Then
           cptCalendarCompareDetail oRecordset, oExcel, oException, oMaster.Name
         Else
-          oRecordset.AddNew Array(0, 1, 2, 3), Array(oMaster.Name, oException.Parent.Name, oException.Name, oException.Start)
+          oRecordset.AddNew Array(0, 1, 2, 3), Array("0_" & oMaster.Name, oException.Parent.Name, oException.Name, oException.Start)
         End If
       Next oException
     End If
@@ -885,26 +889,26 @@ Sub cptCalendarCompareMain()
   'then export the subs
   lngSubprojects = oMaster.Subprojects.Count
   lngSubproject = 0
-  For Each oSubproject In oMaster.Subprojects
+  For Each oSubProject In oMaster.Subprojects
     lngSubproject = lngSubproject + 1
     Application.StatusBar = "Exporting Subproject " & lngSubproject & " of " & lngSubprojects & ")..."
-    oRecordset.AddNew Array(0), Array(oSubproject.SourceProject.Name)
-    lngCalendars = oSubproject.SourceProject.BaseCalendars.Count
+    oRecordset.AddNew Array(0), Array(oSubProject.Index & "_" & oSubProject.SourceProject.Name)
+    lngCalendars = oSubProject.SourceProject.BaseCalendars.Count
     lngCalendar = 0
-    For Each oCalendar In oSubproject.SourceProject.BaseCalendars
+    For Each oCalendar In oSubProject.SourceProject.BaseCalendars
       lngCalendar = lngCalendar + 1
       Application.StatusBar = "Exporting Subproject " & lngSubproject & " of " & lngSubprojects & " | Calendar " & lngCalendar & " of " & lngCalendars & " (" & Format(lngCalendar / lngCalendars, "0%") & ")"
       If oCalendar.Name <> "cptFiscalCalendar" Then
         For Each oException In oCalendar.Exceptions
           If oException.Occurrences > 1 Then
-            cptCalendarCompareDetail oRecordset, oExcel, oException, oSubproject.SourceProject.Name
+            cptCalendarCompareDetail oRecordset, oExcel, oException, oSubProject.SourceProject.Name
           Else
-            oRecordset.AddNew Array(0, 1, 2, 3), Array(oSubproject.SourceProject.Name, oException.Parent.Name, oException.Name, oException.Start)
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(oSubProject.Index & "_" & oSubProject.SourceProject.Name, oException.Parent.Name, oException.Name, oException.Start)
           End If
         Next oException
       End If
     Next oCalendar
-  Next oSubproject
+  Next oSubProject
   
   If oRecordset.RecordCount > 0 Then
     Application.StatusBar = "Creating report..."
@@ -1026,12 +1030,12 @@ exit_here:
   Set oExcel = Nothing
   Set oMaster = Nothing
   Set oException = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oCalendar = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareMain", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCalendarCompareMain", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1202,7 +1206,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCalendarExceptions_bas", "cptCalendarCompareDetail", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCalendarCompareDetail", Err, Erl)
   Resume exit_here
 End Sub
 

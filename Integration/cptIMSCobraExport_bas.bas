@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.5.0</cpt_version>
+'<cpt_version>v3.5.1</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -274,7 +274,7 @@ Sub Export_IMS()
     
 ErrorHandler:
     
-    Call cptHandleErr(MODULE_NAME, "Export_IMS", err, Erl, "Error exporting project data.")
+    Call cptHandleErr(MODULE_NAME, "Export_IMS", Err, Erl, "Error exporting project data.")
 
 CleanUp:
 
@@ -725,7 +725,7 @@ Private Sub DataChecks(ByVal curProj As Project)
                             CAMChecks(i).CAM_Error = True
                         End If
 
-                        GoTo Next_Task
+                        GoTo next_task
 
                     End If
 
@@ -791,7 +791,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                         End If
 
-                        GoTo Next_Task
+                        GoTo next_task
 
                     End If
 
@@ -819,7 +819,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
         End If
 
-Next_Task:
+next_task:
 
         '**Report Tasks Missing Metadata**
 
@@ -1146,9 +1146,9 @@ Next_Task:
                 errorStr = errorStr & .AssignmentTSVWork & "," 'v3.3.2
                 errorStr = errorStr & .BCost & ","
                 errorStr = errorStr & .AssignmentBCost & ","
+                errorStr = errorStr & .AssignmentTSVCost & "," 'v3.3.2
                 errorStr = errorStr & .BStart & ","
                 errorStr = errorStr & .AssignmentBStart & ","
-                errorStr = errorStr & .AssignmentTSVCost & "," 'v3.3.2
                 errorStr = errorStr & .BFinish & ","
                 errorStr = errorStr & .AssignmentBFinish & "," 'v3.2.3
                 errorStr = errorStr & .AssignmentCount 'v3.2.3
@@ -2160,7 +2160,7 @@ Export_Project_Data:
 
                     If BCRxport = True Then
                         If IsInArray(WP, BCR_WP) = False Then
-                            GoTo Next_Task
+                            GoTo next_task
                         End If
                     End If
 
@@ -2262,7 +2262,7 @@ WP_Match_B:
             End If
 
         End If
-Next_Task:
+next_task:
 
     Next t
 
@@ -2384,7 +2384,7 @@ Export_Project_Data:
 
                     If BCRxport = True Then
                         If IsInArray(WP, BCR_WP) = False Then
-                            GoTo Next_Task
+                            GoTo next_task
                         End If
                     End If
 
@@ -2545,7 +2545,7 @@ WP_Match_B:
             End If
 
         End If
-Next_Task:
+next_task:
 
     Next t
     
@@ -3851,7 +3851,7 @@ Private Sub ValidateEVTB(ByVal EVT As String)
 
     If EVT = "B" And Milestones_Used = False Then
         ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-        err.Raise 1
+        Err.Raise 1
     End If
 
 End Sub

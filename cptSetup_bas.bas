@@ -1,16 +1,16 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.13.4</cpt_version>
+'<cpt_version>v1.14.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptSetup_bas"
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
 Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() lives in cptCore_bas
 #If Win64 And VBA7 Then
-  Private Declare PtrSafe Function InternetGetConnectedStateEx Lib "wininet.dll" (ByRef lpdwFlags As LongPtr, _
+  Private Declare PtrSafe Function cptInternetGetConnectedState Lib "wininet.dll" Alias "InternetGetConnectedStateEx" (ByRef lpdwFlags As LongPtr, _
                                                                         ByVal lpszConnectionName As String, _
                                                                         ByVal dwNameLen As Integer, _
                                                                         ByVal dwReserved As LongPtr) As LongPtr
 #Else
-  Private Declare Function InternetGetConnectedStateEx Lib "wininet.dll" (ByRef lpdwFlags As Long, _
+  Private Declare Function cptInternetGetConnectedState Lib "wininet.dll" Alias "InternetGetConnectedStateEx" (ByRef lpdwFlags As Long, _
                                                                         ByVal lpszConnectionName As String, _
                                                                         ByVal dwNameLen As Integer, _
                                                                         ByVal dwReserved As Long) As Long
@@ -523,6 +523,13 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
     End If
+    If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" size=""large"" >"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
+    End If
     If cptModuleExists("cptSaveMarked_bas") And cptModuleExists("cptSaveMarked_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mMarked"" label=""Marking"" imageMso=""ApproveApprovalRequest"" visible=""true"" size=""large"" >"
@@ -545,7 +552,7 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gStatus"" label=""Schedule"" visible=""true"" >"
   ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mHealth"" label=""Health"" imageMso=""CheckWorkflow"" visible=""true"" size=""large"" >"
    ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""DCMA EVMS Compliance Metric (DECM)"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bDECM"" label=""DECM Dashboard (v8.0)"" imageMso=""CheckWorkflow"" onAction=""cptDECM_GET_DATA"" visible=""true"" supertip=""DECM Dashboard (v8.0)"" />"
+   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bDECM"" label=""DECM Dashboard (v8.1)"" imageMso=""CheckWorkflow"" onAction=""cptDECM_GET_DATA"" visible=""true"" supertip=""DECM Dashboard (v8.1)"" />"
    ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bIntegrationSettings1"" label=""Integration Settings"" imageMso=""Settings"" onAction=""cptGetValidMap"" visible=""true"" supertip=""Set, edit, and confirm Integration Settings"" />"
 '  ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""DCMA 14"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
@@ -584,7 +591,7 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""After Status"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBlameReport"" label=""The Blame Report"" imageMso=""ContactProperties"" onAction=""cptBlameReport"" visible=""true"" supertip=""Find out which tasks slipped from last period."" />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCaptureWeek2"" label=""Capture Week"" imageMso=""RefreshWebView"" onAction=""cptCaptureWeek"" visible=""true"" supertip=""Capture the Current Schedule after updates to compare against past and future weeks during execution. This is required for certain metrics (e.g., CEI, all Trending) to run properly."" />"
-  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCompletedWork"" label=""Export Completed WPCNs"" imageMso=""DisconnectFromServer"" onAction=""cptExportCompletedWork"" visible=""true"" supertip=""Export Completed WPCNs for closure in the time card system."" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCompletedWork"" label=""Export Completed WPCNs"" imageMso=""DisconnectFromServer"" onAction=""cptExportCompletedWork"" visible=""true"" supertip=""Export Completed WPCNs for closure in the time card and/or cost system."" />"
   If cptModuleExists("cptTaskHistory_bas") And cptModuleExists("cptTaskHistory_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bTaskHistory"" label=""Task History"" imageMso=""Archive"" onAction=""cptShowTaskHistory_frm"" visible=""true"" supertip=""Explore selected task history, take notes, export history, etc. Requires consistent use of Capture Week."" />"
   End If
@@ -655,7 +662,7 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gIntegration"" label=""Integration"" visible=""true"" >"
   'outline codes
   If cptModuleExists("cptBackbone_frm") And cptModuleExists("cptBackbone_bas") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" size=""large"" supertip=""Quickly create or edit Outline Codes (CWBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" size=""large"" supertip=""Quickly create or edit Outline Codes (WBS, OBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
   End If
   ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   If cptModuleExists("cptIMSCobraExport_bas") And cptModuleExists("cptIMSCobraExport_frm") Then
@@ -695,6 +702,9 @@ Public Function cptBuildRibbonTab()
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCalCompare"" label=""Compare"" imageMso=""MonthlyView"" onAction=""cptCalendarCompareMain"" visible=""true"" supertip=""Compare Calendar Exceptions between Master Project and Subprojects."" />"
       End If
     End If
+    ribbonXML = ribbonXML + vbCrLf & "<mso:dialogBoxLauncher>"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""dbl-fiscal"" screentip=""Status Bar Fiscal Period Count Option"" onAction=""cptSetShowFiscalPeriodCount"" />"
+    ribbonXML = ribbonXML + vbCrLf & "</mso:dialogBoxLauncher>"
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
 
@@ -1027,7 +1037,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
     strMsg = strMsg & "Resources: " & Format(ActiveProject.ResourceCount, "#,##0") & vbCrLf
   End If
   strMsg = strMsg & "Baselined: " & IsDate(ActiveProject.BaselineSavedDate(pjBaseline)) & vbCrLf
-  strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)"
+  strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)" & vbCrLf
   blnResourceLoaded = False
   If blnMaster Then
     For Each oSubProject In ActiveProject.Subprojects
@@ -1227,7 +1237,7 @@ next_task_single:
   Print #lngFile, "-> The location of this file is " & strFileName & vbCrLf
   Print #lngFile, strMsg
   Close #lngFile
-  ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+  cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   Application.StatusBar = "Opening https://clearplan.happyfox.com/new..."
   Application.FollowHyperlink "https://clearplan.happyfox.com/new/"
   
@@ -1254,7 +1264,7 @@ End Function
 
 Public Function cptInternetIsConnected() As Boolean
 
-  cptInternetIsConnected = InternetGetConnectedStateEx(0, "", 254, 0)
+  cptInternetIsConnected = cptInternetGetConnectedState(0, "", 254, 0)
 
 End Function
 
@@ -1497,7 +1507,7 @@ End Sub
 
 Sub cptValidateXML(strXML As String)
   'objects
-  Dim oXML As MSXML2.DOMDocument30
+  Dim oXML As Object 
   'strings
   Dim strFileName As String
   'longs
@@ -1516,7 +1526,7 @@ Sub cptValidateXML(strXML As String)
   Print #lngFile, strXML
   Close #lngFile
   
-  Set oXML = New MSXML2.DOMDocument30
+  Set oXML = CreateObject("MSXML2.DOMDocument.6.0")
   If oXML.Load(strFileName) Then
     MsgBox "cpt ribbon xml validated", vbInformation + vbOKOnly, "success"
   Else
@@ -1537,3 +1547,4 @@ err_here:
   Call cptHandleErr("cptSetup_bas", "cptValidateXML", Err, Erl)
   Resume exit_here
 End Sub
+

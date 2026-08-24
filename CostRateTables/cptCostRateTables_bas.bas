@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCostRateTables_bas"
-'<cpt_version>v1.2.0</cpt_version>
+'<cpt_version>v1.2.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptCostRateTables_bas"
 
@@ -463,7 +463,7 @@ next_row:
       Print #lngFile, Split(oUpdated.Keys(lngItem), "|")(0) & "," & Chr(34) & Split(oUpdated.Keys(lngItem), "|")(1) & Chr(34) & "," & Chr(34) & oUpdated.Items(lngItem) & Chr(34)
     Next lngItem
     Close #lngFile
-    ShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
+    cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
   
   With myCostRateTables_frm

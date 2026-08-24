@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.4.1</cpt_version>
+'<cpt_version>v1.4.2</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptStatusSheetImport_frm"
 
 Private Sub cboAF_Change()
   If Me.Visible Then
@@ -188,7 +189,7 @@ Private Sub cmdRename_Click()
   Dim strFieldName As String
   Dim strCustomFieldName As String
   'longs
-  Dim i As Long
+  Dim I As Long
   Dim lngItem As Long
   Dim lngLCF As Long
   Dim lngExists As Long
@@ -248,12 +249,12 @@ Private Sub cmdRename_Click()
               GoTo next_item
             ElseIf lngResponse = vbYes Then
               CustomFieldDelete lngExists
-              For i = 0 To oComboBox.ListCount - 1
-                If oComboBox.List(i, 0) = lngExists Then
-                  oComboBox.List(i, 1) = FieldConstantToFieldName(lngExists)
+              For I = 0 To oComboBox.ListCount - 1
+                If oComboBox.List(I, 0) = lngExists Then
+                  oComboBox.List(I, 1) = FieldConstantToFieldName(lngExists)
                   Exit For
                 End If
-              Next i
+              Next I
               CustomFieldRename lngLCF, oDict.Items(lngItem)
               oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.Items(lngItem) & ")"
             ElseIf lngResponse = vbNo Then
@@ -349,15 +350,18 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheetImport_frm", "lblURL", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
+  
 End Sub
 
 Private Sub lboStatusSheets_Change()

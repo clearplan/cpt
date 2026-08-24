@@ -136,6 +136,8 @@ Dim strDirectory As String
       strDirectory = "Status"
     Case "BrowseFolder"
       strDirectory = "Core"
+    Case "BulkLogic"
+      strDirectory = "Trace"
     Case "CalendarExceptions"
       strDirectory = "Calendar"
     Case "CountTasks"
@@ -172,6 +174,8 @@ Dim strDirectory As String
       strDirectory = "Text"
     Case "Fiscal"
       strDirectory = "Calendar"
+    Case "FlowDown"
+      strDirectory = "CustomFields"
     Case "Graphics"
       strDirectory = "Metrics"
     Case "IMSCobraExport"
@@ -180,8 +184,8 @@ Dim strDirectory As String
       strDirectory = "Status"
     Case "IPMDARMapping"
       strDirectory = "Status"
-    Case "FlowDown"
-      strDirectory = "CustomFields"
+    Case "ListBox"
+      strDirectory = "Core"
     Case "MetricsData"
       strDirectory = "Metrics"
     Case "MetricsSettings"
@@ -424,10 +428,10 @@ End Sub
 
 Function cptGetAllSettings(strSection)
   Dim vSettings As Variant
-  Dim intSetting As Integer
+  Dim lngSetting As Long
   vSettings = GetAllSettings("ClearPlanToolbar", strSection)
-  For intSetting = LBound(vSettings, 1) To UBound(vSettings, 1)
-    Debug.Print vSettings(intSetting, 0) & "=" & vSettings(intSetting, 1)
+  For lngSetting = LBound(vSettings, 1) To UBound(vSettings, 1)
+    Debug.Print vSettings(lngSetting, 0) & "=" & vSettings(lngSetting, 1)
   Next
 End Function
 

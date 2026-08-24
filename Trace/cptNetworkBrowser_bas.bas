@@ -1,41 +1,39 @@
 Attribute VB_Name = "cptNetworkBrowser_bas"
-'<cpt_version>v1.2.3</cpt_version>
+'<cpt_version>v1.2.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptNetworkBrowser_bas"
 '=====================================
 Public Const GWL_STYLE = -16
 Public Const WS_CAPTION = &HC00000
 Public Const WS_THICKFRAME = &H40000
-
 #If VBA7 Then
-    Public Declare PtrSafe Function GetWindowLong _
-        Lib "user32" Alias "GetWindowLongA" ( _
-        ByVal hwnd As Long, ByVal nIndex As Long) As Long
-    Public Declare PtrSafe Function SetWindowLong _
-        Lib "user32" Alias "SetWindowLongA" ( _
-        ByVal hwnd As Long, ByVal nIndex As Long, _
-        ByVal dwNewLong As Long) As Long
-    Public Declare PtrSafe Function DrawMenuBar _
-        Lib "user32" (ByVal hwnd As Long) As Long
-    Public Declare PtrSafe Function FindWindowA _
-        Lib "user32" (ByVal lpClassName As String, _
-        ByVal lpWindowName As String) As Long
-#Else
-    Public Declare Function GetWindowLong _
+    Public Declare PtrSafe Function cptGetWindowLong _
         Lib "user32" Alias "GetWindowLongA" ( _
         ByVal hWnd As Long, ByVal nIndex As Long) As Long
-    Public Declare Function SetWindowLong _
+    Public Declare PtrSafe Function cptSetWindowLong _
         Lib "user32" Alias "SetWindowLongA" ( _
         ByVal hWnd As Long, ByVal nIndex As Long, _
         ByVal dwNewLong As Long) As Long
-    Public Declare Function DrawMenuBar _
-        Lib "user32" (ByVal hWnd As Long) As Long
-    Public Declare Function FindWindowA _
-        Lib "user32" (ByVal lpClassName As String, _
+    Public Declare PtrSafe Function cptDrawMenuBar _
+        Lib "user32" Alias "DrawMenuBar" (ByVal hWnd As Long) As Long
+    Public Declare PtrSafe Function cptFindWindow _
+        Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, _
+        ByVal lpWindowName As String) As Long
+#Else
+    Public Declare Function cptGetWindowLong _
+        Lib "user32" Alias "GetWindowLongA" ( _
+        ByVal hWnd As Long, ByVal nIndex As Long) As Long
+    Public Declare Function cptSetWindowLong _
+        Lib "user32" Alias "SetWindowLongA" ( _
+        ByVal hWnd As Long, ByVal nIndex As Long, _
+        ByVal dwNewLong As Long) As Long
+    Public Declare Function cptDrawMenuBar _
+        Lib "user32" Alias "DrawMenuBar" (ByVal hWnd As Long) As Long
+    Public Declare Function cptFindWindow _
+        Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, _
         ByVal lpWindowName As String) As Long
 #End If
 '=====================================
-
 Public oSubMap As Scripting.Dictionary
 
 Sub cptResizeWindowSettings(frm As Object, Show As Boolean)
@@ -44,8 +42,8 @@ Sub cptResizeWindowSettings(frm As Object, Show As Boolean)
   Dim windowHandle As Long
   
   'Get the references to window and style position within the Windows memory
-  windowHandle = FindWindowA(vbNullString, frm.Caption)
-  windowStyle = GetWindowLong(windowHandle, GWL_STYLE)
+  windowHandle = cptFindWindow(vbNullString, frm.Caption)
+  windowStyle = cptGetWindowLong(windowHandle, GWL_STYLE)
   
   'Determine the style to apply based
   If Show = False Then
@@ -55,10 +53,10 @@ Sub cptResizeWindowSettings(frm As Object, Show As Boolean)
   End If
   
   'Apply the new style
-  SetWindowLong windowHandle, GWL_STYLE, windowStyle
+  cptSetWindowLong windowHandle, GWL_STYLE, windowStyle
   
   'Recreate the UserForm window with the new style
-  DrawMenuBar windowHandle
+  cptDrawMenuBar windowHandle
 
 End Sub
 
@@ -143,7 +141,7 @@ End Sub
 Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
   'objects
   Dim oTaskDependencies As TaskDependencies
-  Dim oSubProject As SubProject
+  Dim oSubproject As SubProject
   Dim oLink As TaskDependency, oTask As MSProject.Task
   'strings
   Dim strHideInactive As String
@@ -175,39 +173,10 @@ Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
   'determine if there are subprojects loaded (this affects displayed UIDs)
   blnSubprojects = ActiveProject.Subprojects.Count > 0
   
-  If blnSubprojects Then
-    If oSubMap Is Nothing Then
-      Set oSubMap = CreateObject("Scripting.Dictionary")
-    Else
-      oSubMap.RemoveAll
-    End If
-    For Each oSubProject In ActiveProject.Subprojects
-      If Left(oSubProject.Path, 2) = "<>" Then 'PWA
-        oSubMap.Add Replace(oSubProject.Path, "<>\", ""), 0
-      Else 'mpp (local or remote)
-        oSubMap.Add Replace(cptRegEx(oSubProject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
-      End If
-      If oSubProject.IsLoaded = False Then
-        Application.OpenUndoTransaction "cpt - load subproject"
-        FilterClear
-        GroupClear
-        SelectAll
-        OutlineShowAllTasks
-        Application.CloseUndoTransaction
-        If Application.GetUndoListCount > 0 Then
-          If Application.GetUndoListItem(1) = "cpt - load subproject" Then
-            Application.Undo
-          End If
-        End If
-      End If
-    Next oSubProject
-    For Each oTask In ActiveProject.Tasks
-      If oSubMap.Exists(oTask.Project) Then
-        If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
-        oSubMap.Item(oTask.Project) = CLng(oTask.UniqueID / 4194304)
-      End If
-next_mapping_task:
-    Next oTask
+  If blnSubprojects And oSubMap Is Nothing Then
+    Application.StatusBar = "Building SubMap..."
+    cptGetSubMap
+    Application.StatusBar = "Building SubMap...done."
   End If
   
   'reset after mapping
@@ -458,7 +427,7 @@ exit_here:
   cptSpeed False
   'Set myNetworkBrowser_frm = Nothing 'do not do this
   Set oTaskDependencies = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oLink = Nothing
   Set oTask = Nothing
   Exit Sub
@@ -673,7 +642,7 @@ Sub cptSortNetworkBrowserLinks(ByRef myNetworkBrowser_frm As cptNetworkBrowser_f
       .AddNew
       For lngCol = 0 To oListBox.ColumnCount - 1
         If .Fields(lngCol).Name = "Slack" Then
-          .Fields(lngCol) = CInt(Replace(oListBox.List(lngItem, lngCol), "d", ""))
+          .Fields(lngCol) = CLng(Replace(oListBox.List(lngItem, lngCol), "d", ""))
         ElseIf .Fields(lngCol).Name = "Critical" Then
           If IsNull(oListBox.List(lngItem, lngCol)) Then
             .Fields(lngCol) = False
@@ -736,3 +705,577 @@ err_here:
   Call cptHandleErr("cptNetworkBrowser_bas", "cptSortNetworkBrowserLinks", Err, Erl)
   Resume exit_here
 End Sub
+
+Sub cptExportCrossProjectLinks()
+  'objects
+  Dim oTaskMap As Scripting.Dictionary
+  Dim oExcel As Excel.Application
+  Dim oWorkbook As Excel.Workbook
+  Dim oWorksheet As Excel.Worksheet
+  Dim oSubproject As MSProject.SubProject
+  Dim oTask As MSProject.Task
+  Dim oFrom As MSProject.Task
+  Dim oTo As MSProject.Task
+  Dim oPred As MSProject.Task
+  Dim oLink As MSProject.TaskDependency
+  Dim oCodeModule As VBIDE.CodeModule
+  'longs
+  Dim lngCount As Long
+  Dim lngFactor As Long
+  Dim lngSourceUID As Long
+  Dim lngMasterUID As Long
+  Dim lngPUID As Long
+  Dim lngTask As Long
+  Dim lngTaskCount As Long
+  'strings
+  Dim strProject As String
+  Dim strProjectUID As String
+  Dim strCode As String
+  Dim strFromPUID As String
+  Dim strToPUID As String
+  Dim strFilterName As String
+  Dim strTableName As String
+  Dim strViewName As String
+  Dim strStartingView As String
+  Dim strStartingTable As String
+  Dim strStartingFilter As String
+  Dim strStartingGroup As String
+  'variants
+  Dim vCol As Variant
+  Dim vCPL() As Variant
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  Dim blnMaster As Boolean
+  Const CHUNK_SIZE As Long = 1000
+  
+  blnMaster = ActiveProject.Subprojects.Count > 0
+  If Not blnMaster Then
+    MsgBox "This project has no subprojects.", vbExclamation + vbOKOnly, "Export CPLs"
+    GoTo exit_here
+  End If
+  
+  ActiveWindow.TopPane.Activate
+  strStartingView = ActiveProject.CurrentView
+  strStartingTable = ActiveProject.CurrentTable
+  strStartingFilter = ActiveProject.CurrentFilter
+  strStartingGroup = ActiveProject.CurrentGroup
+  
+  strProjectUID = cptGetListBoxData(cptGetCustomFields("t", "Text", "cfn,fc", True), fmListStylePlain, fmMultiSelectSingle, "Identify Project-Unique ID:", ";0 pt", True, False)
+  If Len(strProjectUID) = 0 Then Exit Sub
+  lngPUID = FieldNameToFieldConstant(strProjectUID)
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  If oSubMap Is Nothing Then
+    Application.StatusBar = "Building SubMap..."
+    cptGetSubMap
+    Application.StatusBar = "Building SubMap...done."
+  End If
+  
+  cptSpeed True
+  
+  'todo: add to Master Toolset on Ribbon
+  ActiveWindow.TopPane.Activate
+  
+  'create a CPL Table
+  strTableName = "cptCPL Table"
+  TableEditEx Name:=strTableName, TaskTable:=True, Create:=True, OverwriteExisting:=True, FieldName:="ID", Title:="", Width:=10, Align:=1, ShowInMenu:=False, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Unique ID", Title:="", Width:=10, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:=strProjectUID, Title:="", Width:=10, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Unique ID Predecessors", Title:="", Width:=25, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Name", Title:="", Width:=60, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  TableEditEx Name:=strTableName, TaskTable:=True, NewFieldName:="Unique ID Successors", Title:="", Width:=25, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
+  strViewName = "cptCPL View"
+  'create a CPL Filter
+  strFilterName = "cptCPL Filter"
+  FilterEdit Name:=strFilterName, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Unique ID Predecessors", Test:="contains", Value:=":", ShowInMenu:=True, ShowSummaryTasks:=False 'c:\ and https://
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Predecessors", Test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", Test:="contains", Value:=":", Operation:="Or", ShowSummaryTasks:=False 'c:\ and https://
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", Test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
+  'create/apply a CPL View
+  If ActiveProject.CurrentView = strViewName Then ViewApply "Gantt Chart"
+  If cptViewExists(strViewName) Then ActiveProject.Views(strViewName).Delete
+  ViewEditSingle strViewName, True, , pjTaskSheet, , , strTableName, strFilterName, "No Group"
+  ViewApply strViewName
+  OptionsViewEx DisplayNameIndent:=True, DisplaySummaryTasks:=True, DisplayExternalSuccessors:=True, DisplayExternalPredecessors:=True
+  Sort "ID", , , , , , False, True
+  FilterClear
+  SelectAll
+  OutlineShowAllTasks
+  ViewApply strViewName
+  FilterApply strFilterName
+  OptionsViewEx DisplayNameIndent:=False, DisplaySummaryTasks:=False, DisplayExternalSuccessors:=True, DisplayExternalPredecessors:=True
+  SelectAll
+  
+  'build taskindex
+  Application.StatusBar = "Building TaskMap..."
+  Set oTaskMap = CreateObject("Scripting.Dictionary")
+  For Each oTask In ActiveProject.Tasks
+    If Not oTask Is Nothing Then
+      oTaskMap.Add oTask.UniqueID, oTask
+    End If
+  Next oTask
+  Application.StatusBar = "Building TaskMap...done."
+  
+  ReDim vCPL(0 To 19, 0 To 0)
+  lngCount = 0
+  lngPUID = FieldNameToFieldConstant(strProjectUID, pjTask)
+  lngTask = 0
+  lngTaskCount = ActiveSelection.Tasks.Count
+  Application.StatusBar = "EXPORTING CPLs: Tasks " & Format(lngTask, "#,##0") & "/" & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(lngCount, "#,##0") & " CPLs found"
+  For Each oTask In ActiveSelection.Tasks
+    If oTask Is Nothing Then GoTo next_task
+    If oTask.ExternalTask = True Then GoTo next_task
+    If Not oTask.Active Then GoTo next_task
+    For Each oLink In oTask.TaskDependencies
+      Set oFrom = Nothing
+      Set oFrom = oLink.From
+      Set oTo = Nothing
+      Set oTo = oLink.To
+      If oTo.Guid = oTask.Guid And oFrom.ExternalTask = True Then 'preds only
+        If Not oFrom.Active Then GoTo next_link
+        If lngCount > UBound(vCPL, 2) Then
+          ReDim Preserve vCPL(0 To 19, 0 To UBound(vCPL, 2) + CHUNK_SIZE)
+        End If
+        'fix the returned UID
+        lngSourceUID = oFrom.GetField(185073906) Mod 4194304
+        strProject = Replace(Mid$(oFrom.Project, InStrRev(oFrom.Project, "\") + 1), ".mpp", "")
+        strProject = Replace(Mid$(strProject, InStrRev(strProject, "/") + 1), ".mpp", "")
+        lngFactor = oSubMap(strProject)
+        lngMasterUID = (lngFactor * 4194304) + lngSourceUID
+        vCPL(0, lngCount) = strProject
+        vCPL(1, lngCount) = lngMasterUID 'master
+        vCPL(2, lngCount) = lngSourceUID 'external local giver
+        Set oPred = Nothing
+        On Error Resume Next
+        Set oPred = oTaskMap(lngMasterUID)
+        vCPL(3, lngCount) = cptGetExternalUID(oPred, "ExternalPredecessor") '"" 'external local reciever
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        strToPUID = oTask.GetField(lngPUID)
+        If Not oPred Is Nothing Then
+          strFromPUID = oPred.GetField(lngPUID)
+          vCPL(4, lngCount) = strFromPUID
+          vCPL(6, lngCount) = strFromPUID & "-" & strToPUID
+        Else
+          strFromPUID = "<<< GHOST >>>"
+          vCPL(4, lngCount) = strFromPUID
+          vCPL(6, lngCount) = strFromPUID
+        End If
+        vCPL(5, lngCount) = oFrom.Name
+        vCPL(7, lngCount) = Choose(oLink.Type + 1, "FF", "FS", "SF", "SS")
+        vCPL(8, lngCount) = Round(oLink.Lag / 480, 1)
+        vCPL(9, lngCount) = oTask.Project
+        vCPL(10, lngCount) = oTask.UniqueID 'master
+        vCPL(11, lngCount) = oFrom.UniqueID 'internal local giver
+        vCPL(12, lngCount) = oTo.UniqueID 'internal local receiver
+        vCPL(13, lngCount) = strToPUID
+        vCPL(14, lngCount) = oTask.Name
+        vCPL(15, lngCount) = oTask.ActualFinish
+        vCPL(16, lngCount) = Choose(oTask.ConstraintType + 1, "ASAP", "ALAP", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT")
+        vCPL(17, lngCount) = oTask.ConstraintDate
+        vCPL(18, lngCount) = oTask.Start
+        vCPL(19, lngCount) = oTask.PredecessorTasks.Count
+        lngCount = lngCount + 1
+      ElseIf oFrom.Guid = oTask.Guid And oTo.ExternalTask = True Then
+        'only export if ghost (all others rels included by definition above)
+        If Not oTo.Active Then GoTo next_link
+        If lngCount > UBound(vCPL, 2) Then
+          ReDim Preserve vCPL(0 To 19, 0 To UBound(vCPL, 2) + CHUNK_SIZE)
+        End If
+        'fix the returned UID
+        lngSourceUID = oTo.GetField(185073906) Mod 4194304
+        strProject = Replace(Mid$(oTo.Project, InStrRev(oTo.Project, "\") + 1), ".mpp", "")
+        strProject = Replace(Mid$(strProject, InStrRev(strProject, "/") + 1), ".mpp", "")
+        lngFactor = oSubMap(strProject)
+        lngMasterUID = (lngFactor * 4194304) + lngSourceUID
+        Set oPred = Nothing
+        On Error Resume Next
+        Set oPred = oTaskMap(lngMasterUID)
+        If oPred Is Nothing Then
+          vCPL(0, lngCount) = oTask.Project
+          vCPL(1, lngCount) = oTask.UniqueID
+          vCPL(2, lngCount) = oFrom.UniqueID 'g-program, g-task (visible task) - e.g., 1163
+          vCPL(3, lngCount) = oTo.UniqueID 'g-program, g-task ("external" task) - e.g., 1517
+          strFromPUID = oTask.GetField(lngPUID)
+          vCPL(4, lngCount) = strFromPUID
+          vCPL(5, lngCount) = oTask.Name
+          strToPUID = "<<< GHOST >>>"
+          vCPL(6, lngCount) = strToPUID
+          vCPL(7, lngCount) = Choose(oLink.Type + 1, "FF", "FS", "SF", "SS")
+          vCPL(8, lngCount) = Round(oLink.Lag / 480, 1)
+          vCPL(9, lngCount) = strProject
+          vCPL(10, lngCount) = lngMasterUID
+          vCPL(11, lngCount) = cptGetExternalUID(oTask, "ExternalSuccessor") 'r-project, g-task ("external" task) - e.g., 1330
+          vCPL(12, lngCount) = lngSourceUID 'r-project, r-task (visible task) - e.g., 1164
+          vCPL(13, lngCount) = strToPUID
+          vCPL(14, lngCount) = oTo.Name
+          vCPL(15, lngCount) = oTo.ActualFinish 'todo: change this?
+          vCPL(16, lngCount) = Choose(oTo.ConstraintType + 1, "ASAP", "ALAP", "MSO", "MFO", "SNET", "SNLT", "FNET", "FNLT")
+          vCPL(17, lngCount) = oTo.ConstraintDate
+          vCPL(18, lngCount) = oTo.Start 'todo: change this?
+          vCPL(19, lngCount) = oTo.PredecessorTasks.Count 'todo: change this?
+          lngCount = lngCount + 1
+        End If
+      End If
+next_link:
+    Next oLink
+next_task:
+    lngTask = lngTask + 1
+    If lngTask Mod 100 = 0 Then
+      Application.StatusBar = "EXPORTING CPLs: Tasks " & Format(lngTask, "#,##0") & "/" & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(lngCount, "#,##0") & " CPLs found"
+    End If
+    DoEvents
+  Next oTask
+  
+  ReDim Preserve vCPL(0 To 19, 0 To lngCount - 1)
+  
+  'export to Excel
+  Application.StatusBar = "Exporting to Excel..."
+  DoEvents
+  On Error Resume Next
+  Set oExcel = GetObject(, "Excel.Application")
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If oExcel Is Nothing Then
+    Set oExcel = CreateObject("Excel.Application")
+  End If
+  oExcel.Visible = True
+  Set oWorkbook = oExcel.Workbooks.Add
+  Set oWorksheet = oWorkbook.Sheets(1)
+  oWorksheet.Name = "CrossProjectLinks"
+  oWorksheet.[A2].Resize(, UBound(vCPL, 1) + 1) = Split("PROJECT,UID[M],UID[G],[UID[R],PUID,TASK NAME,GRUID,TYPE,LAG(DAYS),PROJECT,UID[M],UID[G],UID[R],PUID,TASK NAME,ACTUAL FINISH,CONSTRAINT TYPE,CONSTRAINT DATE,FORECAST START,PRED COUNT", ",")
+  oWorksheet.[A3].Resize(UBound(vCPL, 2) + 1, UBound(vCPL, 1) + 1) = oExcel.WorksheetFunction.Transpose(vCPL)
+  'conditional formatting
+  With oWorksheet.Range(oWorksheet.[E3], oWorksheet.[E3].End(xlDown))
+    .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""<<< GHOST >>>"""
+    .FormatConditions(.FormatConditions.Count).SetFirstPriority
+    With .FormatConditions(1).Font
+      .Color = -16383844
+      .TintAndShade = 0
+    End With
+    With .FormatConditions(1).Interior
+      .PatternColorIndex = xlAutomatic
+      .Color = 13551615
+      .TintAndShade = 0
+    End With
+    .FormatConditions(1).StopIfTrue = False
+  End With
+  With oWorksheet.Range(oWorksheet.[G3], oWorksheet.[G3].End(xlDown))
+    .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""<<< GHOST >>>"""
+    .FormatConditions(.FormatConditions.Count).SetFirstPriority
+    With .FormatConditions(1).Font
+      .Color = -16383844
+      .TintAndShade = 0
+    End With
+    With .FormatConditions(1).Interior
+      .PatternColorIndex = xlAutomatic
+      .Color = 13551615
+      .TintAndShade = 0
+    End With
+    .FormatConditions(1).StopIfTrue = False
+  End With
+  With oWorksheet.Range(oWorksheet.[N3], oWorksheet.[N3].End(xlDown))
+    .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""<<< GHOST >>>"""
+    .FormatConditions(.FormatConditions.Count).SetFirstPriority
+    With .FormatConditions(1).Font
+      .Color = -16383844
+      .TintAndShade = 0
+    End With
+    With .FormatConditions(1).Interior
+      .PatternColorIndex = xlAutomatic
+      .Color = 13551615
+      .TintAndShade = 0
+    End With
+    .FormatConditions(1).StopIfTrue = False
+  End With
+  
+  oExcel.ActiveWindow.Zoom = 85
+  oExcel.ActiveWindow.DisplayGridlines = False
+  oWorksheet.[A1] = "GIVER"
+  oWorksheet.[A1:F1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[G1] = "LINK"
+  oWorksheet.[G1:I1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[J1] = "RECEIVER"
+  oWorksheet.[J1:T1].HorizontalAlignment = xlCenterAcrossSelection
+  oWorksheet.[A1].Resize(2, UBound(vCPL, 1) + 1).Font.Bold = True
+  oWorksheet.[A1].Resize(1, UBound(vCPL, 1) + 1).Font.Size = 20
+  oWorksheet.[A2].AutoFilter
+  oWorksheet.Range(oWorksheet.[A3].End(xlDown), oWorksheet.[A3].End(xlToRight)).HorizontalAlignment = xlCenter
+  For Each vCol In Array(1, 6, 10, 15) 'project,task name
+    With oWorksheet.Columns(vCol)
+      If vCol = 1 Or vCol = 10 Then .ColumnWidth = 40
+      If vCol = 6 Or vCol = 15 Then .ColumnWidth = 70
+      .WrapText = True
+      oWorksheet.Range(oWorksheet.Cells(oWorksheet.[A3].Row, vCol), oWorksheet.Cells(oWorksheet.[A3].End(xlDown).Row, vCol)).HorizontalAlignment = xlLeft
+    End With
+  Next vCol
+  For Each vCol In Array(16, 18, 19) 'AF,ConstraintDate,ForecastFinish
+    oWorksheet.Range(oWorksheet.Cells(oWorksheet.[A3].Row, vCol), oWorksheet.Cells(oWorksheet.[A3].End(xlDown).Row, vCol)).NumberFormat = "m/d/yyyy"
+  Next vCol
+  oExcel.ActiveWindow.SplitColumn = 0
+  oExcel.ActiveWindow.SplitRow = 2
+  oExcel.ActiveWindow.FreezePanes = True
+  oWorksheet.Columns.AutoFit
+  cptAddBorders oWorksheet.Range(oWorksheet.[A2].End(xlToRight).Offset(-1, 0), oWorksheet.[A2].End(xlDown))
+  cptAddBorders oWorksheet.Range(oWorksheet.[G1], oWorksheet.[G2].End(xlDown).Offset(0, 2))
+  cptAddShading oWorksheet.Range(oWorksheet.[A2].Offset(-1, 0), oWorksheet.[A2].End(xlToRight))
+  Application.StatusBar = Format(lngCount, "#,##0") & " cross-project links exported."
+  DoEvents
+  
+  oWorkbook.VBProject.VBComponents("Sheet1").CodeModule.DeleteLines 1, 2
+  If MsgBox("Enable click (on worksheet) to find (in schedule) macro?", vbQuestion + vbYesNo, "cptExportCrossProjectLinks") = vbYes Then
+    strCode = "Private Const BLN_FILTER As Boolean = True" & vbCrLf
+  Else
+    strCode = "Private Const BLN_FILTER As Boolean = False" & vbCrLf
+  End If
+  strCode = strCode & "Option Explicit" & vbCrLf
+  strCode = strCode & "" & vbCrLf
+  strCode = strCode & "Private Sub Worksheet_SelectionChange(ByVal Target As Range)" & vbCrLf
+  strCode = strCode & "  'objects" & vbCrLf
+  strCode = strCode & "  Dim oMSPROJ As Object 'MSProject.Application" & vbCrLf
+  strCode = strCode & "  Dim oProject As Object 'MSProject.Project" & vbCrLf
+  strCode = strCode & "  'strings" & vbCrLf
+  strCode = strCode & "  Dim strG_PUID As String" & vbCrLf
+  strCode = strCode & "  Dim strR_PUID As String" & vbCrLf
+  strCode = strCode & "  " & vbCrLf
+  strCode = strCode & "  If Not BLN_FILTER Then Exit Sub" & vbCrLf
+  strCode = strCode & "  On Error GoTo err_here" & vbCrLf
+  strCode = strCode & "  If Target.Cells.Count > 1 Then Exit Sub" & vbCrLf
+  strCode = strCode & "  Set oMSPROJ = GetObject(, ""MSProject.Application"")" & vbCrLf
+  strCode = strCode & "  Set oProject = oMSPROJ.ActiveProject" & vbCrLf
+  strCode = strCode & "  If oProject.Subprojects.Count > 0 Then" & vbCrLf
+  strCode = strCode & "    strG_PUID = Me.Cells(Target.Row, 5) 'PUID" & vbCrLf 'was 4
+  strCode = strCode & "    strR_PUID = Me.Cells(Target.Row, 14) 'PUID" & vbCrLf 'was 12
+  strCode = strCode & "  Else" & vbCrLf
+  strCode = strCode & "    strG_PUID = Me.Cells(Target.Row, 3) 'UID" & vbCrLf
+  strCode = strCode & "    strR_PUID = Me.Cells(Target.Row, 11) 'UID" & vbCrLf
+  strCode = strCode & "  End If" & vbCrLf
+  strCode = strCode & "  If Len(strG_PUID) > 0 Or Len(strR_PUID) > 0 Then" & vbCrLf
+  strCode = strCode & "    oMSPROJ.SetAutoFilter """ & strProjectUID & """, 1, ""equals"", strG_PUID, ""or"", ""equals"", strR_PUID" & vbCrLf
+  strCode = strCode & "  Else" & vbCrLf
+  strCode = strCode & "    oMSPROJ.FilterClear" & vbCrLf
+  strCode = strCode & "  End If" & vbCrLf
+  strCode = strCode & "  oMSPROJ.ActiveWindow.TopPane.Activate" & vbCrLf
+  strCode = strCode & "  oMSPROJ.SelectBeginning" & vbCrLf
+  strCode = strCode & "  oMSPROJ.SelectAll" & vbCrLf
+  strCode = strCode & "exit_here:" & vbCrLf
+  strCode = strCode & "  On Error Resume Next" & vbCrLf
+  strCode = strCode & "  Set oProject = Nothing" & vbCrLf
+  strCode = strCode & "  Set oMSPROJ = Nothing" & vbCrLf
+  strCode = strCode & "  Exit Sub" & vbCrLf
+  strCode = strCode & "err_here:" & vbCrLf
+  strCode = strCode & "  MsgBox Err.Number & "": "" & Err.Description, vbExclamation + vbOKOnly, ""cptCPL""" & vbCrLf
+  strCode = strCode & "  Resume exit_here" & vbCrLf
+  strCode = strCode & "End Sub" & vbCrLf
+  oWorkbook.VBProject.VBComponents("Sheet1").CodeModule.AddFromString strCode
+  
+  'prompt to keep current view
+  If MsgBox(Format(lngCount, "#,##0") & " cross-project links exported." & vbCrLf & vbCrLf & "Keep current view?", vbInformation + vbYesNo, "CPLs") = vbNo Then
+    ActiveWindow.TopPane.Activate
+    ViewApply strStartingView
+    TableApply strStartingTable
+    FilterApply strStartingFilter
+    GroupApply strStartingGroup
+  End If
+  
+exit_here:
+  On Error Resume Next
+  cptSpeed False
+  Application.StatusBar = ""
+  Set oWorksheet = Nothing
+  Set oWorkbook = Nothing
+  Set oExcel = Nothing
+  oSubMap.RemoveAll
+  Set oSubMap = Nothing
+  Set oLink = Nothing
+  Set oTask = Nothing
+  Set oFrom = Nothing
+  Set oTo = Nothing
+  Set oPred = Nothing
+  oTaskMap.RemoveAll
+  Set oTaskMap = Nothing
+  Set oSubproject = Nothing
+  Exit Sub
+err_here:
+  cptHandleErr THIS_MODULE, "cptExportCrossProjectLinks", Err, Erl
+  Resume exit_here
+End Sub
+
+Sub cptGetSubMap()
+  'objects
+  Dim oSubproject As MSProject.SubProject
+  Dim oTask As MSProject.Task
+  'strings
+  'longs
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  If oSubMap Is Nothing Then
+    Set oSubMap = CreateObject("Scripting.Dictionary")
+  Else
+    oSubMap.RemoveAll
+  End If
+  Application.Calculation = pjManual
+  For Each oSubproject In ActiveProject.Subprojects
+    If Left(oSubproject.Path, 2) = "<>" Then 'PWA
+      oSubMap.Add Replace(oSubproject.Path, "<>\", ""), 0
+    Else 'mpp (local or remote)
+      oSubMap.Add Replace(cptRegEx(oSubproject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
+    End If
+    If oSubproject.IsLoaded = False Then
+      Application.OpenUndoTransaction "cpt - load subproject"
+      FilterClear
+      GroupClear
+      SelectAll
+      OutlineShowAllTasks
+      Application.CloseUndoTransaction
+      If Application.GetUndoListCount > 0 Then
+        If Application.GetUndoListItem(1) = "cpt - load subproject" Then
+          Application.Undo
+        End If
+      End If
+    End If
+  Next oSubproject
+  Application.CalculateProject
+  For Each oTask In ActiveProject.Tasks
+    If oSubMap.Exists(oTask.Project) Then
+      If oSubMap(oTask.Project) > 0 Then GoTo next_mapping_task
+      oSubMap.Item(oTask.Project) = CLng(oTask.UniqueID / 4194304)
+    End If
+next_mapping_task:
+  Next oTask
+  
+exit_here:
+  On Error Resume Next
+  Application.Calculation = pjAutomatic
+  Set oTask = Nothing
+  Set oSubproject = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptGetSubMap", Err, Erl)
+  Resume exit_here
+  
+End Sub
+
+Function cptGetExternalUID(ByRef oTask As MSProject.Task, Optional strType As String) As Long
+  'objects
+  Dim oMaster As MSProject.Project 'masterProj
+  Dim oSubproject As MSProject.SubProject 'sproj
+  Dim oExternalProject As MSProject.Project 'subProj
+  Dim oFrom As MSProject.Task 'tPred
+  Dim oTo As MSProject.Task 'tSucc
+  Dim oExternalTask As MSProject.Task 'extSucc
+  Dim oTargetTaskDependencies As MSProject.TaskDependencies
+  Dim oTargetTaskDependency As MSProject.TaskDependency
+  Dim oExternalTaskDependencies As MSProject.TaskDependencies
+  Dim oExternalTaskDependency As MSProject.TaskDependency
+  'strings
+  Dim strProject As String
+  'longs
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  'if oto.getfield(xxx) mod 4 = receiver.uuid and , then get oto.uid when pred is the external task
+
+  Set oMaster = ActiveProject
+  Set oTargetTaskDependencies = oTask.TaskDependencies
+  For Each oTargetTaskDependency In oTargetTaskDependencies
+    If oTargetTaskDependency.From = oTask.UniqueID Mod 4194304 Then
+      Set oTo = oTargetTaskDependency.To
+      If oTo.GetField(185073906) <> "" Then
+        For Each oSubproject In oMaster.Subprojects
+          If oSubproject.Path = oTo.Project Then
+            Set oExternalProject = oSubproject.SourceProject
+            Exit For
+          End If 'If oSubproject.Path = oTo.Project
+        Next oSubproject
+        Set oExternalTask = oExternalProject.Tasks.UniqueID(oTo.GetField(185073906) Mod 4194304)
+        Set oExternalTaskDependencies = oExternalTask.TaskDependencies
+        For Each oExternalTaskDependency In oExternalTaskDependencies
+          If oExternalTaskDependency.To = oExternalTask.UniqueID Then
+            'confirm correct external project
+            strProject = Replace(Mid(oExternalTaskDependency.Path, InStrRev(oExternalTaskDependency.Path, "\") + 1), ".mpp", "") 'confirm giving subproject
+            strProject = Replace(Mid(strProject, InStrRev(strProject, "/") + 1), ".mpp", "")
+            If strProject = oTask.Project Then
+              Set oFrom = oExternalTaskDependency.From
+              If oFrom.GetField(185073906) <> "" Then 'find an external predecessor
+                If oFrom.GetField(185073906) Mod 4194304 = oTask.UniqueID Mod 4194304 Then 'make sure it's the right external pred
+                  'Debug.Print "(" & oTask.UniqueID & ") " & oTargetTaskDependency.From & " > [" & oTargetTaskDependency.To & "] >> [" & oFrom.UniqueID & "] > " & oExternalTaskDependency.To & " (" & (Round(oFrom.GetField(185073906) / 4194304) * 4194304) + oExternalTask.UniqueID & ")"
+                  If strType = "ExternalPredecessor" Then
+                    cptGetExternalUID = oTo.UniqueID
+                  ElseIf strType = "ExternalSuccessor" Then
+                    cptGetExternalUID = oFrom.UniqueID  'print the (internal) "external" UID
+                  End If
+                  GoTo exit_here
+                End If
+              End If
+            End If
+          End If
+        Next oExternalTaskDependency
+      End If 'oTo.GetField(185073906) <> ""
+    ElseIf oTargetTaskDependency.To = oTask.UniqueID Mod 4194304 Then
+      Set oFrom = oTargetTaskDependency.From 'move this
+      If oFrom.GetField(185073906) <> "" Then
+        For Each oSubproject In oMaster.Subprojects
+          If oSubproject.Path = oFrom.Project Then
+            Set oExternalProject = oSubproject.SourceProject
+            Exit For
+          End If 'If oSubproject.Path = oTo.Project
+        Next oSubproject
+        Set oExternalTask = oExternalProject.Tasks.UniqueID(oFrom.GetField(185073906) Mod 4194304)
+        Set oExternalTaskDependencies = oExternalTask.TaskDependencies
+        For Each oExternalTaskDependency In oExternalTaskDependencies
+          If oExternalTaskDependency.To = oExternalTask.UniqueID Then
+            'confirm correct external project
+            strProject = Replace(Mid(oExternalTaskDependency.Path, InStrRev(oExternalTaskDependency.Path, "\") + 1), ".mpp", "") 'confirm giving subproject
+            strProject = Replace(Mid(strProject, InStrRev(strProject, "/") + 1), ".mpp", "")
+            If strProject = oTask.Project Then
+              Set oFrom = oExternalTaskDependency.From
+              If oFrom.GetField(185073906) <> "" Then 'find an external predecessor
+                If oFrom.GetField(185073906) Mod 4194304 = oTask.UniqueID Mod 4194304 Then 'make sure it's the right external pred
+                  'Debug.Print "(" & oTask.UniqueID & ") " & oTargetTaskDependency.From & " > [" & oTargetTaskDependency.To & "] >> [" & oFrom.UniqueID & "] > " & oExternalTaskDependency.To & " (" & (Round(oFrom.GetField(185073906) / 4194304) * 4194304) + oExternalTask.UniqueID & ")"
+                  cptGetExternalUID = oTo.UniqueID  'print the (internal) "external" UID
+                  Exit For
+                End If
+              End If
+            End If
+          End If
+        Next oExternalTaskDependency
+      End If 'oTo.GetField(185073906) <> ""
+    End If 'oTargetTaskDependency.From = oTask.UniqueID Mod 4194304
+  Next oTargetTaskDependency
+
+exit_here:
+  On Error Resume Next
+  Set oMaster = Nothing
+  Set oSubproject = Nothing
+  Set oExternalProject = Nothing
+  Set oFrom = Nothing
+  Set oTo = Nothing
+  Set oExternalTask = Nothing
+  Set oTargetTaskDependencies = Nothing
+  Set oTargetTaskDependency = Nothing
+  Set oExternalTaskDependencies = Nothing
+  Set oExternalTaskDependency = Nothing
+
+  Exit Function
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptGetExternalUID", Err, Erl)
+  Resume exit_here
+
+End Function

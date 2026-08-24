@@ -13,9 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-
-'<cpt_version>v1.7.4</cpt_version>
+'<cpt_version>v1.7.5</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptStatusSheet_frm"
 Private Const lngForeColorValid As Long = -2147483630
 Private Const lngBorderColorValid As Long = 8421504 '-2147483642
 Private Const lngForeColorInvalid As Long = 192
@@ -82,7 +82,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cboCostTool_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboCostTool_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -159,7 +159,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cboCreate_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboCreate_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -247,7 +247,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cboEach_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboEach_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -278,10 +278,17 @@ Private Sub chkAllItems_Click()
 End Sub
 
 Private Sub chkAppendStatusDate_Click()
+  Dim strDelimiter As String
+  Dim strDir As String
+  strDir = Me.txtDir
+  strDelimiter = cptRegEx(strDir, "\\|\/")
   If Me.chkAppendStatusDate Then
-    Me.lblDirSample.Caption = Me.txtDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & "\"
+    strDir = Replace(strDir, "[yyyy-mm-dd]" & strDelimiter, "")
+    Me.lblDirSample.Caption = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strDelimiter
+    Me.txtDir = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strDelimiter
   Else
-    Me.lblDirSample.Caption = Me.txtDir
+    Me.lblDirSample.Caption = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
+    Me.txtDir.Value = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
   End If
 End Sub
 
@@ -311,7 +318,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "chkAssignments_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkAssignments_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -345,7 +352,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "chkHide_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkHide_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -433,6 +440,7 @@ Sub cmdAdd_Click()
   'doubles
   'booleans
   Dim blnExists As Boolean
+  Dim blnSelected As Boolean
   'variants
   'dates
 
@@ -452,8 +460,10 @@ Sub cmdAdd_Click()
     strEVP = FieldConstantToFieldName(lngEVP)
   End If
   
+  blnSelected = False
   For lngField = 0 To Me.lboFields.ListCount - 1
     If Me.lboFields.Selected(lngField) Then
+      blnSelected = True
       'do not allow EVT
       If CLng(Me.lboFields.List(lngField)) = lngEVT Then
         MsgBox "The EVT Field ('" & strEVT & "') is automatically included.", vbInformation + vbOKOnly, "EVT Rejected"
@@ -480,14 +490,14 @@ Sub cmdAdd_Click()
 next_item:
   Next lngField
 
-  cptRefreshStatusTable Me
+  If blnSelected Then cptRefreshStatusTable Me
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdAdd_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdAdd_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -498,30 +508,34 @@ Private Sub cmdAddAll_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  For lngField = 0 To Me.lboFields.ListCount - 1
-    'ensure doesn't already exist
-    blnExists = False
-    For lngExists = 0 To Me.lboExport.ListCount - 1
-      If Me.lboExport.List(lngExists, 0) = Me.lboFields.List(lngField) Then
-        GoTo next_item
-      End If
-    Next lngExists
-    Me.lboExport.AddItem
-    lngExport = Me.lboExport.ListCount - 1
-    Me.lboExport.List(lngExport, 0) = Me.lboFields.List(lngField, 0)
-    Me.lboExport.List(lngExport, 1) = Me.lboFields.List(lngField, 1)
-    Me.lboExport.List(lngExport, 2) = Me.lboFields.List(lngField, 2)
-next_item:
-  Next lngField
+  If Me.lboExport.ListCount > 0 Then
 
-  cptRefreshStatusTable Me
+    For lngField = 0 To Me.lboFields.ListCount - 1
+      'ensure doesn't already exist
+      blnExists = False
+      For lngExists = 0 To Me.lboExport.ListCount - 1
+        If Me.lboExport.List(lngExists, 0) = Me.lboFields.List(lngField) Then
+          GoTo next_item
+        End If
+      Next lngExists
+      Me.lboExport.AddItem
+      lngExport = Me.lboExport.ListCount - 1
+      Me.lboExport.List(lngExport, 0) = Me.lboFields.List(lngField, 0)
+      Me.lboExport.List(lngExport, 1) = Me.lboFields.List(lngField, 1)
+      Me.lboExport.List(lngExport, 2) = Me.lboFields.List(lngField, 2)
+next_item:
+    Next lngField
+  
+    cptRefreshStatusTable Me
+    
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdAddAll_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdAddAll_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -542,7 +556,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdCancel_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdCancel_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -583,7 +597,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDown_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDown_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -624,29 +638,32 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDn_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDn_Click", Err, Erl)
   Resume exit_here
 End Sub
 
 Private Sub cmdRemove_Click()
   Dim lngExport As Long
+  Dim blnSelected As Boolean
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
+  blnSelected = False
   For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
     If Me.lboExport.Selected(lngExport) Then
       Me.lboExport.RemoveItem lngExport
+      blnSelected = True
     End If
   Next lngExport
 
-  cptRefreshStatusTable Me
+  If blnSelected Then cptRefreshStatusTable Me
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdRemove_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRemove_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -656,18 +673,19 @@ Private Sub cmdRemoveAll_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
-    Me.lboExport.RemoveItem lngExport
-  Next lngExport
-
-  cptRefreshStatusTable Me
+  If Me.lboExport.ListCount > 0 Then
+    For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
+      Me.lboExport.RemoveItem lngExport
+    Next lngExport
+    cptRefreshStatusTable Me
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdRemoveAll_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRemoveAll_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -675,6 +693,7 @@ End Sub
 Private Sub cmdRun_Click()
   'objects
   'strings
+  Dim strDelimiter As String
   Dim strTempDir As String
   Dim strMsg As String
   'longs
@@ -827,12 +846,16 @@ Private Sub cmdRun_Click()
     End If
   End If
   'ensure directory exists
+  strDelimiter = cptRegEx(Me.txtDir, "\\|\/")
   If Dir(Me.txtDir, vbDirectory) = vbNullString Then
-    For Each vDir In Split(Me.txtDir, "\")
-      strTempDir = strTempDir & "\" & vDir
-      If vDir = "C:" Then GoTo next_dir
+    For Each vDir In Split(Me.txtDir, strDelimiter)
+      If Len(strTempDir) = 0 Then
+        strTempDir = vDir & strDelimiter
+      Else
+        strTempDir = strTempDir & strDelimiter & vDir
+      End If
       If Dir(strTempDir, vbDirectory) = vbNullString Then
-        vResponse = MsgBox("The directory at:" & vbCrLf & vbCrLf & strTempDir & vbCrLf & vbCrLf & "...does not exit. Create it now?", vbExclamation + vbYesNoCancel)
+        vResponse = MsgBox("The directory at:" & vbCrLf & vbCrLf & strTempDir & vbCrLf & vbCrLf & "...does not exist. Create it now?", vbExclamation + vbYesNoCancel)
         If vResponse = vbYes Then
           MkDir strTempDir
         Else
@@ -872,7 +895,7 @@ exit_here:
   Application.DefaultDateFormat = lngDateFormat
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdRun_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRun_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -913,7 +936,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdUp_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdUp_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -926,15 +949,18 @@ Private Sub lblURL_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "lblURL", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
+  
 End Sub
 
 Private Sub lboItems_Change()
@@ -995,7 +1021,7 @@ exit_here:
   cptSpeed False
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "lboItems_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboItems_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1035,7 +1061,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDown_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDown_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1076,7 +1102,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "SpinButton1_SpinUp", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "SpinButton1_SpinUp", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1112,7 +1138,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "stxtSearch_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "stxtSearch_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1141,7 +1167,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "stxtSearch_Enter", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "stxtSearch_Enter", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1155,15 +1181,16 @@ End Sub
 Private Sub txtDir_Change()
   Dim strDir As String
   Dim strNamingConvention As String
+  Dim strDelimiter As String
   
   strDir = Me.txtDir.Text
+  strDelimiter = cptRegEx(strDir, "\\|\/")
   If InStr(strDir, "[yyyy-mm-dd]") > 0 Then
     strDir = Replace(strDir, "[yyyy-mm-dd]", Format(ActiveProject.StatusDate, "yyyy-mm-dd"))
   End If
-  If Right(strDir, 1) <> "\" Then
-    strDir = strDir & "\"
+  If Right(strDir, 1) <> strDelimiter Then
+    strDir = strDir & strDelimiter
   End If
-  'todo: apply chkAppendStatusDate
   Me.lblDirSample.Caption = strDir
   
   If Dir(strDir, vbDirectory) = vbNullString Then
@@ -1188,6 +1215,7 @@ Private Sub txtDir_DropButtonClick()
   Dim oExcel As Excel.Application
   'strings
   Dim strValidPath As String
+  Dim strDelimiter As String
   'longs
   'integers
   'doubles
@@ -1212,7 +1240,8 @@ Private Sub txtDir_DropButtonClick()
       If Not CBool(Split(strValidPath, ":")(0)) Then
         MsgBox Replace(strValidPath, "0:", "Reason: "), vbCritical + vbOKOnly, "Invalid Path"
       Else
-        Me.txtDir = .SelectedItems(1) & "\" & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & "\", "")
+        strDelimiter = cptRegEx(.SelectedItems(1), "\\|\/")
+        Me.txtDir = .SelectedItems(1) & strDelimiter & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & strDelimiter, "")
       End If
     End If
   End With
@@ -1225,7 +1254,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDir_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDir_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1403,7 +1432,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtHideCompleteBefore", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtHideCompleteBefore", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1464,7 +1493,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtLookaheadDate_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtLookaheadDate_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1509,7 +1538,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtLookaheadDays_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtLookaheadDays_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1584,7 +1613,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtStatusDate_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtStatusDate_Change", Err, Erl)
   Resume exit_here
   
 End Sub

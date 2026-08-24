@@ -13,8 +13,9 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.1.1</cpt_version>
+'<cpt_version>v1.0.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptIntegration_frm"
 Public blnValidIntegrationMap As Boolean
 
 Private Sub cboCA_Change()
@@ -82,7 +83,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "cboEVT_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboEVT_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -171,7 +172,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "cboEVT_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboEVT_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -224,6 +225,15 @@ End Sub
 
 Private Sub cboWPM_Change()
   If Not Me.Visible Then Exit Sub
+  UpdateIntegrationSettings
+End Sub
+
+Private Sub chkCAParent_Click()
+  If Not Me.Visible Then Exit Sub
+  If Me.chkCAParent = False Then
+    Me.cboWBS.Width = 126
+  End If
+  If Me.ActiveControl.Name = "chkCAParent" Then Me.cboWBS.SetFocus
   UpdateIntegrationSettings
 End Sub
 
@@ -352,7 +362,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "chkECF_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkECF_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -456,7 +466,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "chkSyncSettings_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkSyncSettings_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -530,6 +540,7 @@ Private Sub UpdateIntegrationSettings()
   'objects
   Dim oCDP As Office.DocumentProperty
   'strings
+  Dim strDelimiter As String
   Dim strControl As String
   Dim strField As String
   'longs
@@ -547,10 +558,60 @@ Private Sub UpdateIntegrationSettings()
 
   If Not Me.Visible Then Exit Sub
   strControl = Me.ActiveControl.Name
+  cptSaveSetting "Integration", "chkCAParent", IIf(Me.chkCAParent, 1, 0)
   If Left(strControl, 3) <> "cbo" Then GoTo exit_here
   If IsNull(Me.Controls(strControl).Value) Then GoTo exit_here
   lngField = Me.Controls(strControl).Value
   Me.Controls(strControl).BorderColor = -2147483642
+  strControl = Me.ActiveControl.Name
+  'catch when WBS = CA; error; prompt to chkCAParent
+  If Me.ActiveControl.Name = "cboWBS" Or Me.ActiveControl.Name = "cboCA" Then
+    If Me.cboWBS.Value = Me.cboCA.Value Then
+      If Me.chkCAParent = False Then
+        Me.cboWBS.BorderColor = 192
+        Me.cboCA.BorderColor = 192
+        If MsgBox("Use Control Account (CA) outline parent as Work Breakdown Structure (WBS)?", vbQuestion + vbYesNo, "WBS = CA Parent") = vbYes Then
+          If Me.ActiveControl.Name = "cboWBS" And InStr(FieldConstantToFieldName(Me.cboWBS.Value), "Outline") = 0 Then
+            strDelimiter = InputBox("Provide the parent-child delimter:", "Delimiter Required", ".")
+          ElseIf Me.ActiveControl.Name = "cboCA" And InStr(FieldConstantToFieldName(Me.cboCA.Value), "Outline") = 0 Then
+            strDelimiter = InputBox("Provide the parent-child delimter:", "Delimiter Required", ".")
+          End If
+          If Len(strDelimiter) > 0 Then
+            cptSaveSetting "Integration", "CA_DELIMITER", strDelimiter
+            Me.cboWBS.BorderColor = -2147483642
+            Me.cboCA.BorderColor = -2147483642
+            Me.cboWBS.Width = 108 '126
+            Me.chkCAParent = True
+          End If
+        End If
+      End If
+    Else
+      Me.cboWBS.BorderColor = -2147483642
+      Me.cboCA.BorderColor = -2147483642
+      Me.cboWBS.Width = 126
+      Me.chkCAParent = False
+    End If
+  End If
+  'first check the other controls
+  For Each vControl In Split("WBS,OBS,CA,CAM,WP,EVT", ",")
+    'skip activecontrol
+    If Me.Controls("cbo" & vControl).Name = Me.Controls(strControl).Name Then GoTo next_uniq
+    If Me.Controls("cbo" & vControl).Value = lngField Then
+      If (vControl = "WBS" And strControl = "cboCA") Or (vControl = "CA" And strControl = "cboWBS") And Me.chkCAParent = True Then
+        'do nothing
+      Else
+        Me.Controls(strControl).BorderColor = 192 '-2147483642
+        If (vControl = "WBS" Or vControl = "CA") And Me.chkCAParent = True Then
+          MsgBox CustomFieldGetName(lngField) & " (" & FieldConstantToFieldName(lngField) & ") is already assigned to WBS and CA.", vbExclamation + vbOKOnly, "Duplicate"
+        Else
+          MsgBox CustomFieldGetName(lngField) & " (" & FieldConstantToFieldName(lngField) & ") is already assigned to " & vControl & ".", vbExclamation + vbOKOnly, "Duplicate"
+        End If
+        GoTo exit_here
+      End If
+    End If
+next_uniq:
+  Next vControl
+  
   strControl = Replace(strControl, "cbo", "")
   strField = CustomFieldGetName(lngField)
   If Len(strField) = 0 Then strField = FieldConstantToFieldName(lngField)
@@ -607,7 +668,25 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "UpdateIntegrationSettings", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "UpdateIntegrationSettings", Err, Erl)
+  Resume exit_here
+
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -662,7 +741,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptIntegration_frm", "txtRollingWave_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtRollingWave_Change", Err, Erl)
   Resume exit_here
 
 End Sub
