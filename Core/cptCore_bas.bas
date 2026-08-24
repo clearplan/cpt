@@ -1499,7 +1499,11 @@ Sub cptSetReferences()
       strGuid = Split(vRef, "|")(1)
       Application.StatusBar = "Adding VBA Reference: " & strRefName & "..."
       If GetHighestTypeLibVersion(strGuid, lngMaj, lngMin) Then
-        strVersion = CStr(lngMaj) & "." & CStr(lngMin)
+        If strGuid = "{91493440-5A91-11CF-8700-00AA0060263B}" Then 'powerpoint is weird
+          strVersion = CStr(lngMaj) & "." & LCase$(Hex$(lngMin))
+        Else
+          strVersion = CStr(lngMaj) & "." & CStr(lngMin)
+        End If
         lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win64", "", strPath)
         If lngReg <> 0 Or Len(strPath) = 0 Then
           lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win32", "", strPath)
@@ -4004,7 +4008,7 @@ err_here:
   Resume exit_here
 End Function
 
-Function cptConvertADODBtoCSV(ByRef oRecordset As ADODB.Recordset, strToCSVFileName As String) As Boolean
+Function cptConvertADODBtoCSV(ByRef oRecordset As Object, strToCSVFileName As String) As Boolean
   'objects
   'strings
   Dim strFileName As String

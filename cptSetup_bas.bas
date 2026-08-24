@@ -1507,7 +1507,7 @@ End Sub
 
 Sub cptValidateXML(strXML As String)
   'objects
-  Dim oXML As MSXML2.DOMDocument30
+  Dim oXML As Object 
   'strings
   Dim strFileName As String
   'longs
@@ -1526,7 +1526,7 @@ Sub cptValidateXML(strXML As String)
   Print #lngFile, strXML
   Close #lngFile
   
-  Set oXML = New MSXML2.DOMDocument30
+  Set oXML = CreateObject("MSXML2.DOMDocument.6.0")
   If oXML.Load(strFileName) Then
     MsgBox "cpt ribbon xml validated", vbInformation + vbOKOnly, "success"
   Else
