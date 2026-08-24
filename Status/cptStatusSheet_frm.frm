@@ -82,7 +82,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cboCostTool_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboCostTool_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -159,7 +159,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cboCreate_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboCreate_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -247,7 +247,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cboEach_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cboEach_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -318,7 +318,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "chkAssignments_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkAssignments_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -352,7 +352,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "chkHide_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "chkHide_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -497,7 +497,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdAdd_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdAdd_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -535,7 +535,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdAddAll_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdAddAll_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -556,7 +556,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdCancel_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdCancel_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -597,7 +597,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDown_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDown_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -638,7 +638,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDn_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDn_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -663,7 +663,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdRemove_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRemove_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -685,7 +685,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdRemoveAll_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRemoveAll_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -895,7 +895,7 @@ exit_here:
   Application.DefaultDateFormat = lngDateFormat
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdRun_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRun_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -936,7 +936,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdUp_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdUp_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1021,7 +1021,7 @@ exit_here:
   cptSpeed False
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "lboItems_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboItems_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1061,7 +1061,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDown_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDown_Click", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1102,7 +1102,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "SpinButton1_SpinUp", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "SpinButton1_SpinUp", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1138,7 +1138,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "stxtSearch_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "stxtSearch_Change", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1167,7 +1167,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "stxtSearch_Enter", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "stxtSearch_Enter", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -1181,13 +1181,15 @@ End Sub
 Private Sub txtDir_Change()
   Dim strDir As String
   Dim strNamingConvention As String
+  Dim strDelimiter As String
   
   strDir = Me.txtDir.Text
+  strDelimiter = cptRegEx(strDir, "\\|\/")
   If InStr(strDir, "[yyyy-mm-dd]") > 0 Then
     strDir = Replace(strDir, "[yyyy-mm-dd]", Format(ActiveProject.StatusDate, "yyyy-mm-dd"))
   End If
-  If Right(strDir, 1) <> "\" Then
-    strDir = strDir & "\"
+  If Right(strDir, 1) <> strDelimiter Then
+    strDir = strDir & strDelimiter
   End If
   Me.lblDirSample.Caption = strDir
   
@@ -1252,7 +1254,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "cmdDir_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdDir_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1430,7 +1432,7 @@ exit_here:
   On Error Resume Next
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtHideCompleteBefore", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtHideCompleteBefore", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1491,7 +1493,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtLookaheadDate_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtLookaheadDate_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1536,7 +1538,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtLookaheadDays_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtLookaheadDays_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -1611,7 +1613,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_frm", "txtStatusDate_Change", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "txtStatusDate_Change", Err, Erl)
   Resume exit_here
   
 End Sub

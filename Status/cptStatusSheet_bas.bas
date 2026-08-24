@@ -15,6 +15,7 @@ Private oUnlockedRange As Excel.Range
 Public oEVTs As Scripting.Dictionary
 Private Const lngForeColorValid As Long = -2147483630
 Private Const lngBorderColorValid As Long = 8421504 '-2147483642
+Private Const THIS_MODULE As String = "cptStatusSheet_bas"
 
 Sub cptShowStatusSheet_frm()
   'populate all outline codes, text, and number fields
@@ -644,7 +645,7 @@ exit_here:
   Exit Sub
 
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptShowStatusSheet_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowStatusSheet_frm", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -1213,7 +1214,7 @@ exit_here:
   Exit Sub
 
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptCreateStatusSheet", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCreateStatusSheet", Err, Erl)
   If Not oExcel Is Nothing Then
     If Not oWorkbook Is Nothing Then oWorkbook.Close False
     oExcel.Quit
@@ -1323,7 +1324,7 @@ exit_here:
   If Not blnOverride Then cptSpeed False
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptRefreshStatusTable", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptRefreshStatusTable", Err, Erl)
   Err.Clear
   Resume exit_here
 End Sub
@@ -1371,7 +1372,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptAddLegend", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAddLegend", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -2298,7 +2299,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptCopyData", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCopyData", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2449,7 +2450,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptGetAssignmentData", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptGetAssignmentData", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -2594,7 +2595,7 @@ exit_here:
   Set oBuildingBlock = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptListQuickParts", Err)
+  Call cptHandleErr(THIS_MODULE, "cptListQuickParts", Err)
   Resume exit_here
 End Sub
 
@@ -2672,7 +2673,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptSaveStatusSheet", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSaveStatusSheet", Err, Erl)
   Resume exit_here
 End Function
 
@@ -2777,7 +2778,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptSendStatusSheet", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSendStatusSheet", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -2786,7 +2787,7 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
-
+  Dim strDelimiter As String
   Dim strBaseDir As String
   Dim strFileName As String
   'longs
@@ -2882,7 +2883,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptSaveStatusSheetSettings", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSaveStatusSheetSettings", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -2979,7 +2980,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptAdvanceStatusDate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAdvanceStatusDate", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -3054,7 +3055,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptCaptureJournal", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCaptureJournal", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3322,7 +3323,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptCompletedWork", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCompletedWork", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3506,7 +3507,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptFindUnstatusedTasks", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptFindUnstatusedTasks", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3529,7 +3530,7 @@ Sub cptAddConditionalFormattingLegend(ByRef oWorkbook As Excel.Workbook)
   Set oWorksheet = oWorkbook.Sheets.Add(After:=oWorkbook.Sheets(oWorkbook.Sheets.Count))
   oWorksheet.Activate
   oWorksheet.Name = "Conditional Formatting"
-  vArray = Split(cptGetBreadcrumbs("cptStatusSheet_bas", "cptCopyData", "format-conditions"), vbCrLf)
+  vArray = Split(cptGetBreadcrumbs(THIS_MODULE, "cptCopyData", "format-conditions"), vbCrLf)
   oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].Offset(UBound(vArray) - 1)) = oWorkbook.Application.WorksheetFunction.Transpose(vArray)
   oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace ":", ";", LookAt:=xlPart
   oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace " -> ", ";", LookAt:=xlPart
@@ -3678,7 +3679,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptAddConditionalFormattingLegend", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAddConditionalFormattingLegend", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -3787,7 +3788,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptFindCompleteThrough", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptFindCompleteThrough", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -3920,7 +3921,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  cptHandleErr "cptStatusSheet_bas", "cptAssignmentsWithoutWork", Err, Erl
+  cptHandleErr THIS_MODULE, "cptAssignmentsWithoutWork", Err, Erl
   Resume exit_here
 End Sub
 
@@ -4041,7 +4042,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  cptHandleErr "cptStatusSheet_bas", "cptRespreadAssignmentWork", Err, Erl
+  cptHandleErr THIS_MODULE, "cptRespreadAssignmentWork", Err, Erl
   Resume exit_here
 End Sub
 
@@ -4388,7 +4389,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheet_bas", "cptMarkOnTrackRetainETC", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptMarkOnTrackRetainETC", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -5208,7 +5209,7 @@ exit_here:
 err_here:
   On Error Resume Next
   cptValidateAssignmentRolldown = False
-  Call cptHandleErr("cptStatusSheet_bas", "cptValidateAssignmentRolldown", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidateAssignmentRolldown", Err, Erl)
   Resume exit_here
 End Function
 
