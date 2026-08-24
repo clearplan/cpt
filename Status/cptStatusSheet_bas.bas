@@ -48,6 +48,7 @@ Sub cptShowStatusSheet_frm()
   Dim strAllowAssignmentNotes As String
   Dim strNotesColTitle As String
   Dim strFileNamingConvention As String
+  Dim strDelimiter As String
   Dim strDir As String
   Dim strAllItems As String
   Dim strAppendStatusDate As String
@@ -252,6 +253,7 @@ skip_fields:
     End With
   End If
   
+  'todo: get rid of all these strings and just use one: strSetting
   'import saved settings
   With myStatusSheet_frm
     Application.StatusBar = "Getting saved settings..."
@@ -298,7 +300,14 @@ skip_fields:
       FilterClear
     End If
     strDir = cptGetSetting("StatusSheet", "txtDir")
-    If strDir <> "" Then .txtDir = strDir
+    If strDir <> "" Then
+      'get delimiter
+      strDelimiter = cptRegEx(strDir, "\\|\/")
+      'remove status date
+      strDir = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
+      strDir = Replace(strDir, "[yyyy-mm-dd]" & strDelimiter, "")
+      .txtDir = strDir
+    End If
     strFileNamingConvention = cptGetSetting("StatusSheet", "txtFileName")
     If strFileNamingConvention <> "" Then .txtFileName = strFileNamingConvention
     
@@ -332,12 +341,13 @@ skip_fields:
       .chkConditionalFormatting.Value = False
     End If
     
-    strDataValidation = cptGetSetting("StatusSheet", "chkDataValidation")
-    If strDataValidation <> "" Then
-      .chkValidation = CBool(strDataValidation)
-    Else
+'    strDataValidation = cptGetSetting("StatusSheet", "chkDataValidation")
+'    If strDataValidation <> "" Then
+'      .chkValidation = CBool(strDataValidation)
+'    Else
       .chkValidation = True
-    End If
+      .chkValidation.Enabled = False
+'    End If
     
     strProtect = cptGetSetting("StatusSheet", "chkLocked")
     If strProtect <> "" Then
@@ -433,6 +443,7 @@ skip_fields:
 
   'add saved export fields if they exist
   strFileName = strCptDir & "\settings\cpt-status-sheet-userfields.adtg"
+  blnRemove = False
   If Dir(strFileName) <> vbNullString Then
     Set oRecordset = CreateObject("ADODB.Recordset")
     With oRecordset
@@ -442,7 +453,6 @@ skip_fields:
         .MoveFirst
         lngItem = 0
         Do While Not .EOF
-          blnRemove = False
           myStatusSheet_frm.lboExport.AddItem
           myStatusSheet_frm.lboExport.List(lngItem, 0) = .Fields(0) 'Field Constant
           myStatusSheet_frm.lboExport.List(lngItem, 1) = .Fields(1) 'Custom Field Name
@@ -453,14 +463,14 @@ skip_fields:
           'If InStr("Custom", FieldConstantToFieldName(FieldNameToFieldConstant(.Fields(2)))) = 0 Then GoTo next_item
           If .Fields(0) >= 188776000 Then 'it's an ECF
             If FieldConstantToFieldName(.Fields(0)) = "<Unavailable>" Then 'it's no longer available
-              MsgBox "The saved export field '" & .Fields(1) & "' is no longer accessible in the Enterprise Project Global and will be removed.", vbExclamation + vbOKOnly, "Status Sheet"
+              MsgBox "Saved export field '" & .Fields(1) & "' is no longer accessible and will be removed.", vbExclamation + vbOKOnly, "Status Sheet"
               blnRemove = True
-              goto remove_saved_ecf
-            End if
-          End IF
+              GoTo remove_saved_ecf
+            End If
+          End If
           strCustomFieldName = CustomFieldGetName(.Fields(0))
           If strCustomFieldName <> CStr(.Fields(1)) Then
-            If FieldConstantToFieldName(.Fields(0)) = CStr(.Fields(1)) Then GoTo next_item
+            If FieldConstantToFieldName(.Fields(0)) = CStr(.Fields(1)) Then GoTo next_item 'skip unnamed saved
             If Len(strCustomFieldName) > 0 Then
               strNewCustomFieldName = strCustomFieldName
             Else
@@ -469,9 +479,9 @@ skip_fields:
             'prompt user to accept changed name or remove from list
             If MsgBox("Saved export field '" & .Fields(1) & "' has been renamed to '" & strNewCustomFieldName & "'." & vbCrLf & vbCrLf & "Click Yes to accept the name change." & vbCrLf & "Click No to remove from export list.", vbExclamation + vbYesNo, "Confirm Export Field") = vbYes Then
               'update export list
-              myStatusSheet_frm.lboExport.List(lngItem, 1) = CustomFieldGetName(.Fields(0))
+              myStatusSheet_frm.lboExport.List(lngItem, 1) = strCustomFieldName
               'update the adtg
-              .Fields(1) = CustomFieldGetName(.Fields(0))
+              .Fields(1) = strCustomFieldName
               .Update
             Else
               blnRemove = True
@@ -485,7 +495,7 @@ remove_saved_ecf:
             .Delete adAffectCurrent
             .Update
             lngItem = lngItem - 1
-          End if
+          End If
 next_item:
           lngItem = lngItem + 1
           .MoveNext
@@ -511,6 +521,9 @@ next_item:
   strAppendStatusDate = cptGetSetting("StatusSheet", "chkAppendStatusDate")
   If strAppendStatusDate <> "" Then
     myStatusSheet_frm.chkAppendStatusDate = CBool(strAppendStatusDate)
+    If myStatusSheet_frm.chkAppendStatusDate Then
+      myStatusSheet_frm.txtDir = strDir & Format(dtStatus, "yyyy-mm-dd") & strDelimiter
+    End If
   Else
     myStatusSheet_frm.chkAppendStatusDate = False 'default
   End If
@@ -780,10 +793,10 @@ Sub cptCreateStatusSheet(ByRef myStatusSheet_frm As cptStatusSheet_frm)
         If MsgBox("Ignore Assignment roll-down error(s) and proceed anyway (not recommended)?", vbQuestion + vbYesNo, "Danger, Will Robinson!") = vbNo Then
           GoTo exit_here
         Else
-          Msgbox "...good choice.", vbInformation + vbOKOnly, ""
+          MsgBox "...good choice.", vbInformation + vbOKOnly, ""
         End If
-      End if
-      Dim strStartingGroup as String
+      End If
+      Dim strStartingGroup As String
       strStartingGroup = ActiveProject.CurrentGroup
       cptRefreshStatusTable myStatusSheet_frm, blnFilterOnly:=True
       If strStartingGroup <> "No Group" Then GroupApply strStartingGroup
@@ -1279,22 +1292,22 @@ Sub cptRefreshStatusTable(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optiona
 filter_only:
   'reset the filter
   Application.StatusBar = "Resetting the cptStatusSheet Filter..."
-  FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Actual Finish", test:="equals", Value:="NA", ShowInMenu:=False, ShowSummaryTasks:=True
+  FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Actual Finish", Test:="equals", Value:="NA", ShowInMenu:=False, ShowSummaryTasks:=True
   If myStatusSheet_frm.chkHide And IsDate(myStatusSheet_frm.txtHideCompleteBefore) Then
-    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", test:="is greater than or equal to", Value:=FormatDateTime(myStatusSheet_frm.txtHideCompleteBefore, vbShortDate), operation:="Or", ShowSummaryTasks:=True
+    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", Test:="is greater than or equal to", Value:=FormatDateTime(myStatusSheet_frm.txtHideCompleteBefore, vbShortDate), Operation:="Or", ShowSummaryTasks:=True
   End If
   If Edition = pjEditionProfessional Then
-    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True, Parenthesis:=True
+    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Active", Test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True, Parenthesis:=True
   End If
   With myStatusSheet_frm
     If .chkLookahead And .txtLookaheadDate.BorderColor <> 192 Then
       dtLookahead = CDate(.txtLookaheadDate) & " 5:00 PM"
-      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Start", test:="is less than or equal to", Value:=dtLookahead, operation:="And", Parenthesis:=False
+      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Start", Test:="is less than or equal to", Value:=dtLookahead, Operation:="And", Parenthesis:=False
     End If
     If .chkIgnoreLOE Then
       strEVT = Split(cptGetSetting("Integration", "EVT"), "|")(1)
       strLOE = cptGetSetting("Integration", "LOE")
-      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:=strEVT, test:="does not equal", Value:=strLOE, operation:="And", Parenthesis:=False
+      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:=strEVT, Test:="does not equal", Value:=strLOE, Operation:="And", Parenthesis:=False
     End If
   End With
   FilterApply "cptStatusSheet Filter"
@@ -1525,14 +1538,14 @@ try_again:
   strLOE = cptGetSetting("Integration", "LOE")
   
   'format the data rows
-  lngNameCol = oWorksheet.Rows(lngHeaderRow).Find("Task Name / Scope", lookat:=xlWhole).Column
-  lngASCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Start", lookat:=xlPart).Column
-  lngAFCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Finish", lookat:=xlPart).Column
-  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find("New EV%", lookat:=xlWhole).Column
-  lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find("EVT", lookat:=xlWhole).Column
+  lngNameCol = oWorksheet.Rows(lngHeaderRow).Find("Task Name / Scope", LookAt:=xlWhole).Column
+  lngASCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Start", LookAt:=xlPart).Column
+  lngAFCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Finish", LookAt:=xlPart).Column
+  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find("New EV%", LookAt:=xlWhole).Column
+  lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find("EVT", LookAt:=xlWhole).Column
   'todo: add Milestone EVT
-  lngETCCol = oWorksheet.Rows(lngHeaderRow).Find("New ETC", lookat:=xlWhole).Column
-  lngBLWCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
+  lngETCCol = oWorksheet.Rows(lngHeaderRow).Find("New ETC", LookAt:=xlWhole).Column
+  lngBLWCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", LookAt:=xlWhole).Column
   lngLastCol = oWorksheet.Cells(lngHeaderRow, 1).End(xlToRight).Column
   lngTasks = ActiveSelection.Tasks.Count
   lngTask = 0
@@ -1543,7 +1556,7 @@ try_again:
     'find the row of the current task
     On Error Resume Next
     lngRow = 0
-    lngRow = oWorksheet.Columns(1).Find(oTask.UniqueID, lookat:=xlWhole).Row
+    lngRow = oWorksheet.Columns(1).Find(oTask.UniqueID, LookAt:=xlWhole).Row
     If Err.Number = 91 Then
       MsgBox "UID " & oTask.UniqueID & " not found on worksheet!" & vbCrLf & vbCrLf & "You may need to re-run...", vbExclamation + vbOKOnly, "ERROR"
       GoTo next_task
@@ -1949,10 +1962,10 @@ next_task:
     strNS = oFirstCell.Address(False, True)
     lngNSCol = lngASCol  'new start
     lngNFCol = lngAFCol  'new finish
-    lngCSCol = oWorksheet.Cells(lngHeaderRow).Find(what:="Forecast Start", lookat:=xlWhole).Column
-    lngCFCol = oWorksheet.Cells(lngHeaderRow).Find(what:="Forecast Finish", lookat:=xlWhole).Column
-    lngCEVPCol = oWorksheet.Cells(lngHeaderRow).Find(what:="EV%", lookat:=xlWhole).Column
-    lngCETCCol = oWorksheet.Cells(lngHeaderRow).Find(what:="ETC", lookat:=xlWhole).Column
+    lngCSCol = oWorksheet.Cells(lngHeaderRow).Find(What:="Forecast Start", LookAt:=xlWhole).Column
+    lngCFCol = oWorksheet.Cells(lngHeaderRow).Find(What:="Forecast Finish", LookAt:=xlWhole).Column
+    lngCEVPCol = oWorksheet.Cells(lngHeaderRow).Find(What:="EV%", LookAt:=xlWhole).Column
+    lngCETCCol = oWorksheet.Cells(lngHeaderRow).Find(What:="ETC", LookAt:=xlWhole).Column
     strCS = oWorksheet.Cells(oFirstCell.Row, lngCSCol).Address(False, True)
     strCF = oWorksheet.Cells(oFirstCell.Row, lngCFCol).Address(False, True)
     strNF = oWorksheet.Cells(oFirstCell.Row, lngNFCol).Address(False, True)
@@ -1973,19 +1986,19 @@ next_task:
     
     'create map of ranges
     Set oDict = CreateObject("Scripting.Dictionary")
-    Set oDict.item("NS") = oNSRange
+    Set oDict.Item("NS") = oNSRange
     oNSRange.FormatConditions.Delete
-    Set oDict.item("NF") = oNFRange
+    Set oDict.Item("NF") = oNFRange
     oNFRange.FormatConditions.Delete
-    Set oDict.item("EVP") = oEVPRange
+    Set oDict.Item("EVP") = oEVPRange
     oEVPRange.FormatConditions.Delete
-    Set oDict.item("EVT") = oEVTRange
+    Set oDict.Item("EVT") = oEVTRange
     oEVTRange.FormatConditions.Delete
-    Set oDict.item("ETC") = oETCRange
+    Set oDict.Item("ETC") = oETCRange
     oETCRange.FormatConditions.Delete
     If blnAssignments And Not oAssignmentRange Is Nothing Then
       Set oAssignmentETCRange = oWorksheet.Application.Intersect(oAssignmentRange, oWorksheet.Columns(lngETCCol))
-      Set oDict.item("AssignmentETC") = oAssignmentETCRange
+      Set oDict.Item("AssignmentETC") = oAssignmentETCRange
       oAssignmentETCRange.FormatConditions.Delete
     End If
     
@@ -2187,7 +2200,7 @@ skip_working:
           Application.StatusBar = "Applying Conditional Formatting...(" & Format(lngFormatCondition / lngFormatConditions, "0%") & ")"
         End If
         myStatusSheet_frm.lblProgress.Width = (lngFormatCondition / lngFormatConditions) * myStatusSheet_frm.lblStatus.Width
-        Set oFormatRange = oDict.item(CStr(.Fields(0)))
+        Set oFormatRange = oDict.Item(CStr(.Fields(0)))
         oFormatRange.Select
         oFormatRange.FormatConditions.Add Type:=xlExpression, Formula1:=CStr(.Fields(1))
         oFormatRange.FormatConditions(oFormatRange.FormatConditions.Count).SetFirstPriority
@@ -2324,12 +2337,12 @@ Private Sub cptGetAssignmentData(ByRef myStatusSheet_frm As cptStatusSheet_frm, 
   lngLastCol = oWorksheet.Cells(lngHeaderRow, 1).End(xlToRight).Column
   lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row
   'get column for FS,FF,NS,NF,EVT,EVP
-  lngFSCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Forecast Start", lookat:=xlWhole).Column
-  lngFFCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Forecast Finish", lookat:=xlWhole).Column
-  lngNSCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Actual Start", lookat:=xlPart).Column
-  lngNFCol = oWorksheet.Rows(lngHeaderRow).Find(what:="Actual Finish", lookat:=xlPart).Column
+  lngFSCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Forecast Start", LookAt:=xlWhole).Column
+  lngFFCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Forecast Finish", LookAt:=xlWhole).Column
+  lngNSCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Actual Start", LookAt:=xlPart).Column
+  lngNFCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Actual Finish", LookAt:=xlPart).Column
   'todo: lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find(what:="EVT", lookat:=xlWhole).Column - Milestone EVT?
-  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find(what:="New EV%", lookat:=xlWhole).Column
+  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find(What:="New EV%", LookAt:=xlWhole).Column
   
   lngItem = 0
   For Each oAssignment In oTask.Assignments
@@ -2352,12 +2365,12 @@ Private Sub cptGetAssignmentData(ByRef myStatusSheet_frm As cptStatusSheet_frm, 
     vAssignment(1, 1) = oAssignment.UniqueID 'import assumes this is oAssignment.UniqueID
     vAssignment(1, lngNameCol) = String(lngIndent + 3, " ") & oAssignment.ResourceName
     If oAssignment.ResourceType = pjWork Then
-      lngBaselineWorkCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
+      lngBaselineWorkCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", LookAt:=xlWhole).Column
       vAssignment(1, lngBaselineWorkCol) = oAssignment.BaselineWork / 60
       vAssignment(1, lngRemainingWorkCol) = oAssignment.RemainingWork / 60
       vAssignment(1, lngRemainingWorkCol + 1) = oAssignment.RemainingWork / 60
     Else
-      lngBaselineCostCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
+      lngBaselineCostCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", LookAt:=xlWhole).Column
       vAssignment(1, lngBaselineCostCol) = oAssignment.BaselineCost
       vAssignment(1, lngRemainingWorkCol) = oAssignment.RemainingCost
       vAssignment(1, lngRemainingWorkCol + 1) = oAssignment.RemainingCost
@@ -2773,6 +2786,8 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
+
+  Dim strBaseDir As String
   Dim strFileName As String
   'longs
   Dim lngItem As Long
@@ -2793,7 +2808,15 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
     If Not IsNull(.cboCreate) Then
       cptSaveSetting "StatusSheet", "cboCreate", .cboCreate
     End If
-    cptSaveSetting "StatusSheet", "txtDir", .txtDir
+    If .chkAppendStatusDate Then
+      strBaseDir = .txtDir
+      strDelimiter = cptRegEx(strBaseDir, "\\|\/")
+      strBaseDir = cptRxReplace(.txtDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]", "")
+      strBaseDir = strBaseDir & "[yyyy-mm-dd]" & strDelimiter
+      cptSaveSetting "StatusSheet", "txtDir", strBaseDir
+    Else
+      cptSaveSetting "StatusSheet", "txtDir", .txtDir
+    End If
     cptSaveSetting "StatusSheet", "chkAppendStatusDate", IIf(.chkAppendStatusDate, 1, 0)
     If .cboEach.Value <> "" Then
       cptSaveSetting "StatusSheet", "cboEach", .cboEach.Value
@@ -3268,11 +3291,11 @@ next_task:
     oExcel.ActiveWindow.SplitRow = 1
     oExcel.ActiveWindow.SplitColumn = 0
     oExcel.ActiveWindow.FreezePanes = True
-    lngWPMCol = oWorksheet.Rows(1).Find("WPM", lookat:=xlWhole).Column
+    lngWPMCol = oWorksheet.Rows(1).Find("WPM", LookAt:=xlWhole).Column
     If Not blnHasWPM Then
       oWorksheet.Columns(lngWPMCol).Delete
     End If
-    lngEVPCol = oWorksheet.Rows(1).Find("PercentComplete", lookat:=xlWhole).Column
+    lngEVPCol = oWorksheet.Rows(1).Find("PercentComplete", LookAt:=xlWhole).Column
     oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).AutoFilter Field:=lngEVPCol, Criteria1:="100"
     oRecordset.Close
     oWorkbook.Sheets("COMPLETED WPs").Activate
@@ -3508,8 +3531,8 @@ Sub cptAddConditionalFormattingLegend(ByRef oWorkbook As Excel.Workbook)
   oWorksheet.Name = "Conditional Formatting"
   vArray = Split(cptGetBreadcrumbs("cptStatusSheet_bas", "cptCopyData", "format-conditions"), vbCrLf)
   oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].Offset(UBound(vArray) - 1)) = oWorkbook.Application.WorksheetFunction.Transpose(vArray)
-  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace ":", ";", lookat:=xlPart
-  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace " -> ", ";", lookat:=xlPart
+  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace ":", ";", LookAt:=xlPart
+  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace " -> ", ";", LookAt:=xlPart
   oWorksheet.[C1:E1] = Split("COLUMN,CONDITION,FORMAT", ",")
   oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Cut oWorksheet.[C2]
   oWorksheet.Range(oWorksheet.[C2], oWorksheet.[C2].End(xlDown)).TextToColumns DataType:=xlDelimited, SemiColon:=True

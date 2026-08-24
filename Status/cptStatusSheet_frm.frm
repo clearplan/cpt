@@ -278,10 +278,17 @@ Private Sub chkAllItems_Click()
 End Sub
 
 Private Sub chkAppendStatusDate_Click()
+  Dim strDelimiter As String
+  Dim strDir As String
+  strDir = Me.txtDir
+  strDelimiter = cptRegEx(strDir, "\\|\/")
   If Me.chkAppendStatusDate Then
-    Me.lblDirSample.Caption = Me.txtDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & "\"
+    strDir = Replace(strDir, "[yyyy-mm-dd]" & strDelimiter, "")
+    Me.lblDirSample.Caption = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strDelimiter
+    Me.txtDir = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strDelimiter
   Else
-    Me.lblDirSample.Caption = Me.txtDir
+    Me.lblDirSample.Caption = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
+    Me.txtDir.Value = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
   End If
 End Sub
 
@@ -686,6 +693,7 @@ End Sub
 Private Sub cmdRun_Click()
   'objects
   'strings
+  Dim strDelimiter As String
   Dim strTempDir As String
   Dim strMsg As String
   'longs
@@ -838,12 +846,16 @@ Private Sub cmdRun_Click()
     End If
   End If
   'ensure directory exists
+  strDelimiter = cptRegEx(Me.txtDir, "\\|\/")
   If Dir(Me.txtDir, vbDirectory) = vbNullString Then
-    For Each vDir In Split(Me.txtDir, "\")
-      strTempDir = strTempDir & "\" & vDir
-      If vDir = "C:" Then GoTo next_dir
+    For Each vDir In Split(Me.txtDir, strDelimiter)
+      If Len(strTempDir) = 0 Then
+        strTempDir = vDir & strDelimiter
+      Else
+        strTempDir = strTempDir & strDelimiter & vDir
+      End If
       If Dir(strTempDir, vbDirectory) = vbNullString Then
-        vResponse = MsgBox("The directory at:" & vbCrLf & vbCrLf & strTempDir & vbCrLf & vbCrLf & "...does not exit. Create it now?", vbExclamation + vbYesNoCancel)
+        vResponse = MsgBox("The directory at:" & vbCrLf & vbCrLf & strTempDir & vbCrLf & vbCrLf & "...does not exist. Create it now?", vbExclamation + vbYesNoCancel)
         If vResponse = vbYes Then
           MkDir strTempDir
         Else
@@ -1177,7 +1189,6 @@ Private Sub txtDir_Change()
   If Right(strDir, 1) <> "\" Then
     strDir = strDir & "\"
   End If
-  'todo: apply chkAppendStatusDate
   Me.lblDirSample.Caption = strDir
   
   If Dir(strDir, vbDirectory) = vbNullString Then
@@ -1202,6 +1213,7 @@ Private Sub txtDir_DropButtonClick()
   Dim oExcel As Excel.Application
   'strings
   Dim strValidPath As String
+  Dim strDelimiter As String
   'longs
   'integers
   'doubles
@@ -1226,7 +1238,8 @@ Private Sub txtDir_DropButtonClick()
       If Not CBool(Split(strValidPath, ":")(0)) Then
         MsgBox Replace(strValidPath, "0:", "Reason: "), vbCritical + vbOKOnly, "Invalid Path"
       Else
-        Me.txtDir = .SelectedItems(1) & "\" & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & "\", "")
+        strDelimiter = cptRegEx(.SelectedItems(1), "\\|\/")
+        Me.txtDir = .SelectedItems(1) & strDelimiter & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & strDelimiter, "")
       End If
     End If
   End With
