@@ -49,7 +49,7 @@ Sub cptShowStatusSheet_frm()
   Dim strAllowAssignmentNotes As String
   Dim strNotesColTitle As String
   Dim strFileNamingConvention As String
-  Dim strDelimiter As String
+  Dim strPathSeparator As String
   Dim strDir As String
   Dim strAllItems As String
   Dim strAppendStatusDate As String
@@ -302,11 +302,11 @@ skip_fields:
     End If
     strDir = cptGetSetting("StatusSheet", "txtDir")
     If strDir <> "" Then
-      'get delimiter
-      strDelimiter = cptRegEx(strDir, "\\|\/")
+      'get path separator
+      strPathSeparator = cptRxMatch(strDir, "\\|\/")
       'remove status date
-      strDir = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
-      strDir = Replace(strDir, "[yyyy-mm-dd]" & strDelimiter, "")
+      strDir = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strPathSeparator & "]?", "")
+      strDir = Replace(strDir, "[yyyy-mm-dd]" & strPathSeparator, "")
       .txtDir = strDir
     End If
     strFileNamingConvention = cptGetSetting("StatusSheet", "txtFileName")
@@ -523,7 +523,7 @@ next_item:
   If strAppendStatusDate <> "" Then
     myStatusSheet_frm.chkAppendStatusDate = CBool(strAppendStatusDate)
     If myStatusSheet_frm.chkAppendStatusDate Then
-      myStatusSheet_frm.txtDir = strDir & Format(dtStatus, "yyyy-mm-dd") & strDelimiter
+      myStatusSheet_frm.txtDir = strDir & Format(dtStatus, "yyyy-mm-dd") & strPathSeparator
     End If
   Else
     myStatusSheet_frm.chkAppendStatusDate = False 'default
@@ -2787,7 +2787,7 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
-  Dim strDelimiter As String
+  Dim strPathSeparator As String
   Dim strBaseDir As String
   Dim strFileName As String
   'longs
@@ -2811,9 +2811,9 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
     End If
     If .chkAppendStatusDate Then
       strBaseDir = .txtDir
-      strDelimiter = cptRegEx(strBaseDir, "\\|\/")
-      strBaseDir = cptRxReplace(.txtDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]", "")
-      strBaseDir = strBaseDir & "[yyyy-mm-dd]" & strDelimiter
+      strPathSeparator = cptRxMatch(strBaseDir, "\\|\/")
+      strBaseDir = cptRxReplace(.txtDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strPathSeparator & "]", "")
+      strBaseDir = strBaseDir & "[yyyy-mm-dd]" & strPathSeparator
       cptSaveSetting "StatusSheet", "txtDir", strBaseDir
     Else
       cptSaveSetting "StatusSheet", "txtDir", .txtDir
