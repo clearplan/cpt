@@ -73,7 +73,7 @@
 	<Module>
 		<Name>cptBrowseFolder_bas</Name>
 		<FileName>cptBrowseFolder_bas.bas</FileName>
-		<Version>v1.0.2</Version>
+		<Version>v2.0.0</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -409,28 +409,28 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.7.5</Version>
+		<Version>v1.8.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.7.5</Version>
+		<Version>v1.8.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_bas</Name>
 		<FileName>cptStatusSheetImport_bas.bas</FileName>
-		<Version>v1.4.2</Version>
+		<Version>v1.5.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_frm</Name>
 		<FileName>cptStatusSheetImport_frm.frm</FileName>
-		<Version>v1.4.2</Version>
+		<Version>v1.5.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>

@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.7.5</cpt_version>
+'<cpt_version>v1.8.0</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -1293,22 +1293,22 @@ Sub cptRefreshStatusTable(ByRef myStatusSheet_frm As cptStatusSheet_frm, Optiona
 filter_only:
   'reset the filter
   Application.StatusBar = "Resetting the cptStatusSheet Filter..."
-  FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Actual Finish", Test:="equals", Value:="NA", ShowInMenu:=False, ShowSummaryTasks:=True
+  FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Actual Finish", test:="equals", Value:="NA", ShowInMenu:=False, ShowSummaryTasks:=True
   If myStatusSheet_frm.chkHide And IsDate(myStatusSheet_frm.txtHideCompleteBefore) Then
-    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", Test:="is greater than or equal to", Value:=FormatDateTime(myStatusSheet_frm.txtHideCompleteBefore, vbShortDate), Operation:="Or", ShowSummaryTasks:=True
+    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Actual Finish", test:="is greater than or equal to", Value:=FormatDateTime(myStatusSheet_frm.txtHideCompleteBefore, vbShortDate), Operation:="Or", ShowSummaryTasks:=True
   End If
   If Edition = pjEditionProfessional Then
-    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Active", Test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True, Parenthesis:=True
+    FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=False, ShowSummaryTasks:=True, Parenthesis:=True
   End If
   With myStatusSheet_frm
     If .chkLookahead And .txtLookaheadDate.BorderColor <> 192 Then
       dtLookahead = CDate(.txtLookaheadDate) & " 5:00 PM"
-      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Start", Test:="is less than or equal to", Value:=dtLookahead, Operation:="And", Parenthesis:=False
+      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:="Start", test:="is less than or equal to", Value:=dtLookahead, Operation:="And", Parenthesis:=False
     End If
     If .chkIgnoreLOE Then
       strEVT = Split(cptGetSetting("Integration", "EVT"), "|")(1)
       strLOE = cptGetSetting("Integration", "LOE")
-      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:=strEVT, Test:="does not equal", Value:=strLOE, Operation:="And", Parenthesis:=False
+      FilterEdit Name:="cptStatusSheet Filter", TaskFilter:=True, FieldName:="", NewFieldName:=strEVT, test:="does not equal", Value:=strLOE, Operation:="And", Parenthesis:=False
     End If
   End With
   FilterApply "cptStatusSheet Filter"
@@ -1539,14 +1539,14 @@ try_again:
   strLOE = cptGetSetting("Integration", "LOE")
   
   'format the data rows
-  lngNameCol = oWorksheet.Rows(lngHeaderRow).Find("Task Name / Scope", LookAt:=xlWhole).Column
-  lngASCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Start", LookAt:=xlPart).Column
-  lngAFCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Finish", LookAt:=xlPart).Column
-  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find("New EV%", LookAt:=xlWhole).Column
-  lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find("EVT", LookAt:=xlWhole).Column
+  lngNameCol = oWorksheet.Rows(lngHeaderRow).Find("Task Name / Scope", lookat:=xlWhole).Column
+  lngASCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Start", lookat:=xlPart).Column
+  lngAFCol = oWorksheet.Rows(lngHeaderRow).Find("Actual Finish", lookat:=xlPart).Column
+  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find("New EV%", lookat:=xlWhole).Column
+  lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find("EVT", lookat:=xlWhole).Column
   'todo: add Milestone EVT
-  lngETCCol = oWorksheet.Rows(lngHeaderRow).Find("New ETC", LookAt:=xlWhole).Column
-  lngBLWCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", LookAt:=xlWhole).Column
+  lngETCCol = oWorksheet.Rows(lngHeaderRow).Find("New ETC", lookat:=xlWhole).Column
+  lngBLWCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
   lngLastCol = oWorksheet.Cells(lngHeaderRow, 1).End(xlToRight).Column
   lngTasks = ActiveSelection.Tasks.Count
   lngTask = 0
@@ -1557,7 +1557,7 @@ try_again:
     'find the row of the current task
     On Error Resume Next
     lngRow = 0
-    lngRow = oWorksheet.Columns(1).Find(oTask.UniqueID, LookAt:=xlWhole).Row
+    lngRow = oWorksheet.Columns(1).Find(oTask.UniqueID, lookat:=xlWhole).Row
     If Err.Number = 91 Then
       MsgBox "UID " & oTask.UniqueID & " not found on worksheet!" & vbCrLf & vbCrLf & "You may need to re-run...", vbExclamation + vbOKOnly, "ERROR"
       GoTo next_task
@@ -1963,10 +1963,10 @@ next_task:
     strNS = oFirstCell.Address(False, True)
     lngNSCol = lngASCol  'new start
     lngNFCol = lngAFCol  'new finish
-    lngCSCol = oWorksheet.Cells(lngHeaderRow).Find(What:="Forecast Start", LookAt:=xlWhole).Column
-    lngCFCol = oWorksheet.Cells(lngHeaderRow).Find(What:="Forecast Finish", LookAt:=xlWhole).Column
-    lngCEVPCol = oWorksheet.Cells(lngHeaderRow).Find(What:="EV%", LookAt:=xlWhole).Column
-    lngCETCCol = oWorksheet.Cells(lngHeaderRow).Find(What:="ETC", LookAt:=xlWhole).Column
+    lngCSCol = oWorksheet.Cells(lngHeaderRow).Find(What:="Forecast Start", lookat:=xlWhole).Column
+    lngCFCol = oWorksheet.Cells(lngHeaderRow).Find(What:="Forecast Finish", lookat:=xlWhole).Column
+    lngCEVPCol = oWorksheet.Cells(lngHeaderRow).Find(What:="EV%", lookat:=xlWhole).Column
+    lngCETCCol = oWorksheet.Cells(lngHeaderRow).Find(What:="ETC", lookat:=xlWhole).Column
     strCS = oWorksheet.Cells(oFirstCell.Row, lngCSCol).Address(False, True)
     strCF = oWorksheet.Cells(oFirstCell.Row, lngCFCol).Address(False, True)
     strNF = oWorksheet.Cells(oFirstCell.Row, lngNFCol).Address(False, True)
@@ -2338,12 +2338,12 @@ Private Sub cptGetAssignmentData(ByRef myStatusSheet_frm As cptStatusSheet_frm, 
   lngLastCol = oWorksheet.Cells(lngHeaderRow, 1).End(xlToRight).Column
   lngLastRow = oWorksheet.Cells(1048576, 1).End(xlUp).Row
   'get column for FS,FF,NS,NF,EVT,EVP
-  lngFSCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Forecast Start", LookAt:=xlWhole).Column
-  lngFFCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Forecast Finish", LookAt:=xlWhole).Column
-  lngNSCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Actual Start", LookAt:=xlPart).Column
-  lngNFCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Actual Finish", LookAt:=xlPart).Column
+  lngFSCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Forecast Start", lookat:=xlWhole).Column
+  lngFFCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Forecast Finish", lookat:=xlWhole).Column
+  lngNSCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Actual Start", lookat:=xlPart).Column
+  lngNFCol = oWorksheet.Rows(lngHeaderRow).Find(What:="Actual Finish", lookat:=xlPart).Column
   'todo: lngEVTCol = oWorksheet.Rows(lngHeaderRow).Find(what:="EVT", lookat:=xlWhole).Column - Milestone EVT?
-  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find(What:="New EV%", LookAt:=xlWhole).Column
+  lngEVPCol = oWorksheet.Rows(lngHeaderRow).Find(What:="New EV%", lookat:=xlWhole).Column
   
   lngItem = 0
   For Each oAssignment In oTask.Assignments
@@ -2366,12 +2366,12 @@ Private Sub cptGetAssignmentData(ByRef myStatusSheet_frm As cptStatusSheet_frm, 
     vAssignment(1, 1) = oAssignment.UniqueID 'import assumes this is oAssignment.UniqueID
     vAssignment(1, lngNameCol) = String(lngIndent + 3, " ") & oAssignment.ResourceName
     If oAssignment.ResourceType = pjWork Then
-      lngBaselineWorkCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", LookAt:=xlWhole).Column
+      lngBaselineWorkCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
       vAssignment(1, lngBaselineWorkCol) = oAssignment.BaselineWork / 60
       vAssignment(1, lngRemainingWorkCol) = oAssignment.RemainingWork / 60
       vAssignment(1, lngRemainingWorkCol + 1) = oAssignment.RemainingWork / 60
     Else
-      lngBaselineCostCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", LookAt:=xlWhole).Column
+      lngBaselineCostCol = oWorksheet.Rows(lngHeaderRow).Find("Baseline Work", lookat:=xlWhole).Column
       vAssignment(1, lngBaselineCostCol) = oAssignment.BaselineCost
       vAssignment(1, lngRemainingWorkCol) = oAssignment.RemainingCost
       vAssignment(1, lngRemainingWorkCol + 1) = oAssignment.RemainingCost
@@ -3292,11 +3292,11 @@ next_task:
     oExcel.ActiveWindow.SplitRow = 1
     oExcel.ActiveWindow.SplitColumn = 0
     oExcel.ActiveWindow.FreezePanes = True
-    lngWPMCol = oWorksheet.Rows(1).Find("WPM", LookAt:=xlWhole).Column
+    lngWPMCol = oWorksheet.Rows(1).Find("WPM", lookat:=xlWhole).Column
     If Not blnHasWPM Then
       oWorksheet.Columns(lngWPMCol).Delete
     End If
-    lngEVPCol = oWorksheet.Rows(1).Find("PercentComplete", LookAt:=xlWhole).Column
+    lngEVPCol = oWorksheet.Rows(1).Find("PercentComplete", lookat:=xlWhole).Column
     oWorksheet.Range(oWorksheet.[A1].End(xlToRight), oWorksheet.[A1].End(xlDown)).AutoFilter Field:=lngEVPCol, Criteria1:="100"
     oRecordset.Close
     oWorkbook.Sheets("COMPLETED WPs").Activate
@@ -3532,8 +3532,8 @@ Sub cptAddConditionalFormattingLegend(ByRef oWorkbook As Excel.Workbook)
   oWorksheet.Name = "Conditional Formatting"
   vArray = Split(cptGetBreadcrumbs(THIS_MODULE, "cptCopyData", "format-conditions"), vbCrLf)
   oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].Offset(UBound(vArray) - 1)) = oWorkbook.Application.WorksheetFunction.Transpose(vArray)
-  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace ":", ";", LookAt:=xlPart
-  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace " -> ", ";", LookAt:=xlPart
+  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace ":", ";", lookat:=xlPart
+  oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Replace " -> ", ";", lookat:=xlPart
   oWorksheet.[C1:E1] = Split("COLUMN,CONDITION,FORMAT", ",")
   oWorksheet.Range(oWorksheet.[A1048576].End(xlUp), oWorksheet.[A1048576].End(xlUp).End(xlUp)).Cut oWorksheet.[C2]
   oWorksheet.Range(oWorksheet.[C2], oWorksheet.[C2].End(xlDown)).TextToColumns DataType:=xlDelimited, SemiColon:=True
