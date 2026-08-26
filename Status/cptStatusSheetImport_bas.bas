@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.4.2</cpt_version>
+'<cpt_version>v1.5.0</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -20,7 +20,7 @@ Sub cptShowStatusSheetImport_frm()
   Dim strFS As String
   Dim strAF As String
   Dim strAS As String
-  Dim strGUID As String
+  Dim strGuid As String
   Dim strSettings As String
   Dim strCustomFieldName As String
   'longs
@@ -303,7 +303,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim strImportLog As String
   Dim strAppendTo As String
   Dim strSettings As String
-  Dim strGUID As String
+  Dim strGuid As String
   Dim strUserView As String
   'longs
   Dim lngUID As Long
@@ -438,7 +438,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Print #lngDeconflictionFile, "Format=CSVDelimited"
   Print #lngDeconflictionFile, "ColNameHeader=True"
   Print #lngDeconflictionFile, "Col1=FILE Text Width 255"
-  Print #lngDeconflictionFile, "Col2=TASK_UID Integer"
+  Print #lngDeconflictionFile, "Col2=TASK_UID Long"
   Print #lngDeconflictionFile, "Col3=FIELD Text Width 100"
   Print #lngDeconflictionFile, "Col4=RESOURCE_NAME Text Width 150"
   Print #lngDeconflictionFile, "Col5=WAS Text Width 50"

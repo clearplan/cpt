@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.7.5</cpt_version>
+'<cpt_version>v1.8.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptStatusSheet_frm"
 Private Const lngForeColorValid As Long = -2147483630
@@ -1211,9 +1211,9 @@ End Sub
 Private Sub txtDir_DropButtonClick()
   'objects
   Dim oShell As Object
-  Dim oFileDialog As Object 'FileDialog
-  Dim oExcel As Excel.Application
   'strings
+  Dim strDefaultPath As String
+  Dim strBaseDirectory As String
   Dim strValidPath As String
   Dim strPathSeparator As String
   'longs
@@ -1225,32 +1225,25 @@ Private Sub txtDir_DropButtonClick()
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
-  Set oExcel = CreateObject("Excel.Application")
-  Set oFileDialog = oExcel.FileDialog(msoFileDialogFolderPicker)
-  With oFileDialog
-    .AllowMultiSelect = False
-    If Left(ActiveProject.Path, 2) = "<>" Or Left(ActiveProject.Path, 4) = "http" Then 'server project: default to Desktop
-      Set oShell = CreateObject("WScript.Shell")
-      .InitialFileName = oShell.SpecialFolders("Desktop")
-    Else 'not a server project
-      .InitialFileName = ActiveProject.Path
-    End If
-    If .Show Then
-      strValidPath = cptValidPath(.SelectedItems(1))
-      If Not CBool(Split(strValidPath, ":")(0)) Then
-        MsgBox Replace(strValidPath, "0:", "Reason: "), vbCritical + vbOKOnly, "Invalid Path"
-      Else
-        strPathSeparator = cptRxMatch(.SelectedItems(1), "\\|\/")
-        Me.txtDir = .SelectedItems(1) & strPathSeparator & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & strPathSeparator, "")
-      End If
-    End If
-  End With
+  If Left(ActiveProject.Path, 2) = "<>" Or Left(ActiveProject.Path, 4) = "http" Then 'server project: default to Desktop
+    Set oShell = CreateObject("WScript.Shell")
+    strDefaultPath = oShell.SpecialFolders("Desktop")
+  Else 'not a server project
+    strDefaultPath = ActiveProject.Path
+  End If
+  
+  strBaseDirectory = cptGetFolder("Select a directory:", strDefaultPath)
+  strValidPath = cptValidPath(strBaseDirectory)
+  If Not CBool(Split(strValidPath, ":")(0)) Then
+    MsgBox Replace(strValidPath, "0:", "Reason: "), vbCritical + vbOKOnly, "Invalid Path"
+  Else
+    strPathSeparator = cptRxMatch(strBaseDirectory, "\\|\/")
+    Me.txtDir = strBaseDirectory & strPathSeparator & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & strPathSeparator, "")
+  End If
   
 exit_here:
   On Error Resume Next
   Set oShell = Nothing
-  Set oFileDialog = Nothing
-  Set oExcel = Nothing
   
   Exit Sub
 err_here:
