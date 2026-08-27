@@ -76,6 +76,18 @@ Private Function checkDuplicate(ByVal cBoxTest As MSForms.ComboBox) As Boolean '
 
 End Function
 
+Private Function The_Aron_Double_Check(ByVal fieldName As String) As Boolean
+
+    If cptCustomFieldExists(fieldName) = 0 Then
+        The_Aron_Double_Check = False
+        Exit Function
+    Else
+        The_Aron_Double_Check = True
+        Exit Function
+    End If
+
+End Function
+
 Private Sub RunBtn_Click()
         
     If PathField_Combobox.Text = "" Or GroupField_Combobox.Text = "" Then
@@ -88,10 +100,27 @@ Private Sub RunBtn_Click()
         Exit Sub
     End If
     
-    cptStoreCustomFieldName "Driving Paths", PathField_Combobox.Text, FieldNameToFieldConstant(PathField_Combobox.Text)
-    cptStoreCustomFieldName "Driving Path Group", GroupField_Combobox.Text, FieldNameToFieldConstant(GroupField_Combobox.Text)
+    If The_Aron_Double_Check(PathField_Combobox.Text) = True Then
+        cptStoreCustomFieldName "Driving Paths", PathField_Combobox.Text, FieldNameToFieldConstant(PathField_Combobox.Text)
+    Else
+        MsgBox "The selected Driving Paths field no longer exists." & vbCr & vbCr & "Please close and reopen the Critical Path tool."
+        Exit Sub
+    End If
+    
+    If The_Aron_Double_Check(GroupField_Combobox.Text) = True Then
+        cptStoreCustomFieldName "Driving Path Group", GroupField_Combobox.Text, FieldNameToFieldConstant(GroupField_Combobox.Text)
+    Else
+        MsgBox "The selected Driving Path Group field no longer exists." & vbCr & vbCr & "Please close and reopen the Critical Path tool."
+        Exit Sub
+    End If
+    
     If SubPath_Checkbox Then
+        If The_Aron_Double_Check(SubPath_Combobox.Text) = True Then
         cptStoreCustomFieldName "SubPath Group", SubPath_Combobox.Text, FieldNameToFieldConstant(SubPath_Combobox.Text)
+        Else
+            MsgBox "The selected SubPath Group field no longer exists." & vbCr & vbCr & "Please close and reopen the Critical Path tool."
+            Exit Sub
+        End If
     End If
     
     'Store Field Names
