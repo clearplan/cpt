@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.5.1</cpt_version>
+'<cpt_version>v3.5.2</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -1226,41 +1226,44 @@ next_task:
     
     Print #1, vbCrLf & "Total Task Assignment Forecast Errors Found: " & ErrorCounter
 
-    MsgBox "Data Check Report saved to " & destFolder
-
-    Shell "explorer.exe" & " " & destFolder, vbNormalFocus
-
     Close #1
+
+    cptBeautifyDataCheck ACTfilename
+
+    MsgBox "Data Check Report saved to: " & vbCrLf & destFolder & "\" & Replace(ACTfilename, "csv", "xlsx"), vbInformation + vbOKOnly, "Data Check"
 
 End Sub
 
 Private Sub MPP_Export(ByVal curProj As Project)
+  Dim subProj As SubProject
+  Dim subProjs As Subprojects
+  Dim strPathSeparator As String
+  Dim strFileName As String
 
-    Dim subProj As SubProject
-    Dim subProjs As Subprojects
+  destFolder = SetDirectory(curProj.ProjectSummaryTask.Project)
+  strPathSeparator = cptRxMatch(destFolder, "\\|\/")
 
-    destFolder = SetDirectory(curProj.ProjectSummaryTask.Project)
+  If curProj.Subprojects.Count > 0 Then
+    ActiveWindow.TopPane.Activate
+    FilterClear
+    GroupClear
+    OptionsViewEx DisplaySummaryTasks:=True
+    SelectAll
+    OutlineShowAllTasks
 
-    If curProj.Subprojects.Count > 0 Then
-
-        Set subProjs = curProj.Subprojects
-
-        For Each subProj In subProjs
-
-            subProj.SourceProject.SaveAs Name:=destFolder & "\" & subProj.SourceProject.Name
-            curProj.Subprojects(subProj.Index).SourceProject = destFolder & "\" & subProj.SourceProject.Name
-
-        Next subProj
-
-        curProj.SaveAs Name:=destFolder & "\" & curProj.ProjectSummaryTask.Project
-
-    Else
-
-        curProj.SaveAs Name:=destFolder & "\" & curProj.ProjectSummaryTask.Project
-
-    End If
+    Set subProjs = curProj.Subprojects
+    For Each subProj In subProjs
+      strFileName = cptRxMatch(subProj.SourceProject.Name, "[^/\\<>]+$")
+      subProj.SourceProject.SaveAs Name:=destFolder & strPathSeparator & strFileName
+      curProj.Subprojects(subProj.Index).SourceProject = destFolder & strPathSeparator & strFileName
+    Next subProj
+    curProj.SaveAs Name:=destFolder & strPathSeparator & curProj.ProjectSummaryTask.Project
+  Else
+    curProj.SaveAs Name:=destFolder & strPathSeparator & curProj.ProjectSummaryTask.Project
+  End If
 
 End Sub
+
 Private Sub XML_Export(ByVal curProj As Project)
 
     Dim subProj As SubProject
@@ -1436,7 +1439,7 @@ Private Sub BCWP_Export(ByVal curProj As Project)
     
             GoTo Export_Project_Data
     
-Next_Subproject:
+next_subproject:
     
             FileClose pjDoNotSave
     
@@ -1807,7 +1810,7 @@ BCWP_WP_Match_B:
 
     Next t
     
-    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo next_subproject
     
     If ActFound = True Then
         For i = 1 To UBound(ACTarray)
@@ -1881,7 +1884,7 @@ Private Sub ETC_Export(ByVal curProj As Project)
     
             GoTo Export_Project_Data
     
-Next_Subproject:
+next_subproject:
     
             FileClose pjDoNotSave
     
@@ -2049,7 +2052,7 @@ ETC_WP_Match_B:
 
     Next t
     
-    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo next_subproject
     
     If ActFound = True Then
         For i = 1 To UBound(ACTarray)
@@ -2128,7 +2131,7 @@ Private Sub BCWS_Export(ByVal curProj As Project)
     
             GoTo Export_Project_Data
     
-Next_Subproject:
+next_subproject:
     
             FileClose pjDoNotSave
     
@@ -2266,7 +2269,7 @@ next_task:
 
     Next t
 
-    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo next_subproject
     
     If ActFound = True Then
         For i = 1 To UBound(ACTarray)
@@ -2346,7 +2349,7 @@ Private Sub WhatIf_Export(ByVal curProj As Project) 'v3.2
     
             GoTo Export_Project_Data
     
-Next_Subproject:
+next_subproject:
     
             FileClose pjDoNotSave
     
@@ -2549,7 +2552,7 @@ next_task:
 
     Next t
     
-    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
+    If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo next_subproject
     
     If ActFound = True Then
         For i = 1 To UBound(ACTarray)
@@ -3938,3 +3941,127 @@ Optional ByVal ProjID As String, Optional ByVal whatifRevision As Boolean = Fals
     createMilestoneStr = tempString
 
 End Function
+
+Sub cptBeautifyDataCheck(strFileName As String)
+  'objects
+  Dim oExcel As Excel.Application
+  Dim c As Excel.Range
+  Dim oWorkbook As Excel.Workbook
+  Dim oNewSheet As Excel.Worksheet
+  Dim oWorksheet As Excel.Worksheet
+  Dim oListObject As Excel.ListObject
+  Dim oDataChecks As Scripting.Dictionary
+  'longs
+  Dim lngItem As Long
+  Dim lngFirstRow As Long
+  Dim lngLastRow As Long
+  Dim lngLastCol As Long
+  'variants
+  Dim vDataCheck As Variant
+  Dim vArray() As Variant
+  'strings
+  Dim str As String
+  Dim strFirstRow As String
+
+  On Error Resume Next
+  Set oExcel = GetObject(, "Excel.Application")
+  If oExcel Is Nothing Then
+    Set oExcel = CreateObject("Excel.Application")
+  End If
+  oExcel.Visible = True
+  Set oWorkbook = oExcel.Workbooks.Open(strFileName)
+  oExcel.ScreenUpdating = False
+  oExcel.Calculation = xlCalculationManual
+
+  strFileName = Left(strFileName, Len(strFileName) - 3) & "xlsx"
+  If Dir(strFileName) <> vbNullString Then Kill strFileName
+  oWorkbook.SaveAs strFileName, FileFormat:=51
+  Set oWorksheet = oWorkbook.Worksheets(1)
+  Set oDataChecks = CreateObject("Scripting.Dictionary")
+
+  For Each vDataCheck In Split("Tasks Missing Data,CAM Errors,Work Package Errors,Task Assignment Baseline Discrepancies,Task Assignment Forecast Discrepancies", ",")
+    Set c = oWorksheet.Columns(1).Find(vDataCheck, lookat:=xlPart)
+    oWorksheet.Names.Add CStr(Replace(vDataCheck, " ", "")), c
+    oDataChecks.Add CStr(Replace(vDataCheck, " ", "")), c.Row
+  Next vDataCheck
+
+  For lngItem = oDataChecks.Count - 1 To 0 Step -1
+    Set oNewSheet = oWorkbook.Worksheets.Add '(After:=ActiveWorkbook.Worksheets(ActiveWorkbook.Worksheets.Count))
+    oNewSheet.Name = "CHECK_" & lngItem + 1
+    lngFirstRow = oDataChecks.Items(lngItem)
+    lngLastRow = oWorksheet.[A1048576].End(xlUp).Row
+    vArray = oWorksheet.Range(oWorksheet.Cells(lngFirstRow, 1), oWorksheet.Cells(lngLastRow, 100))
+    oNewSheet.Range(oNewSheet.Cells(1, 1), oNewSheet.Cells(lngLastRow - lngFirstRow + 1, 100)) = vArray
+    oWorksheet.Range(oWorksheet.Cells(lngFirstRow, 1), oWorksheet.Cells(lngLastRow, 100)).Clear
+    oExcel.ActiveWindow.Zoom = 85
+    'find header row
+    strFirstRow = "UID"
+    If oDataChecks.Keys(lngItem) = "CAMErrors" Then strFirstRow = "CA ID String"
+    If oDataChecks.Keys(lngItem) = "WorkPackageErrors" Then strFirstRow = "Work Package"
+    'find first row
+    lngFirstRow = oNewSheet.Columns(1).Find(strFirstRow).Row
+    'find lastrow again
+    lngLastRow = oNewSheet.[A1048576].End(xlUp).Row
+    lngLastCol = 10
+    'deal with title
+    oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol)).Merge True
+    oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol)).Style = "Note"
+    oNewSheet.[A1].Font.Bold = True
+    oNewSheet.[A1].HorizontalAlignment = xlCenter
+    oNewSheet.[A1].VerticalAlignment = xlCenter
+    oNewSheet.[A1].WrapText = True
+    oNewSheet.[A1].RowHeight = 30
+    'make it a table, name it, format it
+    If lngLastRow - lngFirstRow > 2 Then
+      lngLastCol = oNewSheet.Cells(lngFirstRow, 1).End(xlToRight).Column
+      Set oListObject = oNewSheet.ListObjects.Add(xlSrcRange, oNewSheet.Range(oNewSheet.Cells(lngFirstRow, 1).End(xlDown), oNewSheet.Cells(lngFirstRow, lngLastCol)), , xlYes)
+    Else
+      lngLastCol = oNewSheet.Cells(lngLastRow, oNewSheet.Columns.Count).End(xlToLeft).Column
+      oNewSheet.Rows(lngLastRow).Insert
+      Set oListObject = oNewSheet.ListObjects.Add(xlSrcRange, oNewSheet.Range(oNewSheet.Cells(lngFirstRow, 1), oNewSheet.Cells(lngFirstRow, lngLastCol)), , xlYes)
+      lngLastRow = lngLastRow + 1
+    End If
+    oListObject.Name = "_" & oDataChecks.Keys(lngItem)
+    oListObject.TableStyle = ""
+    cptAddBorders oListObject.Range
+    cptAddBorders oListObject.HeaderRowRange
+    'shading
+    cptAddShading oListObject.HeaderRowRange
+    oListObject.HeaderRowRange.Font.Bold = True
+    'autofilter
+    oListObject.Range.Columns.AutoFit
+    'deal with footer
+    If lngLastCol < 10 Then lngLastCol = 10
+    oNewSheet.Range(oNewSheet.Cells(lngLastRow, 1), oNewSheet.Cells(lngLastRow, lngLastCol)).Merge True
+    oNewSheet.Range(oNewSheet.Cells(lngLastRow, 1), oNewSheet.Cells(lngLastRow, lngLastCol)).Style = "Note"
+    oNewSheet.Cells(lngLastRow, 1).Font.Bold = True
+    oNewSheet.Cells(lngLastRow, 1).HorizontalAlignment = xlLeft
+    With oExcel.ActiveWindow
+      .SplitColumn = 0
+      .SplitRow = lngFirstRow
+      .FreezePanes = True
+      .DisplayGridlines = False
+    End With
+  Next lngItem
+
+  oExcel.DisplayAlerts = False
+  oWorksheet.Delete
+  oExcel.DisplayAlerts = True
+
+exit_here:
+  On Error Resume Next
+  oExcel.Calculation = xlCalculationAutomatic
+  oExcel.ScreenUpdating = True
+  Set c = Nothing
+  Set oNewSheet = Nothing
+  Set oWorkbook = Nothing
+  Set oListObject = Nothing
+  Set oDataChecks = Nothing
+  Set oWorksheet = Nothing
+  Set oExcel = Nothing
+  Exit Sub
+err_here:
+  MsgBox Err.Number & ": " & Err.Description, vbExclamation + vbOKOnly, "Error: cptBeautifyDataCheck"
+  Resume exit_here
+End Sub
+
