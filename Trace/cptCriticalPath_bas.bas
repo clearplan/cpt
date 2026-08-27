@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.5.2</cpt_version>
+'<cpt_version>v3.5.3</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -189,14 +189,19 @@ Sub DrivingPaths()
     Dim origSubPathField As Long
     origGroupField = FieldNameToFieldConstant(GroupField)
     origCritField = FieldNameToFieldConstant(CritField)
-    origSubPathField = FieldNameToFieldConstant(SubPathField)
+    If SubPaths Then origSubPathField = FieldNameToFieldConstant(SubPathField)
     
     If masterProj = True Then
         For Each subP In curProj.Subprojects
             FileOpenEx subP.Path, True
             Set tempproj = ActiveProject
-            SetGroupCPFieldLookupTable FieldConstantToFieldName(origGroupField), _
-                FieldConstantToFieldName(origCritField), FieldConstantToFieldName(origSubPathField), SubPaths, tempproj 'v3.5.0
+            If SubPaths Then
+                SetGroupCPFieldLookupTable FieldConstantToFieldName(origGroupField), _
+                    FieldConstantToFieldName(origCritField), SubPaths, tempproj, FieldConstantToFieldName(origSubPathField) 'v3.5.0
+            Else
+                SetGroupCPFieldLookupTable FieldConstantToFieldName(origGroupField), _
+                    FieldConstantToFieldName(origCritField), SubPaths, tempproj
+            End If
         Next subP
         curProj.Activate
     End If
@@ -204,7 +209,11 @@ Sub DrivingPaths()
     'v3.0.0 run no matter what the masterProj condition is
     'still need to update fields in Master Project file
     'in case tasks exist at top level
-    SetGroupCPFieldLookupTable GroupField, CritField, SubPathField, SubPaths, curProj
+    If SubPaths Then
+        SetGroupCPFieldLookupTable GroupField, CritField, SubPaths, curProj, SubPathField
+    Else
+        SetGroupCPFieldLookupTable GroupField, CritField, SubPaths, curProj
+    End If
     
     'Erase previous Crit and Group field values
     CleanCritFlag curProj
@@ -426,7 +435,7 @@ Private Sub evaluateTaskDependencies(ByVal tdp As TaskDependency, ByVal t As Tas
     
 End Sub
 
-Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritField As String, ByVal SubPathField As String, ByVal SubPaths As Boolean, ByVal currentProject As Project)
+Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritField As String, ByVal SubPaths As Boolean, ByVal currentProject As Project, Optional ByVal SubPathField As String = "")
 'Set Crit and Group field names, assign lookup table to Group Field
     
     'v3.0.0 remove crit field attributes
