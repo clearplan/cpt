@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.5.1</cpt_version>
+'<cpt_version>v3.5.2</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -121,7 +121,7 @@ Sub Export_IMS()
     Dim xportFrm As cptIMSCobraExport_frm
     Dim xportFormat As String
     Dim curProj As Project
-    Dim i As Integer
+    Dim I As Integer
 
     On Error GoTo CleanUp
 
@@ -201,33 +201,33 @@ Sub Export_IMS()
             GoTo Quick_Exit
         End If
 
-        If .MPPBtn.Value = True Then
+        If .MPPBtn.value = True Then
             Set xportFrm = Nothing
             xportFormat = "MPP"
-        ElseIf .XMLBtn.Value = True Then
+        ElseIf .XMLBtn.value = True Then
             Set xportFrm = Nothing
             xportFormat = "XML"
-        ElseIf .CSVBtn.Value = True Then
-            BCWSxport = .BCWS_Checkbox.Value
-            BCWPxport = .BCWP_Checkbox.Value
-            ETCxport = .ETC_Checkbox.Value
-            BCRxport = .BcrBtn.Value
-            ExportMilestones = .Milestone_CheckBox.Value
-            WhatIfxport = .WhatIf_CheckBox.Value 'v3.2
+        ElseIf .CSVBtn.value = True Then
+            BCWSxport = .BCWS_Checkbox.value
+            BCWPxport = .BCWP_Checkbox.value
+            ETCxport = .ETC_Checkbox.value
+            BCRxport = .BcrBtn.value
+            ExportMilestones = .Milestone_CheckBox.value
+            WhatIfxport = .WhatIf_CheckBox.value 'v3.2
             BCR_ID = .BCR_ID_TextBox
             ResourceLoaded = .ResExportCheckbox
             TimeScaleExport = .exportTPhaseCheckBox
-            TsvScale = .ScaleCombobox.Value 'v3.4
+            TsvScale = .ScaleCombobox.value 'v3.4
             Set xportFrm = Nothing
             xportFormat = "CSV"
             CAID3_Used = .CAID3TxtBox.Enabled
             CAID2_Used = .CAID2TxtBox.Enabled
-            If .msidBox.Value = "<None>" Or .mswBox.Value = "<None>" Or .msidBox.Value = "" Or .mswBox.Value = "" Then
+            If .msidBox.value = "<None>" Or .mswBox.value = "<None>" Or .msidBox.value = "" Or .mswBox.value = "" Then
                 Milestones_Used = False
             Else
                 Milestones_Used = True
             End If
-            If .projBox.Value = "<None>" Or .projBox.Value = "" Then 'v3.4.3
+            If .projBox.value = "<None>" Or .projBox.value = "" Then 'v3.4.3
                 subprojectIDs = False
             Else
                 subprojectIDs = True
@@ -237,8 +237,8 @@ Sub Export_IMS()
             Else
                 AssignmentPCNT_Used = True
             End If
-            DescExport = .exportDescCheckBox.Value
-            dateFmt = .DateFormat_Combobox.Value
+            DescExport = .exportDescCheckBox.value
+            dateFmt = .DateFormat_Combobox.value
         End If
 
     End With
@@ -274,7 +274,7 @@ Sub Export_IMS()
     
 ErrorHandler:
     
-    Call cptHandleErr(MODULE_NAME, "Export_IMS", Err, Erl, "Error exporting project data.")
+    Call cptHandleErr(MODULE_NAME, "Export_IMS", err, Erl, "Error exporting project data.")
 
 CleanUp:
 
@@ -312,9 +312,9 @@ Private Function get_assignment_timescalevalues(ByVal tAss As Assignment) As Dou
     
     For Each tsv In tsvs
     
-        If tsv.Value <> "" Then
+        If tsv.value <> "" Then
             
-            tempTotal = tempTotal + tsv.Value
+            tempTotal = tempTotal + tsv.value
         
         End If
         
@@ -346,7 +346,7 @@ Private Sub DataChecks(ByVal curProj As Project)
     Dim camCount As Integer
     Dim taskCount As Integer
     Dim X As Integer
-    Dim i As Integer
+    Dim I As Integer
     Dim errorStr As String
     Dim ErrorCounter As Integer
     Dim tempBValue As Double
@@ -358,27 +358,27 @@ Private Sub DataChecks(ByVal curProj As Project)
 
     Set docProps = curProj.CustomDocumentProperties
 
-    fCAID1 = docProps("fCAID1").Value
-    fCAID1t = docProps("fCAID1t").Value
+    fCAID1 = docProps("fCAID1").value
+    fCAID1t = docProps("fCAID1t").value
     If BCRxport = True Then
-        fBCR = docProps("fBCR").Value
+        fBCR = docProps("fBCR").value
     End If
     If CAID3_Used = True Then
-        fCAID3 = docProps("fCAID3").Value
-        fCAID3t = docProps("fCAID3t").Value
+        fCAID3 = docProps("fCAID3").value
+        fCAID3t = docProps("fCAID3t").value
     End If
-    fWP = docProps("fWP").Value
-    fCAM = docProps("fCAM").Value
-    fEVT = docProps("fEVT").Value
+    fWP = docProps("fWP").value
+    fCAM = docProps("fCAM").value
+    fEVT = docProps("fEVT").value
     If CAID2_Used = True Then
-        fCAID2 = docProps("fCAID2").Value
-        fCAID2t = docProps("fCAID2t").Value
+        fCAID2 = docProps("fCAID2").value
+        fCAID2t = docProps("fCAID2t").value
     End If
     If Milestones_Used = True Then 'v3.2.6
-        fMilestone = docProps("fMSID").Value
-        fMilestoneWeight = docProps("fMSW").Value
+        fMilestone = docProps("fMSID").value
+        fMilestoneWeight = docProps("fMSW").value
     End If
-    fPCNT = docProps("fPCNT").Value
+    fPCNT = docProps("fPCNT").value
 
     destFolder = SetDirectory(curProj.ProjectSummaryTask.Project)
 
@@ -715,21 +715,21 @@ Private Sub DataChecks(ByVal curProj As Project)
 
             Else
 
-                For i = 1 To camCount
+                For I = 1 To camCount
 
-                    If CAMChecks(i).ID_str = tempID Then
+                    If CAMChecks(I).ID_str = tempID Then
 
                         CAfound = True
 
-                        If TaskChecks(X).CAM <> CAMChecks(i).CAM_Test Then
-                            CAMChecks(i).CAM_Error = True
+                        If TaskChecks(X).CAM <> CAMChecks(I).CAM_Test Then
+                            CAMChecks(I).CAM_Error = True
                         End If
 
                         GoTo next_task
 
                     End If
 
-                Next i
+                Next I
 
                 If CAfound = False Then
 
@@ -773,21 +773,21 @@ Private Sub DataChecks(ByVal curProj As Project)
 
             Else
 
-                For i = 1 To wpCount
+                For I = 1 To wpCount
 
-                    If WPChecks(i).WP_ID = TaskChecks(X).WP Then
+                    If WPChecks(I).WP_ID = TaskChecks(X).WP Then
 
                         wpFound = True
 
-                        If tempID <> WPChecks(i).ID_Test Then
+                        If tempID <> WPChecks(I).ID_Test Then
 
-                            WPChecks(i).WP_DupError = True
+                            WPChecks(I).WP_DupError = True
 
                         End If
 
-                        If TaskChecks(X).EVT <> WPChecks(i).EVT_Test Then
+                        If TaskChecks(X).EVT <> WPChecks(I).EVT_Test Then
 
-                            WPChecks(i).EVT_Error = True
+                            WPChecks(I).EVT_Error = True
 
                         End If
 
@@ -795,7 +795,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                     End If
 
-                Next i
+                Next I
 
                 If wpFound = False Then
 
@@ -1293,35 +1293,35 @@ Private Sub CSV_Export(ByVal curProj As Project)
 
     Set docProps = curProj.CustomDocumentProperties
 
-    fCAID1 = docProps("fCAID1").Value
-    fCAID1t = docProps("fCAID1t").Value
+    fCAID1 = docProps("fCAID1").value
+    fCAID1t = docProps("fCAID1t").value
     If BCRxport = True Then
-        fBCR = docProps("fBCR").Value
+        fBCR = docProps("fBCR").value
     End If
     If WhatIfxport = True Then 'v3.2
-        fWhatIf = docProps("fWhatIf").Value
+        fWhatIf = docProps("fWhatIf").value
     End If
     If CAID3_Used = True Then
-        fCAID3 = docProps("fCAID3").Value
-        fCAID3t = docProps("fCAID3t").Value
+        fCAID3 = docProps("fCAID3").value
+        fCAID3t = docProps("fCAID3t").value
     End If
     If CAID2_Used = True Then
-        fCAID2 = docProps("fCAID2").Value
-        fCAID2t = docProps("fCAID2t").Value
+        fCAID2 = docProps("fCAID2").value
+        fCAID2t = docProps("fCAID2t").value
     End If
-    fWP = docProps("fWP").Value
-    fCAM = docProps("fCAM").Value
-    fEVT = docProps("fEVT").Value
+    fWP = docProps("fWP").value
+    fCAM = docProps("fCAM").value
+    fEVT = docProps("fEVT").value
     If Milestones_Used Then
-        fMilestone = docProps("fMSID").Value
-        fMilestoneWeight = docProps("fMSW").Value
+        fMilestone = docProps("fMSID").value
+        fMilestoneWeight = docProps("fMSW").value
     End If
-    fPCNT = docProps("fPCNT").Value
+    fPCNT = docProps("fPCNT").value
     If AssignmentPCNT_Used = True Then 'v3.3.2
-        fAssignPcnt = docProps("fAssignPcnt").Value 'v3.3.0
+        fAssignPcnt = docProps("fAssignPcnt").value 'v3.3.0
     End If
-    fResID = docProps("fResID").Value
-    If subprojectIDs Then fProject = docProps("fProject").Value 'v3.4.3, v3.4.4
+    fResID = docProps("fResID").value
+    If subprojectIDs Then fProject = docProps("fProject").value 'v3.4.3, v3.4.4
 
     BCR_Error = False
 
@@ -1406,7 +1406,7 @@ Private Sub BCWP_Export(ByVal curProj As Project)
     Dim subProjs As Subprojects
     Dim ACTarray() As ACTrowWP
     Dim X As Integer
-    Dim i As Integer
+    Dim I As Integer
     Dim aStartString As String
     Dim aFinishString As String
     Dim tempID As String 'v3.3.3
@@ -1527,47 +1527,47 @@ Export_Project_Data:
 
                             End If
 
-                            For i = 1 To UBound(ACTarray)
-                                If ACTarray(i).ID = tempID Then
+                            For I = 1 To UBound(ACTarray)
+                                If ACTarray(I).ID = tempID Then
                                     'Found an existing matching WP line
-                                    If ACTarray(i).FStart > tAssign.Start Then
-                                        ACTarray(i).FStart = tAssign.Start
+                                    If ACTarray(I).FStart > tAssign.Start Then
+                                        ACTarray(I).FStart = tAssign.Start
                                     End If
-                                    If ACTarray(i).FFinish < tAssign.Finish Then
-                                        ACTarray(i).FFinish = tAssign.Finish
+                                    If ACTarray(I).FFinish < tAssign.Finish Then
+                                        ACTarray(I).FFinish = tAssign.Finish
                                     End If
                                     If tAssign.ActualStart <> "NA" Then
-                                        If ACTarray(i).AStart = 0 Then
-                                            ACTarray(i).AStart = tAssign.ActualStart
+                                        If ACTarray(I).AStart = 0 Then
+                                            ACTarray(I).AStart = tAssign.ActualStart
                                         Else
-                                            If tAssign.ActualStart < ACTarray(i).AStart Then
-                                                ACTarray(i).AStart = tAssign.ActualStart
+                                            If tAssign.ActualStart < ACTarray(I).AStart Then
+                                                ACTarray(I).AStart = tAssign.ActualStart
                                             End If
                                         End If
                                     End If
                                     If tAssign.ActualFinish <> "NA" Then
-                                        If ACTarray(i).AFinish = 0 Then
-                                            ACTarray(i).AFinish = tAssign.ActualFinish
+                                        If ACTarray(I).AFinish = 0 Then
+                                            ACTarray(I).AFinish = tAssign.ActualFinish
                                         Else
-                                            If tAssign.ActualFinish > ACTarray(i).AFinish Then
-                                                ACTarray(i).AFinish = tAssign.ActualFinish
+                                            If tAssign.ActualFinish > ACTarray(I).AFinish Then
+                                                ACTarray(I).AFinish = tAssign.ActualFinish
                                             End If
                                         End If
                                     End If
                                     If tAssign.BaselineWork <> 0 Then
-                                        ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineWork / 60
-                                        ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
+                                        ACTarray(I).sumBCWS = ACTarray(I).sumBCWS + tAssign.BaselineWork / 60
+                                        ACTarray(I).sumBCWP = ACTarray(I).sumBCWP + (tAssign.BaselineWork / 60 * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
                                     Else
-                                        ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + tAssign.BaselineCost
-                                        ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
+                                        ACTarray(I).sumBCWS = ACTarray(I).sumBCWS + tAssign.BaselineCost
+                                        ACTarray(I).sumBCWP = ACTarray(I).sumBCWP + (tAssign.BaselineCost * PercentfromString(get_Assignment_Pcnt(tAssign)) / 100)
                                     End If
 
-                                    If ACTarray(i).sumBCWS > 0 Then ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
+                                    If ACTarray(I).sumBCWS > 0 Then ACTarray(I).Prog = ACTarray(I).sumBCWP / ACTarray(I).sumBCWS * 100
 
                                     GoTo Next_Assign_B
                                     
                                 End If
-                            Next i
+                            Next I
 
                             'No match found, create new WP line in ACTarrray
                             ReDim Preserve ACTarray(1 To X)
@@ -1641,66 +1641,66 @@ Next_Assign_B:
 
                         End If
 
-                        For i = 1 To UBound(ACTarray)
-                            If ACTarray(i).ID = ID Then
+                        For I = 1 To UBound(ACTarray)
+                            If ACTarray(I).ID = ID Then
                                 'Found an existing matching WP line
                                 If t.BaselineStart <> "NA" Then
-                                    If ACTarray(i).BStart = 0 Then
-                                        ACTarray(i).BStart = t.BaselineStart
+                                    If ACTarray(I).BStart = 0 Then
+                                        ACTarray(I).BStart = t.BaselineStart
                                     Else
-                                        If ACTarray(i).BStart > t.BaselineStart Then
-                                            ACTarray(i).BStart = t.BaselineStart
+                                        If ACTarray(I).BStart > t.BaselineStart Then
+                                            ACTarray(I).BStart = t.BaselineStart
                                         End If
                                     End If
                                 End If
                                 If t.BaselineFinish <> "NA" Then
-                                    If ACTarray(i).BFinish = 0 Then
-                                        ACTarray(i).BFinish = t.BaselineFinish
+                                    If ACTarray(I).BFinish = 0 Then
+                                        ACTarray(I).BFinish = t.BaselineFinish
                                     Else
-                                        If ACTarray(i).BFinish < t.BaselineFinish Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
+                                        If ACTarray(I).BFinish < t.BaselineFinish Then
+                                            ACTarray(I).BFinish = t.BaselineFinish
                                         End If
                                     End If
                                 End If
-                                If ACTarray(i).FStart > t.Start Then
-                                    ACTarray(i).FStart = t.Start
+                                If ACTarray(I).FStart > t.Start Then
+                                    ACTarray(I).FStart = t.Start
                                 End If
-                                If ACTarray(i).FFinish < t.Finish Then
-                                    ACTarray(i).FFinish = t.Finish
+                                If ACTarray(I).FFinish < t.Finish Then
+                                    ACTarray(I).FFinish = t.Finish
                                 End If
                                 If t.ActualStart <> "NA" Then
-                                    If ACTarray(i).AStart = 0 Then
-                                        ACTarray(i).AStart = t.ActualStart
+                                    If ACTarray(I).AStart = 0 Then
+                                        ACTarray(I).AStart = t.ActualStart
                                     Else
-                                        If t.ActualStart < ACTarray(i).AStart Then
-                                            ACTarray(i).AStart = t.ActualStart
+                                        If t.ActualStart < ACTarray(I).AStart Then
+                                            ACTarray(I).AStart = t.ActualStart
                                         End If
                                     End If
                                 End If
                                 If t.ActualFinish <> "NA" Then
-                                    If ACTarray(i).AFinish = 0 Then
-                                        ACTarray(i).AFinish = t.ActualFinish
+                                    If ACTarray(I).AFinish = 0 Then
+                                        ACTarray(I).AFinish = t.ActualFinish
                                     Else
-                                        If t.ActualFinish > ACTarray(i).AFinish Then
-                                            ACTarray(i).AFinish = t.ActualFinish
+                                        If t.ActualFinish > ACTarray(I).AFinish Then
+                                            ACTarray(I).AFinish = t.ActualFinish
                                         End If
                                     End If
                                 End If
                                 If ResourceLoaded And t.BaselineWork <> 0 Then
-                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineWork / 60
-                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
+                                    ACTarray(I).sumBCWS = ACTarray(I).sumBCWS + t.BaselineWork / 60
+                                    ACTarray(I).sumBCWP = ACTarray(I).sumBCWP + (t.BaselineWork / 60 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
                                 ElseIf ResourceLoaded Then
-                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + t.BaselineCost
-                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
+                                    ACTarray(I).sumBCWS = ACTarray(I).sumBCWS + t.BaselineCost
+                                    ACTarray(I).sumBCWP = ACTarray(I).sumBCWP + (t.BaselineCost * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
                                 Else
-                                    ACTarray(i).sumBCWS = ACTarray(i).sumBCWS + 1
-                                    ACTarray(i).sumBCWP = ACTarray(i).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
+                                    ACTarray(I).sumBCWS = ACTarray(I).sumBCWS + 1
+                                    ACTarray(I).sumBCWP = ACTarray(I).sumBCWP + (1 * PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) / 100)
                                 End If
-                                ACTarray(i).Prog = ACTarray(i).sumBCWP / ACTarray(i).sumBCWS * 100
+                                ACTarray(I).Prog = ACTarray(I).sumBCWP / ACTarray(I).sumBCWS * 100
 
                                 GoTo BCWP_WP_Match_B
                             End If
-                        Next i
+                        Next I
 
                         'No match found, create new WP line in ACTarrray
                         ReDim Preserve ACTarray(1 To X)
@@ -1738,55 +1738,55 @@ Next_Assign_B:
 
                         End If
 
-                        For i = 1 To UBound(ACTarray)
-                            If ACTarray(i).ID = ID Then
+                        For I = 1 To UBound(ACTarray)
+                            If ACTarray(I).ID = ID Then
                                 'Found an existing matching WP line
                                 If t.BaselineStart <> "NA" Then
-                                    If ACTarray(i).BStart = 0 Then
-                                        ACTarray(i).BStart = t.BaselineStart
+                                    If ACTarray(I).BStart = 0 Then
+                                        ACTarray(I).BStart = t.BaselineStart
                                     Else
-                                        If ACTarray(i).BStart > t.BaselineStart Then
-                                            ACTarray(i).BStart = t.BaselineStart
+                                        If ACTarray(I).BStart > t.BaselineStart Then
+                                            ACTarray(I).BStart = t.BaselineStart
                                         End If
                                     End If
                                 End If
                                 If t.BaselineFinish <> "NA" Then
-                                    If ACTarray(i).BFinish = 0 Then
-                                        ACTarray(i).BFinish = t.BaselineFinish
+                                    If ACTarray(I).BFinish = 0 Then
+                                        ACTarray(I).BFinish = t.BaselineFinish
                                     Else
-                                        If ACTarray(i).BFinish < t.BaselineFinish Then
-                                            ACTarray(i).BFinish = t.BaselineFinish
+                                        If ACTarray(I).BFinish < t.BaselineFinish Then
+                                            ACTarray(I).BFinish = t.BaselineFinish
                                         End If
                                     End If
                                 End If
-                                If ACTarray(i).FStart > t.Start Then
-                                    ACTarray(i).FStart = t.Start
+                                If ACTarray(I).FStart > t.Start Then
+                                    ACTarray(I).FStart = t.Start
                                 End If
-                                If ACTarray(i).FFinish < t.Finish Then
-                                    ACTarray(i).FFinish = t.Finish
+                                If ACTarray(I).FFinish < t.Finish Then
+                                    ACTarray(I).FFinish = t.Finish
                                 End If
                                 If t.ActualStart <> "NA" Then
-                                    If ACTarray(i).AStart = 0 Then
-                                        ACTarray(i).AStart = t.ActualStart
+                                    If ACTarray(I).AStart = 0 Then
+                                        ACTarray(I).AStart = t.ActualStart
                                     Else
-                                        If t.ActualStart < ACTarray(i).AStart Then
-                                            ACTarray(i).AStart = t.ActualStart
+                                        If t.ActualStart < ACTarray(I).AStart Then
+                                            ACTarray(I).AStart = t.ActualStart
                                         End If
                                     End If
                                 End If
                                 If t.ActualFinish <> "NA" Then
-                                    If ACTarray(i).AFinish = 0 Then
-                                        ACTarray(i).AFinish = t.ActualFinish
+                                    If ACTarray(I).AFinish = 0 Then
+                                        ACTarray(I).AFinish = t.ActualFinish
                                     Else
-                                        If t.ActualFinish > ACTarray(i).AFinish Then
-                                            ACTarray(i).AFinish = t.ActualFinish
+                                        If t.ActualFinish > ACTarray(I).AFinish Then
+                                            ACTarray(I).AFinish = t.ActualFinish
                                         End If
                                     End If
                                 End If
 
                                 GoTo BCWP_WP_Match_B
                             End If
-                        Next i
+                        Next I
 
                         'No match found, create new WP line in ACTarrray
                         ReDim Preserve ACTarray(1 To X)
@@ -1810,22 +1810,22 @@ BCWP_WP_Match_B:
     If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
     
     If ActFound = True Then
-        For i = 1 To UBound(ACTarray)
+        For I = 1 To UBound(ACTarray)
     
-            If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
-            If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
+            If ACTarray(I).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(I).AStart, dateFmt)
+            If ACTarray(I).AFinish = 0 Or ACTarray(I).AFinish < ACTarray(I).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(I).AFinish, dateFmt)
     
             'v3.4.3 - refactored data output code
             
-            outputStr = ACTarray(i).WP & "," & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & "," & aStartString & "," & aFinishString & "," & ACTarray(i).Prog & ","
+            outputStr = ACTarray(I).WP & "," & "," & Format(ACTarray(I).FStart, dateFmt) & "," & Format(ACTarray(I).FFinish, dateFmt) & "," & aStartString & "," & aFinishString & "," & ACTarray(I).Prog & ","
     
-            If ResourceLoaded Then outputStr = outputStr & ACTarray(i).Resource & ","
+            If ResourceLoaded Then outputStr = outputStr & ACTarray(I).Resource & ","
     
-            outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+            outputStr = PrependCAIDPrefix(outputStr, ACTarray(I).CAID1, ACTarray(I).CAID2, ACTarray(I).CAID3, ACTarray(I).SubProject)
             
             Print #1, outputStr
     
-        Next i
+        Next I
     End If
     
     Close #1
@@ -1846,7 +1846,7 @@ Private Sub ETC_Export(ByVal curProj As Project)
     Dim cursproj As Project
     Dim ACTarray() As ACTrowWP
     Dim X As Integer
-    Dim i As Integer
+    Dim I As Integer
     Dim aStartString As String
     Dim aFinishString As String
     Dim headerStr As String 'v3.4.3
@@ -1921,56 +1921,56 @@ Export_Project_Data:
 
                     End If
 
-                    For i = 1 To UBound(ACTarray)
-                        If ACTarray(i).ID = ID Then
-                            ShortID = ACTarray(i).ShortID
+                    For I = 1 To UBound(ACTarray)
+                        If ACTarray(I).ID = ID Then
+                            ShortID = ACTarray(I).ShortID
                             'Found an existing matching WP line
                             If t.BaselineStart <> "NA" Then
-                                If ACTarray(i).BStart = 0 Then
-                                    ACTarray(i).BStart = t.BaselineStart
+                                If ACTarray(I).BStart = 0 Then
+                                    ACTarray(I).BStart = t.BaselineStart
                                 Else
-                                    If ACTarray(i).BStart > t.BaselineStart Then
-                                        ACTarray(i).BStart = t.BaselineStart
+                                    If ACTarray(I).BStart > t.BaselineStart Then
+                                        ACTarray(I).BStart = t.BaselineStart
                                     End If
                                 End If
                             End If
                             If t.BaselineFinish <> "NA" Then
-                                If ACTarray(i).BFinish = 0 Then
-                                    ACTarray(i).BFinish = t.BaselineFinish
+                                If ACTarray(I).BFinish = 0 Then
+                                    ACTarray(I).BFinish = t.BaselineFinish
                                 Else
-                                    If ACTarray(i).BFinish < t.BaselineFinish Then
-                                        ACTarray(i).BFinish = t.BaselineFinish
+                                    If ACTarray(I).BFinish < t.BaselineFinish Then
+                                        ACTarray(I).BFinish = t.BaselineFinish
                                     End If
                                 End If
                             End If
-                            If ACTarray(i).FStart > t.Start Then
-                                ACTarray(i).FStart = t.Start
+                            If ACTarray(I).FStart > t.Start Then
+                                ACTarray(I).FStart = t.Start
                             End If
-                            If ACTarray(i).FFinish < t.Finish Then
-                                ACTarray(i).FFinish = t.Finish
+                            If ACTarray(I).FFinish < t.Finish Then
+                                ACTarray(I).FFinish = t.Finish
                             End If
                             If t.ActualStart <> "NA" Then
-                                If ACTarray(i).AStart = 0 Then
-                                    ACTarray(i).AStart = t.ActualStart
+                                If ACTarray(I).AStart = 0 Then
+                                    ACTarray(I).AStart = t.ActualStart
                                 Else
-                                    If t.ActualStart < ACTarray(i).AStart Then
-                                        ACTarray(i).AStart = t.ActualStart
+                                    If t.ActualStart < ACTarray(I).AStart Then
+                                        ACTarray(I).AStart = t.ActualStart
                                     End If
                                 End If
                             End If
                             If t.ActualFinish <> "NA" Then
-                                If ACTarray(i).AFinish = 0 Then
-                                    ACTarray(i).AFinish = t.ActualFinish
+                                If ACTarray(I).AFinish = 0 Then
+                                    ACTarray(I).AFinish = t.ActualFinish
                                 Else
-                                    If t.ActualFinish > ACTarray(i).AFinish Then
-                                        ACTarray(i).AFinish = t.ActualFinish
+                                    If t.ActualFinish > ACTarray(I).AFinish Then
+                                        ACTarray(I).AFinish = t.ActualFinish
                                     End If
                                 End If
                             End If
 
                             GoTo ETC_WP_Match_B
                         End If
-                    Next i
+                    Next I
 
                     'No match found, create new WP line in ACTarrray
                     ReDim Preserve ACTarray(1 To X)
@@ -2052,22 +2052,22 @@ ETC_WP_Match_B:
     If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
     
     If ActFound = True Then
-        For i = 1 To UBound(ACTarray)
+        For I = 1 To UBound(ACTarray)
     
-            If ACTarray(i).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(i).AStart, dateFmt)
-            If ACTarray(i).AFinish = 0 Or ACTarray(i).AFinish < ACTarray(i).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(i).AFinish, dateFmt)
+            If ACTarray(I).AStart = 0 Then aStartString = "NA" Else aStartString = Format(ACTarray(I).AStart, dateFmt)
+            If ACTarray(I).AFinish = 0 Or ACTarray(I).AFinish < ACTarray(I).FFinish Then aFinishString = "NA" Else aFinishString = Format(ACTarray(I).AFinish, dateFmt)
     
             'v3.4.3 - refactored data output code
             
-            outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & Format(ACTarray(i).FStart, dateFmt) & "," & Format(ACTarray(i).FFinish, dateFmt) & ","
+            outputStr = ACTarray(I).CAM & "," & ACTarray(I).WP & "," & ACTarray(I).ShortID & "," & Format(ACTarray(I).FStart, dateFmt) & "," & Format(ACTarray(I).FFinish, dateFmt) & ","
     
             If aFinishString = "NA" Then
-                outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+                outputStr = PrependCAIDPrefix(outputStr, ACTarray(I).CAID1, ACTarray(I).CAID2, ACTarray(I).CAID3, ACTarray(I).SubProject)
                 
                 Print #1, outputStr
             End If
     
-        Next i
+        Next I
     End If
     
     Close #1
@@ -2089,7 +2089,7 @@ Private Sub BCWS_Export(ByVal curProj As Project)
     Dim ACTarray() As ACTrowWP
     Dim WPDescArray() As WP_Descriptions
     Dim X As Integer
-    Dim i As Integer
+    Dim I As Integer
     Dim aStartString As String
     Dim aFinishString As String
     Dim headerStr As String 'v3.4.3
@@ -2180,25 +2180,25 @@ Export_Project_Data:
 
                     End If
 
-                    For i = 1 To UBound(ACTarray)
-                        If ACTarray(i).ID = ID Then
-                            ShortID = ACTarray(i).ShortID
+                    For I = 1 To UBound(ACTarray)
+                        If ACTarray(I).ID = ID Then
+                            ShortID = ACTarray(I).ShortID
                             'Found an existing matching WP line
-                            If ACTarray(i).BStart > t.BaselineStart Then
-                                ACTarray(i).BStart = t.BaselineStart
+                            If ACTarray(I).BStart > t.BaselineStart Then
+                                ACTarray(I).BStart = t.BaselineStart
                             End If
-                            If ACTarray(i).BFinish < t.BaselineFinish Then
-                                ACTarray(i).BFinish = t.BaselineFinish
+                            If ACTarray(I).BFinish < t.BaselineFinish Then
+                                ACTarray(I).BFinish = t.BaselineFinish
                             End If
-                            If ACTarray(i).FStart > t.Start Then
-                                ACTarray(i).FStart = t.Start
+                            If ACTarray(I).FStart > t.Start Then
+                                ACTarray(I).FStart = t.Start
                             End If
-                            If ACTarray(i).FFinish < t.Finish Then
-                                ACTarray(i).FFinish = t.Finish
+                            If ACTarray(I).FFinish < t.Finish Then
+                                ACTarray(I).FFinish = t.Finish
                             End If
                             GoTo WP_Match_B
                         End If
-                    Next i
+                    Next I
 
                     'No match found, create new WP line in ACTarrray
                     ReDim Preserve ACTarray(1 To X)
@@ -2269,21 +2269,21 @@ next_task:
     If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
     
     If ActFound = True Then
-        For i = 1 To UBound(ACTarray)
+        For I = 1 To UBound(ACTarray)
     
             If DescExport = True Then
-                ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
+                ACTarray(I).Desc = WP_Desc(ACTarray(I).ID)
             End If
             
             'v3.4.3 - refactored data output code
             
-            outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
+            outputStr = ACTarray(I).CAM & "," & ACTarray(I).WP & "," & ACTarray(I).ShortID & "," & "," & "," & ACTarray(I).Desc & "," & Format(ACTarray(I).BStart, dateFmt) & "," & Format(ACTarray(I).BFinish, dateFmt) & "," & ACTarray(I).EVT & ","
     
-            outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+            outputStr = PrependCAIDPrefix(outputStr, ACTarray(I).CAID1, ACTarray(I).CAID2, ACTarray(I).CAID3, ACTarray(I).SubProject)
             
             Print #1, outputStr
     
-        Next i
+        Next I
     End If
     
     Close #1
@@ -2306,7 +2306,7 @@ Private Sub WhatIf_Export(ByVal curProj As Project) 'v3.2
     Dim ACTarray() As ACTrowWP
     Dim WPDescArray() As WP_Descriptions
     Dim X As Integer
-    Dim i As Integer
+    Dim I As Integer
     Dim aStartString As String
     Dim aFinishString As String
     Dim headerStr As String 'v3.4.3
@@ -2412,35 +2412,35 @@ Export_Project_Data:
 
                     End If
 
-                    For i = 1 To UBound(ACTarray)
-                        If ACTarray(i).ID = ID Then
-                            ShortID = ACTarray(i).ShortID
+                    For I = 1 To UBound(ACTarray)
+                        If ACTarray(I).ID = ID Then
+                            ShortID = ACTarray(I).ShortID
                             'Found an existing matching WP line
                             If t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "R" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "r" Then
-                                If ACTarray(i).BStart > t.BaselineStart Then
-                                    ACTarray(i).BStart = t.BaselineStart
+                                If ACTarray(I).BStart > t.BaselineStart Then
+                                    ACTarray(I).BStart = t.BaselineStart
                                 End If
-                                If ACTarray(i).BFinish < t.BaselineFinish Then
-                                    ACTarray(i).BFinish = t.BaselineFinish
+                                If ACTarray(I).BFinish < t.BaselineFinish Then
+                                    ACTarray(I).BFinish = t.BaselineFinish
                                 End If
                             Else
-                                If ACTarray(i).BStart > t.Start Then
-                                    ACTarray(i).BStart = t.Start
+                                If ACTarray(I).BStart > t.Start Then
+                                    ACTarray(I).BStart = t.Start
                                 End If
-                                If ACTarray(i).BFinish < t.Finish Then
-                                    ACTarray(i).BFinish = t.Finish
+                                If ACTarray(I).BFinish < t.Finish Then
+                                    ACTarray(I).BFinish = t.Finish
                                 End If
 
                             End If
-                            If ACTarray(i).FStart > t.Start Then
-                                ACTarray(i).FStart = t.Start
+                            If ACTarray(I).FStart > t.Start Then
+                                ACTarray(I).FStart = t.Start
                             End If
-                            If ACTarray(i).FFinish < t.Finish Then
-                                ACTarray(i).FFinish = t.Finish
+                            If ACTarray(I).FFinish < t.Finish Then
+                                ACTarray(I).FFinish = t.Finish
                             End If
                             GoTo WP_Match_B
                         End If
-                    Next i
+                    Next I
 
                     'No match found, create new WP line in ACTarrray
                     ReDim Preserve ACTarray(1 To X)
@@ -2552,21 +2552,21 @@ next_task:
     If subprojCount < curProj.Subprojects.Count And curProj.Subprojects.Count > 0 Then GoTo Next_Subproject
     
     If ActFound = True Then
-        For i = 1 To UBound(ACTarray)
+        For I = 1 To UBound(ACTarray)
     
             If DescExport = True Then
-                ACTarray(i).Desc = WP_Desc(ACTarray(i).ID)
+                ACTarray(I).Desc = WP_Desc(ACTarray(I).ID)
             End If
     
             'v3.4.3 - refactored data output code
             
-            outputStr = ACTarray(i).CAM & "," & ACTarray(i).WP & "," & ACTarray(i).ShortID & "," & "," & "," & ACTarray(i).Desc & "," & Format(ACTarray(i).BStart, dateFmt) & "," & Format(ACTarray(i).BFinish, dateFmt) & "," & ACTarray(i).EVT & ","
+            outputStr = ACTarray(I).CAM & "," & ACTarray(I).WP & "," & ACTarray(I).ShortID & "," & "," & "," & ACTarray(I).Desc & "," & Format(ACTarray(I).BStart, dateFmt) & "," & Format(ACTarray(I).BFinish, dateFmt) & "," & ACTarray(I).EVT & ","
     
-            outputStr = PrependCAIDPrefix(outputStr, ACTarray(i).CAID1, ACTarray(i).CAID2, ACTarray(i).CAID3, ACTarray(i).SubProject)
+            outputStr = PrependCAIDPrefix(outputStr, ACTarray(I).CAID1, ACTarray(I).CAID2, ACTarray(I).CAID3, ACTarray(I).SubProject)
             
             Print #1, outputStr
     
-        Next i
+        Next I
     End If
     
     Close #1
@@ -2635,7 +2635,7 @@ Private Sub Get_WP_Descriptions(ByVal curProj As Project)
     Dim WP As String
     Dim ID As String
     Dim Desc As String
-    Dim i As Integer
+    Dim I As Integer
     Dim X As Integer
     '<issue47>
     Dim subProjs As Subprojects
@@ -2645,7 +2645,7 @@ Private Sub Get_WP_Descriptions(ByVal curProj As Project)
 
     WPDescCount = 0
 
-    i = 0
+    I = 0
 
     If curProj.Subprojects.Count > 0 Then
 
@@ -2683,17 +2683,17 @@ Private Sub Get_WP_Descriptions(ByVal curProj As Project)
                     End If
                     Desc = Replace(t.Name, ",", "")
 
-                    If i = 0 Then
-                        i = 1
+                    If I = 0 Then
+                        I = 1
                     End If
 
-                    If i = 1 Then
+                    If I = 1 Then
 
-                        ReDim WPDescArray(1 To i)
-                        WPDescArray(i).WP_ID = ID
-                        WPDescArray(i).Desc = Desc
-                        WPDescCount = i
-                        i = i + 1
+                        ReDim WPDescArray(1 To I)
+                        WPDescArray(I).WP_ID = ID
+                        WPDescArray(I).Desc = Desc
+                        WPDescCount = I
+                        I = I + 1
 
                     Else
 
@@ -2704,11 +2704,11 @@ Private Sub Get_WP_Descriptions(ByVal curProj As Project)
                             End If
                         Next X
 
-                        ReDim Preserve WPDescArray(1 To i)
-                        WPDescArray(i).WP_ID = ID
-                        WPDescArray(i).Desc = Desc
-                        WPDescCount = i
-                        i = i + 1
+                        ReDim Preserve WPDescArray(1 To I)
+                        WPDescArray(I).WP_ID = ID
+                        WPDescArray(I).Desc = Desc
+                        WPDescCount = I
+                        I = I + 1
 
                     End If
 
@@ -2746,17 +2746,17 @@ Next_SubProj_WPtask:
                 End If
                 Desc = Replace(t.Name, ",", "")
 
-                If i = 0 Then
-                    i = 1
+                If I = 0 Then
+                    I = 1
                 End If
 
-                If i = 1 Then
+                If I = 1 Then
 
-                    ReDim WPDescArray(1 To i)
-                    WPDescArray(i).WP_ID = ID
-                    WPDescArray(i).Desc = Desc
-                    WPDescCount = i
-                    i = i + 1
+                    ReDim WPDescArray(1 To I)
+                    WPDescArray(I).WP_ID = ID
+                    WPDescArray(I).Desc = Desc
+                    WPDescCount = I
+                    I = I + 1
 
                 Else
 
@@ -2767,11 +2767,11 @@ Next_SubProj_WPtask:
                         End If
                     Next X
 
-                    ReDim Preserve WPDescArray(1 To i)
-                    WPDescArray(i).WP_ID = ID
-                    WPDescArray(i).Desc = Desc
-                    WPDescCount = i
-                    i = i + 1
+                    ReDim Preserve WPDescArray(1 To I)
+                    WPDescArray(I).WP_ID = ID
+                    WPDescArray(I).Desc = Desc
+                    WPDescCount = I
+                    I = I + 1
 
                 End If
 
@@ -2788,18 +2788,18 @@ End Sub
 Private Function IsInArray(ByVal stringToBeFound As String, ByVal arr As Variant) As Boolean
 'v3.3.11 - rewrote function to mitigate false positives on null WP strings
 
-    Dim i As Integer
+    Dim I As Integer
     
-    For i = 1 To UBound(arr)
+    For I = 1 To UBound(arr)
         
-        If arr(i) = stringToBeFound Then
+        If arr(I) = stringToBeFound Then
         
             IsInArray = True
             Exit Function
         
         End If
         
-    Next i
+    Next I
     
     IsInArray = False
 End Function
@@ -2825,14 +2825,14 @@ End Function
 Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal fBCR As String, ByVal BCRnum As String) As Integer
 
     Dim t As Task
-    Dim i As Integer
+    Dim I As Integer
     Dim X As Integer
     Dim tempBCRstr As String
     Dim subProjs As Subprojects
     Dim subProj As SubProject
     Dim cursproj As Project
 
-    i = 0
+    I = 0
 
     If curProj.Subprojects.Count > 0 Then
 
@@ -2855,16 +2855,16 @@ Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal 
     
                         If InStr(tempBCRstr, BCRnum) > 0 Then
     
-                            If i = 0 Then
-                                i = 1
+                            If I = 0 Then
+                                I = 1
                             End If
     
-                            If i = 1 Then
+                            If I = 1 Then
     
-                                ReDim BCR_WP(1 To i)
-                                BCR_WP(i) = t.GetField(FieldNameToFieldConstant(fWP))
-                                Debug.Print "Storing BCR ID: " & BCR_WP(i)
-                                i = i + 1
+                                ReDim BCR_WP(1 To I)
+                                BCR_WP(I) = t.GetField(FieldNameToFieldConstant(fWP))
+                                Debug.Print "Storing BCR ID: " & BCR_WP(I)
+                                I = I + 1
     
                             Else
     
@@ -2874,10 +2874,10 @@ Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal 
                                     End If
                                 Next X
     
-                                ReDim Preserve BCR_WP(1 To i)
-                                BCR_WP(i) = t.GetField(FieldNameToFieldConstant(fWP))
-                                Debug.Print "Storing BCR ID: " & BCR_WP(i)
-                                i = i + 1
+                                ReDim Preserve BCR_WP(1 To I)
+                                BCR_WP(I) = t.GetField(FieldNameToFieldConstant(fWP))
+                                Debug.Print "Storing BCR ID: " & BCR_WP(I)
+                                I = I + 1
     
                             End If
     
@@ -2905,16 +2905,16 @@ Next_SubProj_WPtask:
     
                     If InStr(tempBCRstr, BCRnum) > 0 Then
     
-                        If i = 0 Then
-                            i = 1
+                        If I = 0 Then
+                            I = 1
                         End If
     
-                        If i = 1 Then
+                        If I = 1 Then
     
-                            ReDim BCR_WP(1 To i)
-                            BCR_WP(i) = t.GetField(FieldNameToFieldConstant(fWP))
-                            Debug.Print "Storing BCR ID: " & BCR_WP(i)
-                            i = i + 1
+                            ReDim BCR_WP(1 To I)
+                            BCR_WP(I) = t.GetField(FieldNameToFieldConstant(fWP))
+                            Debug.Print "Storing BCR ID: " & BCR_WP(I)
+                            I = I + 1
     
                         Else
     
@@ -2924,10 +2924,10 @@ Next_SubProj_WPtask:
                                 End If
                             Next X
     
-                            ReDim Preserve BCR_WP(1 To i)
-                            BCR_WP(i) = t.GetField(FieldNameToFieldConstant(fWP))
-                            Debug.Print "Storing BCR ID: " & BCR_WP(i)
-                            i = i + 1
+                            ReDim Preserve BCR_WP(1 To I)
+                            BCR_WP(I) = t.GetField(FieldNameToFieldConstant(fWP))
+                            Debug.Print "Storing BCR ID: " & BCR_WP(I)
+                            I = I + 1
     
                         End If
     
@@ -2943,7 +2943,7 @@ Next_WPtask:
 
     End If
 
-    Find_BCRs = i
+    Find_BCRs = I
 
 End Function
 
@@ -2966,59 +2966,59 @@ End Function
 
 Private Sub ReadCustomFields(ByVal curProj As Project)
 
-    Dim i As Integer
+    Dim I As Integer
     Dim fID As Long
 
     'Read local Custom Text Fields
-    For i = 1 To 30
+    For I = 1 To 30
 
-        If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Text" & i))) > 0 Then
-            ReDim Preserve CustTextFields(1 To i)
-            CustTextFields(i) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Text" & i))
+        If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Text" & I))) > 0 Then
+            ReDim Preserve CustTextFields(1 To I)
+            CustTextFields(I) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Text" & I))
         Else
-            ReDim Preserve CustTextFields(1 To i)
-            CustTextFields(i) = "Text" & i
+            ReDim Preserve CustTextFields(1 To I)
+            CustTextFields(I) = "Text" & I
         End If
 
-    Next i
+    Next I
     
     'Read local Custom Number Fields
-    For i = 1 To 20
+    For I = 1 To 20
 
-        If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Number" & i))) > 0 Then
-            ReDim Preserve CustNumFields(1 To i)
-            CustNumFields(i) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Number" & i))
+        If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Number" & I))) > 0 Then
+            ReDim Preserve CustNumFields(1 To I)
+            CustNumFields(I) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("Number" & I))
         Else
-            ReDim Preserve CustNumFields(1 To i)
-            CustNumFields(i) = "Number" & i
+            ReDim Preserve CustNumFields(1 To I)
+            CustNumFields(I) = "Number" & I
         End If
 
-    Next i
+    Next I
 
     'Read local Custom Outline Code Fields
-    For i = 1 To 10
+    For I = 1 To 10
 
-        If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("OutlineCode" & i))) > 0 Then
-            ReDim Preserve CustOLCodeFields(1 To i)
-            CustOLCodeFields(i) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("OutlineCode" & i))
+        If Len(curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("OutlineCode" & I))) > 0 Then
+            ReDim Preserve CustOLCodeFields(1 To I)
+            CustOLCodeFields(I) = curProj.Application.CustomFieldGetName(FieldNameToFieldConstant("OutlineCode" & I))
         Else
-            ReDim Preserve CustOLCodeFields(1 To i)
-            CustOLCodeFields(i) = "OutlineCode" & i
+            ReDim Preserve CustOLCodeFields(1 To I)
+            CustOLCodeFields(I) = "OutlineCode" & I
         End If
 
-    Next i
+    Next I
     
     'Read Enterprise Custom Fields
-    i = 1
+    I = 1
 
     For fID = 188776000 To 188778000
 
         On Error GoTo fID_Error
 
         If Application.CustomFieldGetName(fID) <> "" Then
-            ReDim Preserve EntFields(1 To i)
-            EntFields(i) = Application.CustomFieldGetName(fID)
-            i = i + 1
+            ReDim Preserve EntFields(1 To I)
+            EntFields(I) = Application.CustomFieldGetName(fID)
+            I = I + 1
         End If
 
 next_fID:
@@ -3035,14 +3035,14 @@ End Sub
 
 Private Function CleanNumber(ByVal NumStr As String) As String
 
-    Dim i As Integer
+    Dim I As Integer
     Dim newNumStr As String
 
-    For i = 1 To Len(NumStr)
+    For I = 1 To Len(NumStr)
 
-        If Mid(NumStr, i, 1) = "." Or IsNumeric(Mid(NumStr, i, 1)) Then
+        If Mid(NumStr, I, 1) = "." Or IsNumeric(Mid(NumStr, I, 1)) Then
 
-            newNumStr = newNumStr & Mid(NumStr, i, 1)
+            newNumStr = newNumStr & Mid(NumStr, I, 1)
 
         End If
 
@@ -3102,9 +3102,9 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                             tempWork = 0
 
                             If tsvA <> "" Then
-                                tempWork = CDbl(tsv.Value) - CDbl(tsvA.Value) 'v3.3.6
-                            ElseIf tsv.Value <> "" Then
-                                tempWork = CDbl(tsv.Value)
+                                tempWork = CDbl(tsv.value) - CDbl(tsvA.value) 'v3.3.6
+                            ElseIf tsv.value <> "" Then
+                                tempWork = CDbl(tsv.value)
                             End If
 
                             If tempWork <> 0 Then
@@ -3149,11 +3149,11 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                         
                         For Each tsv In tsvs
 
-                            If tsv.Value <> "" Then
+                            If tsv.value <> "" Then
 
                                 If tsvs.Count = 1 Then
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
 
                                 Else
 
@@ -3161,15 +3161,15 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
 
                                         Case 1
 
-                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tAssign.Start, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                         Case tsvs.Count
 
-                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
 
                                         Case Else
 
-                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                     End Select
 
@@ -3202,9 +3202,9 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                         tempWork = 0
 
                         If tsvA <> "" Then
-                            tempWork = CDbl(tsv.Value) - CDbl(tsvA.Value) 'v3.3.6
-                        ElseIf tsv.Value <> "" Then
-                            tempWork = CDbl(tsv.Value)
+                            tempWork = CDbl(tsv.value) - CDbl(tsvA.value) 'v3.3.6
+                        ElseIf tsv.value <> "" Then
+                            tempWork = CDbl(tsv.value)
                         End If
 
                         If tempWork <> 0 Then
@@ -3249,11 +3249,11 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                     
                     For Each tsv In tsvs
 
-                        If tsv.Value <> "" Then
+                        If tsv.value <> "" Then
 
                             If tsvs.Count = 1 Then
 
-                                Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+                                Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
 
                             Else
 
@@ -3261,15 +3261,15 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
 
                                     Case 1
 
-                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                     Case tsvs.Count
 
-                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
 
                                     Case Else
 
-                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                 End Select
 
@@ -3302,9 +3302,9 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                             tempWork = 0
 
                             If tsvA <> "" Then
-                                tempWork = CDbl(tsv.Value) - CDbl(tsvA.Value) 'v3.3.6
-                            ElseIf tsv.Value <> "" Then
-                                tempWork = CDbl(tsv.Value)
+                                tempWork = CDbl(tsv.value) - CDbl(tsvA.value) 'v3.3.6
+                            ElseIf tsv.value <> "" Then
+                                tempWork = CDbl(tsv.value)
                             End If
 
                             If tempWork <> 0 Then
@@ -3349,11 +3349,11 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                         
                         For Each tsv In tsvs
 
-                            If tsv.Value <> "" Then
+                            If tsv.value <> "" Then
 
                                 If tsvs.Count = 1 Then
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
 
                                 Else
 
@@ -3361,15 +3361,15 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
 
                                         Case 1
 
-                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.Start, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                         Case tsvs.Count
 
-                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
+                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.Finish, dateFmt)
 
                                         Case Else
 
-                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                     End Select
 
@@ -3399,11 +3399,11 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                     
                     For Each tsv In tsvs
 
-                        If tsv.Value <> "" Then
+                        If tsv.value <> "" Then
 
                             If tsvs.Count = 1 Then
 
-                                Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+                                Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
 
                             Else
 
@@ -3411,15 +3411,15 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
 
                                     Case 1
 
-                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                     Case tsvs.Count
 
-                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
 
                                     Case Else
 
-                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                        Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value / 60 & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                 End Select
 
@@ -3441,11 +3441,11 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                 
                 For Each tsv In tsvs
 
-                    If tsv.Value <> "" Then
+                    If tsv.value <> "" Then
 
                         If tsvs.Count = 1 Then
 
-                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
 
                         Else
 
@@ -3453,15 +3453,15 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
 
                                 Case 1
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                 Case tsvs.Count
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
 
                                 Case Else
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                             End Select
 
@@ -3483,11 +3483,11 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
                 
                 For Each tsv In tsvs
 
-                    If tsv.Value <> "" Then
+                    If tsv.value <> "" Then
 
                         If tsvs.Count = 1 Then
 
-                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+                            Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
 
                         Else
 
@@ -3495,15 +3495,15 @@ Private Sub ExportTimeScaleResources(ByVal ID As String, ByVal t As Task, ByVal 
 
                                 Case 1
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tAssign.BaselineStart, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                                 Case tsvs.Count
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tAssign.BaselineFinish, dateFmt)
 
                                 Case Else
 
-                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.Value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
+                                    Print #2, ID & "," & tAssign.Resource.GetField(FieldNameToFieldConstant(fResID, pjResource)) & "," & tsv.value & "," & Format(tsv.StartDate, dateFmt) & "," & Format(tsv.EndDate - 1, dateFmt)
 
                             End Select
 
@@ -3716,7 +3716,7 @@ Private Function AssignmentResumeDate(ByVal tAssign As Assignment) As Variant 'v
 
     Dim tsvW As TimeScaleValues
     Dim tsvA As TimeScaleValues
-    Dim i As Integer
+    Dim I As Integer
     
     If tAssign.ResourceType <> pjResourceTypeCost Then
         'evaluate labor and material resources
@@ -3730,12 +3730,12 @@ Private Function AssignmentResumeDate(ByVal tAssign As Assignment) As Variant 'v
     
     End If
 
-    For i = 1 To tsvA.Count
-        If tsvA(i).Value = "" And tsvW(i).Value <> "" Then
-            AssignmentResumeDate = tsvW(i).StartDate
+    For I = 1 To tsvA.Count
+        If tsvA(I).value = "" And tsvW(I).value <> "" Then
+            AssignmentResumeDate = tsvW(I).StartDate
             Exit Function
         End If
-    Next i
+    Next I
     
     AssignmentResumeDate = "NA"
            
@@ -3851,7 +3851,7 @@ Private Sub ValidateEVTB(ByVal EVT As String)
 
     If EVT = "B" And Milestones_Used = False Then
         ErrMsg = "Error: Found EVT = B, missing Milestone Field Maps"
-        Err.Raise 1
+        err.Raise 1
     End If
 
 End Sub
@@ -3905,21 +3905,21 @@ Optional ByVal ProjID As String, Optional ByVal whatifRevision As Boolean = Fals
     
         Case BCWP
         
-            tempString = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
+            tempString = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & "," & "," 'v3.5.2
         
         Case BCWS
         
-            tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
+            tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & "," & "," 'v3.5.2
         
         Case WhatIf
         
             If whatifRevision Then
             
-                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
+                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & "," 'v3.5.2
             
             Else
             
-                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
+                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & "," & "," 'v3.5.2
         
             End If
         
