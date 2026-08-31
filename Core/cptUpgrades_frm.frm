@@ -427,12 +427,9 @@ Private Sub lblTitle_Click()
   Me.txtDevMode.Value = Val(Me.txtDevMode.Value) + 1
   If Val(Me.txtDevMode) > 5 Then
     Me.txtDevMode.Value = 0
-    Me.cboBranches.Visible = False
+    Me.cboBranches.Enabled = False
   ElseIf Val(Me.txtDevMode.Value) = 5 Then
-    Me.cboBranches.Visible = True
     Me.cboBranches.Enabled = True
-  Else
-    Me.cboBranches.Visible = False
   End If
 End Sub
 
