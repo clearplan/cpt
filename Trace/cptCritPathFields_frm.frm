@@ -76,18 +76,6 @@ Private Function checkDuplicate(ByVal cBoxTest As MSForms.ComboBox) As Boolean '
 
 End Function
 
-Private Function The_Aron_Double_Check(ByVal fieldName As String) As Boolean
-
-    If cptCustomFieldExists(fieldName) = 0 Then
-        The_Aron_Double_Check = False
-        Exit Function
-    Else
-        The_Aron_Double_Check = True
-        Exit Function
-    End If
-
-End Function
-
 Private Sub RunBtn_Click()
         
     If PathField_Combobox.Text = "" Or GroupField_Combobox.Text = "" Then
