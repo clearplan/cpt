@@ -45,6 +45,11 @@ Private Const MODULE_NAME As String = "cptCriticalPath_bas"
 Private userView As String
 Private subProjIndexCache As Collection 'v3.5.0 cache for get_subProj_index lookups (keyed by subproject path)
 Private ganttFormatOverride As Boolean 'v3.5.0
+Private Const cptSettingFeature As String = "Driving Paths"
+Private Const cptViewSetting As String = "User View"
+Private Const cptGanttSetting As String = "Gantt Format"
+Private Const cptSubPathSetting As String = "SubPaths"
+Private Const cptPathCountSetting As String = "Path Count"
 
 Sub DrivingPaths()
 'Primary analysis module that controls analysis
@@ -167,21 +172,21 @@ Sub DrivingPaths()
             Set curProj = Nothing
             Exit Sub
         End If
-        
-        'v2.9.0 - get user field map
-        CritField = .PathField_Combobox.Text
-        GroupField = .GroupField_Combobox.Text
-        SubPathField = .SubPath_Combobox.Text
-        SubPaths = .SubPath_Checkbox.value
-        PathCount = .pathCnt_txtBox.value
-        userView = .UserView_Combobox.Text
-        ganttFormatOverride = .ganttFormatCheckBox.value
     
     End With
     
     'Suspend calculations and screen updating
     curProj.Application.Calculation = pjManual
     curProj.Application.ScreenUpdating = False
+    
+    'v3.5.3 - get user settings from settings file
+    CritField = cptGetCustomFieldName("Driving Paths")
+    GroupField = cptGetCustomFieldName("Driving Path Group")
+    SubPathField = cptGetCustomFieldName("SubPath Group")
+    SubPaths = cptGetSetting(cptSettingFeature, cptSubPathSetting)
+    PathCount = cptGetSetting(cptSettingFeature, cptPathCountSetting)
+    userView = cptGetSetting(cptSettingFeature, cptViewSetting)
+    ganttFormatOverride = cptGetSetting(cptSettingFeature, cptGanttSetting)
     
     'v3.5.0 update to set custom fields in subproject schedule that align with the master project
     Dim origGroupField As Long
@@ -472,7 +477,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     Else
     
         'Create CP Driving Path Table
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, FieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
+        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, fieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
         
         'Add fields to CP Driving Path Table
         curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Unique ID", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1, LockFirstColumn:=True
@@ -486,15 +491,15 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     End If
 
     'Create CP Driving Path Filter
-    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=GroupField, test:="is greater than", value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
+    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:=GroupField, test:="is greater than", value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
     
     'On Error Resume Next
     
     'Create CP Driving Path Group
     Dim cpGroup As Group
-    Set cpGroup = curProj.TaskGroups.Add(Name:="*ClearPlan Driving Path Group", FieldName:=GroupField)
+    Set cpGroup = curProj.TaskGroups.Add(Name:="*ClearPlan Driving Path Group", fieldName:=GroupField)
     
-    If SubPaths Then cpGroup.GroupCriteria.Add FieldName:=SubPathField, Ascending:=True
+    If SubPaths Then cpGroup.GroupCriteria.Add fieldName:=SubPathField, Ascending:=True
     
     'Create and apply CP Driving Path view if necessary
     If userView = "<Default>" Then
@@ -526,7 +531,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
             
                 Dim pathValue As Integer
                 
-                pathValue = t.GetField(FieldNameToFieldConstant(GroupField))
+                pathValue = Val(t.GetField(FieldNameToFieldConstant(GroupField)))
             
                 If pathValue = 0 Then
                     GoTo NextTask
