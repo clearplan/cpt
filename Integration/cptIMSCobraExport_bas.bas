@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.5.2</cpt_version>
+'<cpt_version>v3.5.3</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -1227,9 +1227,9 @@ next_task:
     Print #1, vbCrLf & "Total Task Assignment Forecast Errors Found: " & ErrorCounter
 
     Close #1
-
+    
     cptBeautifyDataCheck ACTfilename
-
+    
     MsgBox "Data Check Report saved to: " & vbCrLf & destFolder & "\" & Replace(ACTfilename, "csv", "xlsx"), vbInformation + vbOKOnly, "Data Check"
 
 End Sub
@@ -1250,7 +1250,7 @@ Private Sub MPP_Export(ByVal curProj As Project)
     OptionsViewEx DisplaySummaryTasks:=True
     SelectAll
     OutlineShowAllTasks
-
+    
     Set subProjs = curProj.Subprojects
     For Each subProj In subProjs
       strFileName = cptRxMatch(subProj.SourceProject.Name, "[^/\\<>]+$")
@@ -3696,7 +3696,7 @@ Private Function BrowseForFolder(Optional OpenAt As Variant) As Variant 'v3.4.2
     BrowseForFolder(0, "Choose an output folder:", 0, OpenAt)
     
     On Error Resume Next
-    BrowseForFolder = ShellApp.self.Path
+    BrowseForFolder = ShellApp.Self.Path
     On Error GoTo 0
     
     Set ShellApp = Nothing
@@ -3830,22 +3830,22 @@ Private Function PrependCAIDPrefix(ByVal baseStr As String, ByVal CAID1 As Strin
 'To add fields to an output row, extend the baseStr passed to this function.
 'The CAID prefix and SubProject column scaffolding are handled here automatically.
 
-    Dim result As String
-    result = baseStr
+    Dim Result As String
+    Result = baseStr
 
     If CAID3_Used = True And CAID2_Used = True Then
-        result = CAID1 & "," & CAID2 & "," & CAID3 & "," & result
+        Result = CAID1 & "," & CAID2 & "," & CAID3 & "," & Result
     End If
     If CAID3_Used = False And CAID2_Used = True Then
-        result = CAID1 & "," & CAID2 & "," & result
+        Result = CAID1 & "," & CAID2 & "," & Result
     End If
     If CAID3_Used = False And CAID2_Used = False Then
-        result = CAID1 & "," & result
+        Result = CAID1 & "," & Result
     End If
 
-    If subprojectIDs Then result = ProjID & "," & result
+    If subprojectIDs Then Result = ProjID & "," & Result
 
-    PrependCAIDPrefix = result
+    PrependCAIDPrefix = Result
 
 End Function
 
@@ -3908,21 +3908,21 @@ Optional ByVal ProjID As String, Optional ByVal whatifRevision As Boolean = Fals
     
         Case BCWP
         
-            tempString = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & ","
+            tempString = WP & "," & UID & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & Format(t.ActualStart, dateFmt) & "," & Format(t.ActualFinish, dateFmt) & "," & PercentfromString(t.GetField(FieldNameToFieldConstant(fPCNT))) & "," & "," 'v3.5.2
         
         Case BCWS
         
-            tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
+            tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & "," & "," 'v3.5.2
         
         Case WhatIf
         
             If whatifRevision Then
             
-                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & ","
+                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.Start, dateFmt) & "," & Format(t.Finish, dateFmt) & "," & "," 'v3.5.2
             
             Else
             
-                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & ","
+                tempString = CAM & "," & WP & "," & "," & UID & "," & MSWeight & "," & Replace(t.Name, ",", "") & "," & Format(t.BaselineStart, dateFmt) & "," & Format(t.BaselineFinish, dateFmt) & "," & "," 'v3.5.2
         
             End If
         
@@ -3962,7 +3962,7 @@ Sub cptBeautifyDataCheck(strFileName As String)
   'strings
   Dim str As String
   Dim strFirstRow As String
-
+    
   On Error Resume Next
   Set oExcel = GetObject(, "Excel.Application")
   If oExcel Is Nothing Then
@@ -3978,7 +3978,7 @@ Sub cptBeautifyDataCheck(strFileName As String)
   oWorkbook.SaveAs strFileName, FileFormat:=51
   Set oWorksheet = oWorkbook.Worksheets(1)
   Set oDataChecks = CreateObject("Scripting.Dictionary")
-
+  
   For Each vDataCheck In Split("Tasks Missing Data,CAM Errors,Work Package Errors,Task Assignment Baseline Discrepancies,Task Assignment Forecast Discrepancies", ",")
     Set c = oWorksheet.Columns(1).Find(vDataCheck, lookat:=xlPart)
     oWorksheet.Names.Add CStr(Replace(vDataCheck, " ", "")), c
@@ -4043,11 +4043,11 @@ Sub cptBeautifyDataCheck(strFileName As String)
       .DisplayGridlines = False
     End With
   Next lngItem
-
+  
   oExcel.DisplayAlerts = False
   oWorksheet.Delete
   oExcel.DisplayAlerts = True
-
+  
 exit_here:
   On Error Resume Next
   oExcel.Calculation = xlCalculationAutomatic
