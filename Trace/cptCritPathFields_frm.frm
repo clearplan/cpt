@@ -264,7 +264,7 @@ CheckSubPathField:
     
     nameTest = cptCustomFieldExists(SubPathField)
     
-    If nametext <> 0 Then
+    If nameTest <> 0 Then
         If CustomFieldGetName(nameTest) = SubPathField Then
             SubPath_Combobox.value = SubPathField
             GoTo CheckFieldsRenamed
