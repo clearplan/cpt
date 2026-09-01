@@ -1,7 +1,7 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.6.1</cpt_version>
+'<cpt_version>v1.6.2</cpt_version>
 Option Explicit
-Private Const MODULE_NAME = "cptResourceDemand_bas"
+Private Const THIS_MODULE = "cptResourceDemand_bas"
 
 Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm, Optional lngTaskCount As Long)
   'objects
@@ -992,7 +992,7 @@ exit_here:
   If Not oExcel Is Nothing Then oExcel.Quit
   Exit Sub
 err_here:
-  Call cptHandleErr(MODULE_NAME, "cptExportResourceDemand", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptExportResourceDemand", Err, Erl)
   On Error Resume Next
   Resume exit_here
 
@@ -1266,7 +1266,7 @@ next_saved_field:
       'non-labor
       cptDeleteSetting "ResourceDemand", "chkNonLabor" 'obsolete setting
     End If
-    .Caption = "Export Resource Demand (" & cptGetVersion(MODULE_NAME) & ")"
+    .Caption = "Export Resource Demand (" & cptGetVersion(THIS_MODULE) & ")"
     If Len(strMissing) > 0 Then
       If UBound(Split(strMissing, vbCrLf)) > 10 Then
         lngFile = FreeFile
@@ -1301,7 +1301,7 @@ err_here:
     Err.Clear
     Resume next_field
   Else
-    Call cptHandleErr(MODULE_NAME, "cptShowExportResourceDemand_frm", Err, Erl)
+    Call cptHandleErr(THIS_MODULE, "cptShowExportResourceDemand_frm", Err, Erl)
     Resume exit_here
   End If
 

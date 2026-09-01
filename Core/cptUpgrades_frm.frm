@@ -14,7 +14,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v1.5.7</cpt_version>
+'<cpt_version>v1.5.8</cpt_version>
 '/===== IMPORTANT =====\
 'ALL CODE IN THIS MODULE MUST BE SELF-CONTAINED
 'DO NOT BUMP THE VERSION WHILE DEVELOPING OR IT WILL GET OVERWRITTEN NEXT TIME YOU OPEN THE FORM
@@ -210,19 +210,19 @@ Private Sub cmdUpgradeSelected_Click()
   If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
 
   For lngItem = 0 To Me.lboModules.ListCount - 1
-    'scroll to selected
-    If lngItem > 1 Then
-      Me.lboModules.TopIndex = lngItem - 2
-    Else
-      Me.lboModules.TopIndex = lngItem
-    End If
+
     If Me.lboModules.Selected(lngItem) Then
+      'scroll to selected
+      If lngItem > 1 Then
+        Me.lboModules.TopIndex = lngItem - 2
+      Else
+        Me.lboModules.TopIndex = lngItem
+      End If
       '<issue33> trap invalid use of null error?
       If IsNull(Me.lboModules.List(lngItem, 0)) Then
         MsgBox "Unable to download upgrades.", vbExclamation + vbOKOnly, "Can't Connect"
         GoTo exit_here
       End If '</issue33>
-      
       Me.lboModules.ListIndex = lngItem
       strModule = Me.lboModules.List(lngItem, 0)
       If strModule = THIS_MODULE Then
@@ -427,12 +427,9 @@ Private Sub lblTitle_Click()
   Me.txtDevMode.Value = Val(Me.txtDevMode.Value) + 1
   If Val(Me.txtDevMode) > 5 Then
     Me.txtDevMode.Value = 0
-    Me.cboBranches.Visible = False
+    Me.cboBranches.Enabled = False
   ElseIf Val(Me.txtDevMode.Value) = 5 Then
-    Me.cboBranches.Visible = True
     Me.cboBranches.Enabled = True
-  Else
-    Me.cboBranches.Visible = False
   End If
 End Sub
 
@@ -488,6 +485,7 @@ Private Sub cptHandleErrUpgrade(strModule As String, strProcedure As String, obj
     strMsg = strMsg & ":" & lngErl
   End If
   MsgBox strMsg, vbExclamation + vbOKOnly, "Error"
+  lngFile = FreeFile
   strFileName = Environ("tmp") & "\cptUpgradeError.txt"
   Open strFileName For Output As #lngFile
   Print #lngFile, "Please send the following text to help@ClearPlanConsulting.com:"

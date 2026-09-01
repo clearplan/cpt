@@ -3,7 +3,7 @@
 	<Module>
 		<Name>cptAbout_frm</Name>
 		<FileName>cptAbout_frm.frm</FileName>
-		<Version>v1.14.1</Version>
+		<Version>v1.14.2</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -73,7 +73,7 @@
 	<Module>
 		<Name>cptBrowseFolder_bas</Name>
 		<FileName>cptBrowseFolder_bas.bas</FileName>
-		<Version>v1.0.2</Version>
+		<Version>v2.0.0</Version>
 		<Type>1</Type>
 		<Directory>Core</Directory>
 	</Module>
@@ -143,7 +143,7 @@
 	<Module>
 		<Name>cptCriticalPath_bas</Name>
 		<FileName>cptCriticalPath_bas.bas</FileName>
-		<Version>v3.5.2</Version>
+		<Version>v3.5.3</Version>
 		<Type>1</Type>
 		<Directory>Trace</Directory>
 	</Module>
@@ -157,7 +157,7 @@
 	<Module>
 		<Name>cptCritPathFields_frm</Name>
 		<FileName>cptCritPathFields_frm.frm</FileName>
-		<Version>v3.5.2</Version>
+		<Version>v3.5.3</Version>
 		<Type>3</Type>
 		<Directory>Trace</Directory>
 	</Module>
@@ -269,14 +269,14 @@
 	<Module>
 		<Name>cptIMSCobraExport_bas</Name>
 		<FileName>cptIMSCobraExport_bas.bas</FileName>
-		<Version>v3.5.2</Version>
+		<Version>v3.5.3</Version>
 		<Type>1</Type>
 		<Directory>Integration</Directory>
 	</Module>
 	<Module>
 		<Name>cptIMSCobraExport_frm</Name>
 		<FileName>cptIMSCobraExport_frm.frm</FileName>
-		<Version>v3.5.2</Version>
+		<Version>v3.5.3</Version>
 		<Type>3</Type>
 		<Directory>Integration</Directory>
 	</Module>
@@ -339,16 +339,16 @@
 	<Module>
 		<Name>cptResourceDemand_bas</Name>
 		<FileName>cptResourceDemand_bas.bas</FileName>
-		<Version>v1.6.1</Version>
+		<Version>v1.6.2</Version>
 		<Type>1</Type>
-		<Directory>ResourceDemand</Directory>
+		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptResourceDemand_frm</Name>
 		<FileName>cptResourceDemand_frm.frm</FileName>
-		<Version>v1.6.1</Version>
+		<Version>v1.6.2</Version>
 		<Type>3</Type>
-		<Directory>ResourceDemand</Directory>
+		<Directory>Metrics</Directory>
 	</Module>
 	<Module>
 		<Name>cptSaveLocal_bas</Name>
@@ -388,7 +388,7 @@
 	<Module>
 		<Name>cptSetup_bas</Name>
 		<FileName>cptSetup_bas.bas</FileName>
-		<Version>v1.14.1</Version>
+		<Version>v1.14.2</Version>
 		<Type>1</Type>
 		<Directory></Directory>
 	</Module>
@@ -409,28 +409,28 @@
 	<Module>
 		<Name>cptStatusSheet_bas</Name>
 		<FileName>cptStatusSheet_bas.bas</FileName>
-		<Version>v1.7.5</Version>
+		<Version>v1.8.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheet_frm</Name>
 		<FileName>cptStatusSheet_frm.frm</FileName>
-		<Version>v1.7.5</Version>
+		<Version>v1.8.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_bas</Name>
 		<FileName>cptStatusSheetImport_bas.bas</FileName>
-		<Version>v1.4.2</Version>
+		<Version>v1.5.0</Version>
 		<Type>1</Type>
 		<Directory>Status</Directory>
 	</Module>
 	<Module>
 		<Name>cptStatusSheetImport_frm</Name>
 		<FileName>cptStatusSheetImport_frm.frm</FileName>
-		<Version>v1.4.2</Version>
+		<Version>v1.5.0</Version>
 		<Type>3</Type>
 		<Directory>Status</Directory>
 	</Module>
@@ -465,7 +465,7 @@
 	<Module>
 		<Name>cptUpgrades_frm</Name>
 		<FileName>cptUpgrades_frm.frm</FileName>
-		<Version>v1.5.7</Version>
+		<Version>v1.5.8</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>

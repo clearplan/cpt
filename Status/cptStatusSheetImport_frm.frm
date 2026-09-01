@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.4.2</cpt_version>
+'<cpt_version>v1.5.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptStatusSheetImport_frm"
 
@@ -176,7 +176,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheetImport_frm", "cmdRemove_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRemove_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -189,7 +189,7 @@ Private Sub cmdRename_Click()
   Dim strFieldName As String
   Dim strCustomFieldName As String
   'longs
-  Dim I As Long
+  Dim i As Long
   Dim lngItem As Long
   Dim lngLCF As Long
   Dim lngExists As Long
@@ -249,12 +249,12 @@ Private Sub cmdRename_Click()
               GoTo next_item
             ElseIf lngResponse = vbYes Then
               CustomFieldDelete lngExists
-              For I = 0 To oComboBox.ListCount - 1
-                If oComboBox.List(I, 0) = lngExists Then
-                  oComboBox.List(I, 1) = FieldConstantToFieldName(lngExists)
+              For i = 0 To oComboBox.ListCount - 1
+                If oComboBox.List(i, 0) = lngExists Then
+                  oComboBox.List(i, 1) = FieldConstantToFieldName(lngExists)
                   Exit For
                 End If
-              Next I
+              Next i
               CustomFieldRename lngLCF, oDict.Items(lngItem)
               oComboBox.List(oComboBox.ListIndex, 1) = strFieldName & " (" & oDict.Items(lngItem) & ")"
             ElseIf lngResponse = vbNo Then
@@ -277,16 +277,18 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheetImport_frm", "cmdRename_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdRename_Click", Err, Erl)
   Resume exit_here
 End Sub
 
 Private Sub cmdSelectFiles_Click()
   'objects
   Dim oShell As Object
-  Dim oFileDialog As Object 'FileDialog
-  Dim oExcel As Excel.Application
+  Dim oFiles As Collection
   'strings
+  Dim strTitle As String
+  Dim strInitialFolder As String
+  Dim strFilter As String
   Dim strFileName As String
   'longs
   Dim lngItem As Long
@@ -296,53 +298,38 @@ Private Sub cmdSelectFiles_Click()
   Dim blnQuit As Boolean
   'variants
   'dates
-
-  On Error Resume Next
-  Set oExcel = GetObject(, "Excel.Application")
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If oExcel Is Nothing Then
-    Set oExcel = CreateObject("Excel.Application")
-    blnQuit = True
-  Else
-    blnQuit = False
+  
+  strTitle = "Select Returned Status Sheet(s):"
+  If Left(ActiveProject.Path, 2) = "<>" Or Left(ActiveProject.Path, 4) = "http" Then 'server: default to Desktop
+    Set oShell = CreateObject("WScript.Shell")
+    strInitialFolder = oShell.SpecialFolders("Desktop") & "\"
+  Else 'not a server project: use ActiveProject.Path
+    strInitialFolder = ActiveProject.Path & "\"
   End If
-  Set oFileDialog = oExcel.FileDialog(msoFileDialogFilePicker)
-  With oFileDialog
-    .AllowMultiSelect = True
-    .ButtonName = "Import"
-    .InitialView = 2 'msoFileDialogViewDetails
-    If Left(ActiveProject.Path, 2) = "<>" Or Left(ActiveProject.Path, 4) = "http" Then 'server: default to Desktop
-      Set oShell = CreateObject("WScript.Shell")
-      .InitialFileName = oShell.SpecialFolders("Desktop") & "\"
-    Else 'not a server project: use ActiveProject.Path
-      .InitialFileName = ActiveProject.Path & "\"
-    End If
-    .Title = "Select Returned Status Sheet(s):"
-    .Filters.Add "Microsoft Excel Workbook (xlsx)", "*.xlsx"
-    If .Show = -1 Then
-      If .SelectedItems.Count > 0 Then
-        For lngItem = 1 To .SelectedItems.Count
-          strFileName = .SelectedItems(lngItem)
-          If Dir(strFileName) <> vbNullString Then
-            Me.lboStatusSheets.AddItem
-            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 0) = Replace(strFileName, Dir(strFileName), "")
-            Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 1) = Dir(strFileName)
-          End If
-        Next lngItem
+  strFilter = "Microsoft Excel Workbook (xlsx)" & vbNullChar & "*.xlsx"
+
+  Set oFiles = cptGetFiles("Select Returned Status Sheet(s):", strInitialFolder, strFilter, True)
+  If oFiles.Count > 0 Then
+    For lngItem = 1 To oFiles.Count
+      strFileName = oFiles(lngItem)
+      If Dir(strFileName) <> vbNullString Then
+        Me.lboStatusSheets.AddItem
+        Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 0) = Replace(strFileName, Dir(strFileName), "")
+        Me.lboStatusSheets.List(Me.lboStatusSheets.ListCount - 1, 1) = Dir(strFileName)
       End If
-    End If
-  End With
+    Next lngItem
+  Else
+    GoTo exit_here
+  End If
 
 exit_here:
   On Error Resume Next
   Set oShell = Nothing
-  Set oFileDialog = Nothing
-  If blnQuit Then oExcel.Quit
-  Set oExcel = Nothing
+  Set oFiles = Nothing
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheetImport_frm", "cmdSelectFiles_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdSelectFiles_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -416,7 +403,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptStatusSheetImport_frm", "lboStatusSheets_DblClick", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboStatusSheets_DblClick", Err, Erl)
   Resume exit_here
 End Sub
 
