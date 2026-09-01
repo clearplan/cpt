@@ -198,6 +198,8 @@ Dim strDirectory As String
       strDirectory = "Status"
     Case "ResetAll"
       strDirectory = "Core"
+    Case "ResourceDemand"
+      strDirectory = "Metrics"
     Case "SaveLocal"
       strDirectory = "CustomFields"
     Case "SaveMarked"

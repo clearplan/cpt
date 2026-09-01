@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v3.5.2</cpt_version>
+'<cpt_version>v3.5.3</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptCritPathFields_frm"
 Private Const cptSettingFeature As String = "Driving Paths" 'v3.5.0
@@ -90,7 +90,10 @@ Private Sub RunBtn_Click()
     
     cptStoreCustomFieldName "Driving Paths", "CP Driving Paths", FieldNameToFieldConstant(PathField_Combobox.Text)
     cptStoreCustomFieldName "Driving Path Group", "CP Driving Path Group ID", FieldNameToFieldConstant(GroupField_Combobox.Text)
-    cptStoreCustomFieldName "SubPath Group", "CP SubPath Group ID", FieldNameToFieldConstant(SubPath_Combobox.Text)
+      
+    If SubPath_Checkbox Then
+        cptStoreCustomFieldName "SubPath Group", "CP SubPath Group ID", FieldNameToFieldConstant(SubPath_Combobox.Text)
+    End If
     
     'Store Field Names
     cptSaveSetting cptSettingFeature, cptViewSetting, UserView_Combobox.Text
@@ -109,7 +112,9 @@ Group_Field_Rename:
 End_Field_Rename:
 
     On Error GoTo SubPath_FieldExists
-    CustomFieldRename FieldID:=FieldNameToFieldConstant(SubPath_Combobox.Text), NewName:="CP SubPath Group ID"
+    If SubPath_Checkbox Then
+        CustomFieldRename FieldID:=FieldNameToFieldConstant(SubPath_Combobox.Text), NewName:="CP SubPath Group ID"
+    End If
     
 SubPath_Rename:
     
@@ -135,7 +140,7 @@ Group_FieldExists:
 SubPath_FieldExists:
 
     CustomFieldRename FieldID:=FieldNameToFieldConstant("CP SubPath Group ID"), NewName:="CP SubPath Group ID_" & FieldNameToFieldConstant("CP SubPath Group ID")
-    CustomFieldRename FieldID:=FieldNameToFieldConstant(GroupField_Combobox.Text), NewName:="CP SubPath Group ID"
+    CustomFieldRename FieldID:=FieldNameToFieldConstant(SubPath_Combobox.Text), NewName:="CP SubPath Group ID"
     
     Resume SubPath_Rename
     
@@ -206,27 +211,60 @@ End Sub
 Private Sub DisplayUserCustomFields(ByVal drivingPathField As String, ByVal groupPathField As String, ByVal SubPathField As String)
 
     Dim nameTest As Long
+    Dim fieldsRenamed As Boolean
     
     nameTest = 0
+    fieldsRenamed = False
     
     On Error Resume Next
     
-    nameTest = FieldNameToFieldConstant(drivingPathField)
+    If Len(drivingPathField) = 0 Then GoTo CheckGroupPathField
+    
+    nameTest = cptCustomFieldExists(drivingPathField)
     
     If nameTest <> 0 Then
-        PathField_Combobox.value = drivingPathField
+        If CustomFieldGetName(nameTest) = drivingPathField Then
+            PathField_Combobox.value = drivingPathField
+            GoTo CheckGroupPathField
+        End If
     End If
+    
+    fieldsRenamed = True
 
-    nameTest = FieldNameToFieldConstant(groupPathField)
+CheckGroupPathField:
+
+    If Len(groupPathField) = 0 Then GoTo CheckSubPathField
+
+    nameTest = cptCustomFieldExists(groupPathField)
     
     If nameTest <> 0 Then
-        GroupField_Combobox.value = groupPathField
+        If CustomFieldGetName(nameTest) = groupPathField Then
+            GroupField_Combobox.value = groupPathField
+            GoTo CheckSubPathField
+        End If
     End If
     
-    nameTest = FieldNameToFieldConstant(SubPathField)
+    fieldsRenamed = True
+    
+CheckSubPathField:
+
+    If Len(SubPathField) = 0 Then GoTo CheckFieldsRenamed
+    
+    nameTest = cptCustomFieldExists(SubPathField)
     
     If nameTest <> 0 Then
-        SubPath_Combobox.value = SubPathField
+        If CustomFieldGetName(nameTest) = SubPathField Then
+            SubPath_Combobox.value = SubPathField
+            GoTo CheckFieldsRenamed
+        End If
+    End If
+    
+    fieldsRenamed = True
+    
+CheckFieldsRenamed:
+    
+    If fieldsRenamed Then
+        MsgBox "Some custom fields have been renamed." & vbCr & vbCr & "Please review and update the field mapping."
     End If
 
 End Sub
@@ -238,5 +276,3 @@ Private Sub UserForm_QueryClose(Cancel As Integer, CloseMode As Integer)
     Me.Hide
   End If
 End Sub
-
-

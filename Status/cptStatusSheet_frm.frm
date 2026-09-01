@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.7.5</cpt_version>
+'<cpt_version>v1.8.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptStatusSheet_frm"
 Private Const lngForeColorValid As Long = -2147483630
@@ -278,17 +278,17 @@ Private Sub chkAllItems_Click()
 End Sub
 
 Private Sub chkAppendStatusDate_Click()
-  Dim strDelimiter As String
+  Dim strPathSeparator As String
   Dim strDir As String
   strDir = Me.txtDir
-  strDelimiter = cptRegEx(strDir, "\\|\/")
+  strPathSeparator = cptRxMatch(strDir, "\\|\/")
   If Me.chkAppendStatusDate Then
-    strDir = Replace(strDir, "[yyyy-mm-dd]" & strDelimiter, "")
-    Me.lblDirSample.Caption = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strDelimiter
-    Me.txtDir = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strDelimiter
+    strDir = Replace(strDir, "[yyyy-mm-dd]" & strPathSeparator, "")
+    Me.lblDirSample.Caption = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strPathSeparator
+    Me.txtDir = strDir & Format(CDate(Me.txtStatusDate), "yyyy-mm-dd") & strPathSeparator
   Else
-    Me.lblDirSample.Caption = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
-    Me.txtDir.Value = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strDelimiter & "]?", "")
+    Me.lblDirSample.Caption = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strPathSeparator & "]?", "")
+    Me.txtDir.Value = cptRxReplace(strDir, "[0-9]{4}-[0-9]{2}-[0-9]{2}[\" & strPathSeparator & "]?", "")
   End If
 End Sub
 
@@ -693,7 +693,7 @@ End Sub
 Private Sub cmdRun_Click()
   'objects
   'strings
-  Dim strDelimiter As String
+  Dim strPathSeparator As String
   Dim strTempDir As String
   Dim strMsg As String
   'longs
@@ -846,13 +846,13 @@ Private Sub cmdRun_Click()
     End If
   End If
   'ensure directory exists
-  strDelimiter = cptRegEx(Me.txtDir, "\\|\/")
+  strPathSeparator = cptRxMatch(Me.txtDir, "\\|\/")
   If Dir(Me.txtDir, vbDirectory) = vbNullString Then
-    For Each vDir In Split(Me.txtDir, strDelimiter)
+    For Each vDir In Split(Me.txtDir, strPathSeparator)
       If Len(strTempDir) = 0 Then
-        strTempDir = vDir & strDelimiter
+        strTempDir = vDir & strPathSeparator
       Else
-        strTempDir = strTempDir & strDelimiter & vDir
+        strTempDir = strTempDir & strPathSeparator & vDir
       End If
       If Dir(strTempDir, vbDirectory) = vbNullString Then
         vResponse = MsgBox("The directory at:" & vbCrLf & vbCrLf & strTempDir & vbCrLf & vbCrLf & "...does not exist. Create it now?", vbExclamation + vbYesNoCancel)
@@ -1181,15 +1181,15 @@ End Sub
 Private Sub txtDir_Change()
   Dim strDir As String
   Dim strNamingConvention As String
-  Dim strDelimiter As String
+  Dim strPathSeparator As String
   
   strDir = Me.txtDir.Text
-  strDelimiter = cptRegEx(strDir, "\\|\/")
+  strPathSeparator = cptRxMatch(strDir, "\\|\/")
   If InStr(strDir, "[yyyy-mm-dd]") > 0 Then
     strDir = Replace(strDir, "[yyyy-mm-dd]", Format(ActiveProject.StatusDate, "yyyy-mm-dd"))
   End If
-  If Right(strDir, 1) <> strDelimiter Then
-    strDir = strDir & strDelimiter
+  If Right(strDir, 1) <> strPathSeparator Then
+    strDir = strDir & strPathSeparator
   End If
   Me.lblDirSample.Caption = strDir
   
@@ -1211,11 +1211,11 @@ End Sub
 Private Sub txtDir_DropButtonClick()
   'objects
   Dim oShell As Object
-  Dim oFileDialog As Object 'FileDialog
-  Dim oExcel As Excel.Application
   'strings
+  Dim strDefaultPath As String
+  Dim strBaseDirectory As String
   Dim strValidPath As String
-  Dim strDelimiter As String
+  Dim strPathSeparator As String
   'longs
   'integers
   'doubles
@@ -1225,32 +1225,25 @@ Private Sub txtDir_DropButtonClick()
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
-  Set oExcel = CreateObject("Excel.Application")
-  Set oFileDialog = oExcel.FileDialog(msoFileDialogFolderPicker)
-  With oFileDialog
-    .AllowMultiSelect = False
-    If Left(ActiveProject.Path, 2) = "<>" Or Left(ActiveProject.Path, 4) = "http" Then 'server project: default to Desktop
-      Set oShell = CreateObject("WScript.Shell")
-      .InitialFileName = oShell.SpecialFolders("Desktop")
-    Else 'not a server project
-      .InitialFileName = ActiveProject.Path
-    End If
-    If .Show Then
-      strValidPath = cptValidPath(.SelectedItems(1))
-      If Not CBool(Split(strValidPath, ":")(0)) Then
-        MsgBox Replace(strValidPath, "0:", "Reason: "), vbCritical + vbOKOnly, "Invalid Path"
-      Else
-        strDelimiter = cptRegEx(.SelectedItems(1), "\\|\/")
-        Me.txtDir = .SelectedItems(1) & strDelimiter & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & strDelimiter, "")
-      End If
-    End If
-  End With
+  If Left(ActiveProject.Path, 2) = "<>" Or Left(ActiveProject.Path, 4) = "http" Then 'server project: default to Desktop
+    Set oShell = CreateObject("WScript.Shell")
+    strDefaultPath = oShell.SpecialFolders("Desktop")
+  Else 'not a server project
+    strDefaultPath = ActiveProject.Path
+  End If
+  
+  strBaseDirectory = cptGetFolder("Select a directory:", strDefaultPath)
+  strValidPath = cptValidPath(strBaseDirectory)
+  If Not CBool(Split(strValidPath, ":")(0)) Then
+    MsgBox Replace(strValidPath, "0:", "Reason: "), vbCritical + vbOKOnly, "Invalid Path"
+  Else
+    strPathSeparator = cptRxMatch(strBaseDirectory, "\\|\/")
+    Me.txtDir = strBaseDirectory & strPathSeparator & IIf(Me.chkAppendStatusDate, Format(ActiveProject.StatusDate, "yyyy-mm-dd") & strPathSeparator, "")
+  End If
   
 exit_here:
   On Error Resume Next
   Set oShell = Nothing
-  Set oFileDialog = Nothing
-  Set oExcel = Nothing
   
   Exit Sub
 err_here:
