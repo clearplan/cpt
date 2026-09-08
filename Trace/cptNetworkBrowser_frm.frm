@@ -1,10 +1,10 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptNetworkBrowser_frm 
    Caption         =   "Network Browser"
-   ClientHeight    =   6330
+   ClientHeight    =   6810
    ClientLeft      =   45
    ClientTop       =   330
-   ClientWidth     =   9885.001
+   ClientWidth     =   10635
    OleObjectBlob   =   "cptNetworkBrowser_frm.frx":0000
    StartUpPosition =   1  'CenterOwner
 End
@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.2.4</cpt_version>
+'<cpt_version>v1.3.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptNetworkBrowser_frm"
 
@@ -28,6 +28,20 @@ Private Sub cboSortSuccessorsBy_Change()
   If Me.Visible Then
     cptSaveSetting "NetworkBrowser", "cboSortSuccessorsBy", Me.cboSortSuccessorsBy.Value
     cptSortNetworkBrowserLinks Me, "s", Me.chkSortSuccDescending.Value
+  End If
+End Sub
+
+Private Sub chkDriven_Click()
+  If Me.Visible Then
+    cptSaveSetting "NetworkBrowser", "chkDriven", IIf(Me.chkDriven, "1", "0")
+    cptShowPreds Me
+  End If
+End Sub
+
+Private Sub chkDriving_Click()
+  If Me.Visible Then
+    cptSaveSetting "NetworkBrowser", "chkDriving", IIf(Me.chkDriving, "1", "0")
+    cptShowPreds Me
   End If
 End Sub
 
@@ -52,6 +66,13 @@ Private Sub chkSortSuccDescending_Click()
   End If
 End Sub
 
+Private Sub chkTrueFloat_Click()
+  If Me.Visible Then
+    cptSaveSetting "NetworkBrowser", "chkTrueFloat", IIf(Me.chkTrueFloat, 1, 0)
+    cptShowPreds Me
+  End If
+End Sub
+
 Private Sub cmdBack_Click()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -61,7 +82,7 @@ Private Sub cmdBack_Click()
   If IsNull(Me.lboHistory.Value) Then Me.lboHistory.ListIndex = -1
 
   If Me.lboHistory.ListCount > 1 Then
-    If Me.lboHistory.ListIndex < Me.lboHistory.ListCount - 1 Then
+    If Me.lboHistory.ListIndex < (Me.lboHistory.ListCount - 1) Then
       Me.lboHistory.ListIndex = Me.lboHistory.ListIndex + 1
       cptHistoryDoubleClick Me
     End If
@@ -70,10 +91,10 @@ Private Sub cmdBack_Click()
 exit_here:
   Exit Sub
 err_here:
-  If Err.Number = 380 Then
-    Err.Clear
+  If err.Number = 380 Then
+    err.Clear
   Else
-    Call cptHandleErr("cptNetworkBrowser_frm", "cmdBack_Click", Err, Erl)
+    Call cptHandleErr("cptNetworkBrowser_frm", "cmdBack_Click", err, Erl)
   End If
   Resume exit_here
   
@@ -96,7 +117,7 @@ Private Sub cmdFwd_Click()
   
   Me.lboHistory.SetFocus
   
-  If IsNull(Me.lboHistory.Value) Then Me.lboHistory.ListIndex = 0
+  If IsNull(Me.lboHistory.Value) Then GoTo exit_here
 
   If Me.lboHistory.ListCount > 0 And Me.lboHistory.ListIndex > 0 Then
     Me.lboHistory.ListIndex = Me.lboHistory.ListIndex - 1
@@ -106,10 +127,10 @@ Private Sub cmdFwd_Click()
 exit_here:
   Exit Sub
 err_here:
-  If Err.Number = 380 Then
-    Err.Clear
+  If err.Number = 380 Then
+    err.Clear
   Else
-    Call cptHandleErr("cptNetworkBrowser_frm", "cmdFwd_Click", Err, Erl)
+    Call cptHandleErr("cptNetworkBrowser_frm", "cmdFwd_Click", err, Erl)
   End If
   Resume exit_here
 
@@ -182,7 +203,7 @@ exit_here:
   Exit Sub
 err_here:
   On Error Resume Next
-  Call cptHandleErr("cptNetworkBrowser_frm", "cmdMark_Click", Err, Erl)
+  Call cptHandleErr("cptNetworkBrowser_frm", "cmdMark_Click", err, Erl)
   Resume exit_here
 End Sub
 
@@ -252,7 +273,7 @@ exit_here:
   cptSpeed False
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "cmdUnmark_Click", Err, Erl)
+  Call cptHandleErr("cptNetworkBrowser_frm", "cmdUnmark_Click", err, Erl)
   Resume exit_here
 End Sub
 
@@ -284,7 +305,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "cmdUnmarkAll_Click", Err, Erl)
+  Call cptHandleErr("cptNetworkBrowser_frm", "cmdUnmarkAll_Click", err, Erl)
   Resume exit_here
   
 End Sub
@@ -339,7 +360,7 @@ Sub lboPredecessors_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
 exit_here:
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "lboPredecesors_DblClick", Err, Erl)
+  Call cptHandleErr("cptNetworkBrowser_frm", "lboPredecesors_DblClick", err, Erl)
   Resume exit_here
 End Sub
 
@@ -401,7 +422,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "lboSuccessors_DblClick", Err, Erl)
+  Call cptHandleErr("cptNetworkBrowser_frm", "lboSuccessors_DblClick", err, Erl)
   Resume exit_here
 End Sub
 
@@ -449,9 +470,10 @@ Private Sub UserForm_Resize()
   Else
     Me.lboPredecessors.Width = 416 + (Me.Width - 506.25)
     Me.lboSuccessors.Width = 416 + (Me.Width - 506.25)
+    'cptSaveSetting "NetworkBrowser", "FormWidth", Me.Width 'todo: need reset
   End If
-  If Me.Height <> 345.75 Then 'protect height (for now)
-    Me.Height = 345.75
+  If Me.Height <> 369.75 Then 'protect height (for now)
+    Me.Height = 369.75
   End If
   
 End Sub
