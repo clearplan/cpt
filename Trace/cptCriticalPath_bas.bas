@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.5.4</cpt_version>
+'<cpt_version>v3.5.5</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -140,7 +140,7 @@ Sub DrivingPaths()
             .SubPath_Combobox.AddItem CustTextFields(i)
         Next i
         
-        .pathCnt_txtBox.value = 3
+        .pathCnt_txtBox.Value = 3
         
         .Caption = "cptCritical Path " & cptGetVersion("cptCriticalPath_bas")
         
@@ -491,7 +491,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     End If
 
     'Create CP Driving Path Filter
-    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:=GroupField, test:="is greater than", value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
+    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
     
     'On Error Resume Next
     
