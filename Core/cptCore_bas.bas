@@ -3185,7 +3185,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
       End If
       If lngField > 0 And InStr(strSetting, "|") > 0 Then
         If lngField > 188776000 And FieldConstantToFieldName(lngField) = "<Unavailable>" Then
-          If FieldNameToFieldConstant(Split(strSetting, "|")(1)) > 0 Then
+          If cptCustomFieldExists(CStr(Split(strSetting, "|")(1))) > 0 Then
             lngField = FieldNameToFieldConstant(Split(strSetting, "|")(1))
             cptSaveSetting "Integration", CStr(vControl), lngField & "|" & Split(strSetting, "|")(1)
             oComboBox.Value = lngField
