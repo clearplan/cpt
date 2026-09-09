@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.5.3</cpt_version>
+'<cpt_version>v3.5.4</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -793,7 +793,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency,
             
             If Not IsNull(i) Then
             
-                ' update existing — keep the lower float
+                ' update existing Â— keep the lower float
                 Dim newFloat As Double
                 
                 newFloat = tempFloat + tDrivingPaths.CurrentFloat
@@ -909,7 +909,7 @@ Private Sub CheckCritTask(ByVal curProj As Project, ByVal tdp As TaskDependency,
         
 End Sub
 
-Private Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType As Integer, ByVal dLag As Double, dlagtype As Integer) As Double
+Public Function TrueFloat(ByVal tPred As Task, ByVal tSucc As Task, ByVal dType As Integer, ByVal dLag As Double, dlagtype As Integer) As Double
 'Find True Float Value
 'True Float is the dependency level 'free float' value,
 'taking into consideration all duration types (including eDays),
@@ -1141,7 +1141,7 @@ Function get_subProj_index(ByVal mProj As Project, ByVal subprojectFilename As S
         End If
     Next t
 
-    'No suitable task found (e.g., empty subproject) — fall back to 0
+    'No suitable task found (e.g., empty subproject) Â— fall back to 0
     get_subProj_index = 0
 
 End Function
