@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSetup_bas"
-'<cpt_version>v1.14.3</cpt_version>
+'<cpt_version>v1.14.4</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptSetup_bas"
 Public Const strGitHub = "https://raw.githubusercontent.com/clearplan/cpt/master/"
@@ -16,7 +16,7 @@ Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() l
                                                                         ByVal dwReserved As Long) As Long
 #End If
 #If VBA7 Then
-  Declare PtrSafe Sub cptSleep Lib "kernel32" Alias "Sleep" (ByVal dwMilliseconds As LongPtr)
+  Declare PtrSafe Sub cptSleep Lib "Kernel32" Alias "Sleep" (ByVal dwMilliseconds As LongPtr)
 #Else
   Declare Sub cptSleep Lib "kernel32" Alias "Sleep" (ByVal dwMilliseconds As Long)
 #End If
@@ -366,6 +366,9 @@ End Sub
 Public Function cptBuildRibbonTab()
   Dim ribbonXML As String
   Dim lngCleanUp As Long
+  Dim blnMaster As Boolean
+  
+  blnMaster = ActiveProject.Subprojects.Count > 0
 
   'build ClearPlan Ribbon Tab XML
   ribbonXML = ribbonXML + vbCrLf & "<mso:tab id=""tCommon"" label=""ClearPlan"" >" 'insertBeforeQ=""mso:TabTask"">"
@@ -519,16 +522,31 @@ Public Function cptBuildRibbonTab()
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExport"" label="">> PowerPoint"" imageMso=""SlideNew"" onAction=""cptExportCriticalPathSelected"" visible=""true"" size=""large"" />"
       End If
     End If
-    If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
+    If blnMaster Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
-    End If
-    If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
-      ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" size=""large"" >"
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
-      ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
+      If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCPL"" label=""Export CPLs"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptExportCrossProjectLinks"" visible=""true"" supertip=""Export Cross-Project Links to Excel; identify 'ghost tasks.'"" />"
+      End If
+      If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" >"
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
+      End If
+    Else
+      If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
+      End If
+      If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" size=""large"" >"
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
+      End If
     End If
     If cptModuleExists("cptSaveMarked_bas") And cptModuleExists("cptSaveMarked_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
@@ -671,7 +689,7 @@ Public Function cptBuildRibbonTab()
   If cptModuleExists("cptCheckAssignments_bas") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignments"" label=""Check Assignments"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
   End If
-  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export All Codes"" imageMso=""Export"" onAction=""cptExportAllCodes"" visible=""true"" supertip=""Export all Local Custom Fields with lookups to *.csv"" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export Codes"" imageMso=""Export"" onAction=""cptExportAllCodes"" visible=""true"" supertip=""Export Local Custom Fields with Outline Codes or Lookup Tables to *.csv"" />"
   If cptModuleExists("cptAdjustment_bas") And cptModuleExists("cptAdjustment_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdjustment"" label=""ETC Adjustments"" imageMso=""SynchronizationStatus"" onAction=""cptShowAdjustment_frm"" visible=""true"" supertip=""Bulk adjust ETCs by resource, to given target, by percentage, or by a given amount."" />"
   End If
@@ -1507,7 +1525,7 @@ End Sub
 
 Sub cptValidateXML(strXML As String)
   'objects
-  Dim oXML As Object 
+  Dim oXML As Object
   'strings
   Dim strFileName As String
   'longs
