@@ -1,14 +1,15 @@
 Attribute VB_Name = "cptCriticalPathTools_bas"
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.3.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptCriticalPathTools_bas"
 #If Win64 And VBA7 Then
-  Declare PtrSafe Sub keybd_event Lib "user32" ( _
+  Declare PtrSafe Sub cptKeyDown Lib "user32" Alias "keybd_event" ( _
       ByVal bVk As Byte, _
       ByVal bScan As Byte, _
       ByVal dwFlags As Long, _
       ByVal dwExtraInfo As Long)
 #Else
-Declare Sub keybd_event Lib "user32" ( _
+Declare Sub cptKeyDown Lib "user32" Alias "keybd_event" ( _
     ByVal bVk As Byte, _
     ByVal bScan As Byte, _
     ByVal dwFlags As Long, _
@@ -105,19 +106,20 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
 
   EditGoTo Date:=dtFrom
   
-  Set oPowerPoint = CreateObject("PowerPoint.Application")
-  oPowerPoint.Visible = True
-  Set oPresentation = oPowerPoint.Presentations.Add(msoCTrue)
-  
   'ensure directory
-  Set oShell = CreateObject("WScript.Shell")
-  strDir = oShell.SpecialFolders("Desktop") & "\"
+  strDir = cptGetFolder("Save to directory:", strDir) & "\"
   If Dir(strDir, vbDirectory) = vbNullString Then MkDir strDir
   'build filename
   strFileName = cptRegEx(ActiveProject.Name, "[^\\/]{1,}$")
   strFileName = Replace(strFileName, ".mpp", "")
   strFileName = Replace(strFileName, " ", "_")
   strFileName = strDir & cptGetProgramAcronym & "-DrivingPathAnalysis-" & Format(Now, "yyyy-mm-dd") & ".pptx"
+  
+  Set oPowerPoint = CreateObject("PowerPoint.Application")
+  oPowerPoint.Visible = True
+  Set oPresentation = oPowerPoint.Presentations.Add(msoCTrue)
+  oPresentation.Application.WindowState = ppWindowMinimized
+  
   On Error Resume Next
   Set pptExists = oPowerPoint.Presentations(strFileName)
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -125,6 +127,8 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
     pptExists.Save
     pptExists.Close
   End If
+  Application.ActiveWindow.Activate
+  Application.SelectBeginning
   'might exist but be closed
   If Dir(strFileName) <> vbNullString Then
     If MsgBox("A file with this name already exists:" & vbCrLf & vbCrLf & strFileName & vbCrLf & vbCrLf & "OK to overwrite?", vbExclamation + vbYesNo, "File Exists") = vbYes Then
@@ -134,9 +138,10 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
       strFileName = Replace(strFileName, ".mpp", "-" & Format(Now, "hh-nn-ss") & ".mpp")
     End If
   Else
-    
+    MsgBox "Click OK to proceed.", vbInformation + vbOKOnly, "Glitch-Dodger"
   End If
   oPresentation.SaveAs strFileName
+  
   'make a title slide
   Set oSlide = oPresentation.Slides.Add(1, ppLayoutCustom)
   oSlide.Layout = ppLayoutTitle
@@ -146,7 +151,7 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   
   'close timeline view / bottom pane if open
   On Error Resume Next
-  ActiveWindow.BottomPane.Close
+  Application.ActiveWindow.BottomPane.Close
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   SelectTaskColumn "Name"
   WrapText
@@ -154,7 +159,6 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   'for each primary,secondary,tertiary > make a slide
   For Each vPath In Split(strDrivingPaths, ",")
     'copy the picture
-    'SetAutoFilter FieldName:="CP Driving Paths", FilterType:=pjAutoFilterCustom, Test1:="contains", Criteria1:=CStr(vPath)
     SetAutoFilter FieldName:="CP Driving Path Group ID", FilterType:=pjAutoFilterIn, Criteria1:=CStr(vPath)
     Sort Key1:="Finish", Key2:="Duration", Ascending2:=False, Renumber:=False
     TimescaleEdit MajorUnits:=0, MinorUnits:=2, MajorLabel:=0, MinorLabel:=10, MinorTicks:=True, Separator:=True, TierCount:=2
@@ -167,11 +171,11 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
     If oTasks Is Nothing Then GoTo next_path
     'account for when task count exceeds easily visible range on powerpoint slide
     'also account for very long task names (wraptext)
-    ActiveWindow.Activate
+    Application.ActiveWindow.Activate
     SelectBeginning
     lngSlide = 0
     Do
-      ActiveWindow.Activate
+      Application.ActiveWindow.Activate
       lngSlide = lngSlide + 1
       SelectBeginning
       DoEvents
@@ -182,8 +186,8 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
         DoEvents
       End If
       'PageDown here
-      keybd_event VK_PAGEDOWN, 0, 0, 0
-      keybd_event VK_PAGEDOWN, 0, KEYEVENTF_KEYUP, 0
+      cptKeyDown VK_PAGEDOWN, 0, 0, 0
+      cptKeyDown VK_PAGEDOWN, 0, KEYEVENTF_KEYUP, 0
       DoEvents
       SelectCellUp
       DoEvents
