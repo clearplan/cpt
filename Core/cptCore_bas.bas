@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCore_bas"
-'<cpt_version>v1.19.0</cpt_version>
+'<cpt_version>v1.19.1</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptCore_bas"
 Private oMSPEvents As cptEvents_cls
@@ -2965,7 +2965,7 @@ End Sub
 
 Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalRequired As Boolean = False, Optional blnRollingWaveDateRequired As Boolean = False, Optional blnConfirmationRequired As Boolean = False) As Boolean
   'objects
-  Dim myIntegration_frm As cptIntegration_frm
+  Dim myIntegration_frm As Object 'cptIntegration_frm
   Dim oRequiredFields As Object 'Scripting.Dictionary
   Dim oComboBox As MSForms.ComboBox
   'strings
@@ -2983,6 +2983,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
   Dim blnErrorTrapping As Boolean
   Dim blnUseDefault As Boolean
   Dim blnValid As Boolean
+  Dim blnModuleExists As Boolean
   'variants
   Dim vRequired As Variant
   Dim vAddField  As Variant
@@ -2990,6 +2991,8 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
   Dim vControl As Variant
   'dates
   
+  blnModuleExists = cptModuleExists("cptIntegration_frm")
+
   'prevent spawning
   If Not cptGetUserForm("cptIntegration_frm") Is Nothing Then Exit Function
   
@@ -3028,6 +3031,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
     End If
   Next vControl
   
+  #If blnModuleExists Then
   Set myIntegration_frm = New cptIntegration_frm
   With myIntegration_frm
     
@@ -3290,6 +3294,7 @@ next_control:
     End If
     
   End With
+  #End If
 
 exit_here:
   On Error Resume Next
