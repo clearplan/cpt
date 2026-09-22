@@ -7,7 +7,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = False
 Attribute VB_Exposed = False
-'<cpt_version>v1.6.0</cpt_version>
+'<cpt_version>v1.6.1</cpt_version>
 Option Explicit
 Private WithEvents MyMSPApplication As Application
 Attribute MyMSPApplication.VB_VarHelpID = -1
@@ -32,11 +32,13 @@ Private Sub MyMSPApplication_WindowSelectionChange(ByVal Window As Window, ByVal
   'integers
   'booleans
   Dim blnErrorTrapping As Boolean
+  Dim blnModuleExists As Boolean
   'variants
   'dates
 
   blnErrorTrapping = cptErrorTrapping
   On Error Resume Next
+  
   'Validate users selected view type
   If ActiveWindow.ActivePane.View.Type = pjTaskItem Then
     Set oTasks = ActiveSelection.Tasks
@@ -70,16 +72,19 @@ Private Sub MyMSPApplication_WindowSelectionChange(ByVal Window As Window, ByVal
         Else
           Application.StatusBar = Format(lngItems, "#,##0") & " task" & IIf(lngItems = 1, "", "s") & " selected"
         End If
-        If cptGetSetting("Fiscal", "chkShowFiscalPeriodCountInStatusBar") = 1 Then
-          lngFiscalPeriods = cptGetFiscalPeriods(oTasks)
-          If lngFiscalPeriods > 0 And cptCalendarExists("cptFiscalCalendar") Then 'todo: and setting
-            If Len(Application.StatusBar) > 0 Then
-              Application.StatusBar = Application.StatusBar & " | " & lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
-            Else
-              Application.StatusBar = lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
+        blnModuleExists = cptModuleExists("cptFiscal_bas")
+        #If blnModuleExists Then
+          If cptGetSetting("Fiscal", "chkShowFiscalPeriodCountInStatusBar") = 1 Then
+            lngFiscalPeriods = cptGetFiscalPeriods(oTasks)
+            If lngFiscalPeriods > 0 And cptCalendarExists("cptFiscalCalendar") Then 'todo: and setting
+              If Len(Application.StatusBar) > 0 Then
+                Application.StatusBar = Application.StatusBar & " | " & lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
+              Else
+                Application.StatusBar = lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
+              End If
             End If
           End If
-        End If
+        #End If
       Else
         Application.StatusBar = "0 tasks selected"
       End If
@@ -123,4 +128,12 @@ err_here:
   Resume exit_here
   
 End Sub
+
+
+
+
+
+
+
+
 
