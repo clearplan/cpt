@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptResourceDemand_bas"
-'<cpt_version>v1.6.2</cpt_version>
+'<cpt_version>v1.6.3</cpt_version>
 Option Explicit
 Private Const THIS_MODULE = "cptResourceDemand_bas"
 
@@ -11,7 +11,7 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
   Dim oException As MSProject.Exception
   Dim oSettings As Object
   Dim oListObject As Excel.ListObject
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -835,6 +835,7 @@ next_task:
     .ClearToMatchStyle
     .ChartStyle = 34
     .ClearToMatchStyle
+    .HasTitle = True
     .SetElement (msoElementChartTitleAboveChart)
     .ChartTitle.Text = "Resource Demand"
     .Location 1, "PivotChart" 'xlLocationAsNewSheet = 1
@@ -843,6 +844,7 @@ next_task:
   oWorksheet.Visible = False
   
   'add legend
+  oExcel.ActiveChart.Axes(xlValue, xlPrimary).HasTitle = True
   oExcel.ActiveChart.SetElement (msoElementPrimaryValueAxisTitleRotated)
   oExcel.ActiveChart.Axes(xlValue, xlPrimary).AxisTitle.Text = "HOURS"
   
@@ -878,14 +880,14 @@ next_task:
         End With
       Next oResource
     ElseIf ActiveProject.Subprojects.Count > 0 Then
-      For Each oSubproject In ActiveProject.Subprojects
-        For Each oResource In oSubproject.SourceProject.Resources
+      For Each oSubProject In ActiveProject.Subprojects
+        For Each oResource In oSubProject.SourceProject.Resources
           With oWorksheet
             .Cells(lngRow, 1) = oResource.Name
             For Each oCostRateTable In oResource.CostRateTables
               If myResourceDemand_frm.Controls(Choose(oCostRateTable.Index, "chkA", "chkB", "chkC", "chkD", "chkE")).Value = True Then
                 For Each oPayRate In oCostRateTable.PayRates
-                  .Cells(lngRow, 1) = cptRegEx(oSubproject.SourceProject.Name, "[^\\/]{1,}$")
+                  .Cells(lngRow, 1) = cptRegEx(oSubProject.SourceProject.Name, "[^\\/]{1,}$")
                   .Cells(lngRow, 2) = oResource.Name
                   .Cells(lngRow, 3) = Choose(oResource.Type + 1, "Work", "Material", "Cost")
                   .Cells(lngRow, 4) = oResource.Enterprise
@@ -900,7 +902,7 @@ next_task:
             Next oCostRateTable
           End With
         Next oResource
-      Next oSubproject
+      Next oSubProject
     End If
   
     'make it a oListObject
@@ -977,7 +979,7 @@ exit_here:
   Set oRecordset = Nothing
   Set oResource = Nothing
   Set oSettings = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oTask = Nothing
   Set oTSV = Nothing
   Set oTSVS_AC = Nothing
