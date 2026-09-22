@@ -16,7 +16,7 @@ Private Const BLN_TRAP_ERRORS As Boolean = True 'keep this: cptErrorTrapping() l
                                                                         ByVal dwReserved As Long) As Long
 #End If
 #If VBA7 Then
-  Declare PtrSafe Sub cptSleep Lib "Kernel32" Alias "Sleep" (ByVal dwMilliseconds As LongPtr)
+  Declare PtrSafe Sub cptSleep Lib "kernel32" Alias "Sleep" (ByVal dwMilliseconds As LongPtr)
 #Else
   Declare Sub cptSleep Lib "kernel32" Alias "Sleep" (ByVal dwMilliseconds As Long)
 #End If
