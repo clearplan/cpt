@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptDECM_bas"
-'<cpt_version>v8.1.4</cpt_version>
+'<cpt_version>v8.1.5</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptDECM_bas"
 Private strWBS As String
@@ -26,7 +26,7 @@ Private oSubMap As Scripting.Dictionary
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
   'objects
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim myDECM_frm As cptDECM_frm
   Dim oException As MSProject.Exception
   Dim oTasks As MSProject.Tasks
@@ -685,11 +685,15 @@ next_task:
       strSQL = strSQL & " WHERE STATUS_DATE<#" & dtCurrent & "#"
       oRecordset.Open strSQL, strCon, adOpenKeyset
       If oRecordset.EOF Then
-        oRecordset.Close
         blnTaskHistoryExists = False
+        oRecordset.Close
+      ElseIf IsNull(oRecordset(0)) Then
+        blnTaskHistoryExists = False
+        oRecordset.Close
+      Else
+        dtPrevious = oRecordset(0)
+        oRecordset.Close
       End If
-      dtPrevious = oRecordset(0)
-      oRecordset.Close
     End If
   End If
   
@@ -3527,10 +3531,10 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
   oWorksheet.Columns("H:I").Delete
   
   With oWorksheet.Range(oWorksheet.[G2], oWorksheet.[G1048576].End(xlUp))
-    .Replace what:=strPass, Replacement:="2", lookat:=xlWhole, _
+    .Replace What:=strPass, Replacement:="2", lookat:=xlWhole, _
         SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
         ReplaceFormat:=False, FormulaVersion:=xlReplaceFormula2
-    .Replace what:=strFail, Replacement:="0", lookat:=xlWhole, _
+    .Replace What:=strFail, Replacement:="0", lookat:=xlWhole, _
         SearchOrder:=xlByRows, MatchCase:=False, SearchFormat:=False, _
         ReplaceFormat:=False, FormulaVersion:=xlReplaceFormula2
     .FormatConditions.AddIconSetCondition
@@ -4710,7 +4714,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   'objects
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
   Dim oExcel As Excel.Application
@@ -5070,7 +5074,7 @@ exit_here:
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oSubMap = Nothing
   Application.StatusBar = ""
   oExcel.EnableEvents = True
@@ -5184,13 +5188,13 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
   rst.Close
   
   Set oRange = oWorksheet.Range(oWorksheet.[A1].End(xlToRight).Offset(1, 0), oWorksheet.[A1].End(xlDown).Offset(0, 5))
-  lngFiscalEndCol = oWorksheet.Rows(1).Find(what:="fisc_end").Column
+  lngFiscalEndCol = oWorksheet.Rows(1).Find(What:="fisc_end").Column
   lngLastRow = oWorksheet.Cells(2, lngFiscalEndCol).End(xlDown).Row
   'Excel 2016 compatibility
   'oRange.FormulaR1C1 = "=COUNTIFS(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & ","">=""&RC[-3],R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & ",""<""&RC[-2])+1"
   '=SUMPRODUCT(--($G$2:$G$109>=B15)*--($G$2:$G$109<C15)*1)+1
   oRange.FormulaR1C1 = "=SUMPRODUCT(--(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & ">=RC[-3])*--(R2C" & lngFiscalEndCol & ":R" & lngLastRow & "C" & lngFiscalEndCol & "<RC[-2])*1)+1"
-  lngFiscalPeriodsCol = oWorksheet.Rows(1).Find(what:="FiscalPeriods").Column
+  lngFiscalPeriodsCol = oWorksheet.Rows(1).Find(What:="FiscalPeriods").Column
   oWorksheet.Columns(lngFiscalPeriodsCol).NumberFormat = "#0"
   oExcel.ActiveWindow.Zoom = 85
   oExcel.ActiveWindow.SplitRow = 1
