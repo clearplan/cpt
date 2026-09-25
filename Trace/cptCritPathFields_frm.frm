@@ -2,9 +2,9 @@ VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptCritPathFields_frm 
    Caption         =   "cpt Driving Paths"
    ClientHeight    =   4968
-   ClientLeft      =   108
-   ClientTop       =   456
-   ClientWidth     =   4068
+   ClientLeft      =   105
+   ClientTop       =   450
+   ClientWidth     =   4065
    OleObjectBlob   =   "cptCritPathFields_frm.frx":0000
    StartUpPosition =   2  'CenterScreen
 End
@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v3.5.4</cpt_version>
+'<cpt_version>v3.5.5</cpt_version>
 Option Explicit
 Private Const MODULE_NAME As String = "cptCritPathFields_frm"
 Private Const cptSettingFeature As String = "Driving Paths" 'v3.5.0
@@ -41,7 +41,7 @@ End Sub
 
 Private Function checkDuplicate(ByVal cBoxTest As MSForms.ComboBox) As Boolean 'v3.5.0
 
-    If cBoxTest.value = "" Then
+    If cBoxTest.Value = "" Then
     
         checkDuplicate = False
         Exit Function
@@ -59,7 +59,7 @@ Private Function checkDuplicate(ByVal cBoxTest As MSForms.ComboBox) As Boolean '
             
             If cBoxOther.Name <> cBoxTest.Name Then
             
-                If cBoxOther.value = cBoxTest.value Then
+                If cBoxOther.Value = cBoxTest.Value Then
                 
                     checkDuplicate = True
                     Exit Function
@@ -83,7 +83,7 @@ Private Sub RunBtn_Click()
         Exit Sub
     End If
     
-    If Not IsNumeric(pathCnt_txtBox.value) Then
+    If Not IsNumeric(pathCnt_txtBox.Value) Then
         MsgBox "Please enter a valid Path Count number."
         Exit Sub
     End If
@@ -97,9 +97,9 @@ Private Sub RunBtn_Click()
     
     'Store Field Names
     cptSaveSetting cptSettingFeature, cptViewSetting, UserView_Combobox.Text
-    cptSaveSetting cptSettingFeature, cptGanttSetting, ganttFormatCheckBox.value
-    cptSaveSetting cptSettingFeature, cptSubPathSetting, SubPath_Checkbox.value
-    cptSaveSetting cptSettingFeature, cptPathCountSetting, pathCnt_txtBox.value
+    cptSaveSetting cptSettingFeature, cptGanttSetting, ganttFormatCheckBox.Value
+    cptSaveSetting cptSettingFeature, cptSubPathSetting, SubPath_Checkbox.Value
+    cptSaveSetting cptSettingFeature, cptPathCountSetting, pathCnt_txtBox.Value
     
     On Error GoTo Driving_FieldExists
     CustomFieldRename FieldID:=FieldNameToFieldConstant(PathField_Combobox.Text), NewName:="CP Driving Paths"
@@ -147,7 +147,7 @@ SubPath_FieldExists:
 End Sub
 
 Private Sub SubPath_Checkbox_Click()
-    SubPath_Combobox.Enabled = SubPath_Checkbox.value
+    SubPath_Combobox.Enabled = SubPath_Checkbox.Value
 End Sub
 
 Private Sub SubPath_Combobox_Change()
@@ -165,31 +165,35 @@ Private Sub UserForm_Activate()
     settingTest = cptGetSetting(cptSettingFeature, cptSubPathSetting)
     
     If settingTest <> "" Then
-        SubPath_Checkbox.value = CBool(settingTest)
+        SubPath_Checkbox.Value = CBool(settingTest)
         SubPath_Combobox.Enabled = CBool(settingTest)
     Else
-        SubPath_Checkbox.value = False
+        SubPath_Checkbox.Value = False
         SubPath_Combobox.Enabled = False
     End If
     
     settingTest = cptGetSetting(cptSettingFeature, cptGanttSetting)
     
     If settingTest <> "" Then
-        ganttFormatCheckBox.value = CBool(settingTest)
+        ganttFormatCheckBox.Value = CBool(settingTest)
     Else
-        ganttFormatCheckBox.value = True
+        ganttFormatCheckBox.Value = True
     End If
     
     settingTest = cptGetSetting(cptSettingFeature, cptViewSetting)
     
-    If settingTest <> "" Then
-        Me.UserView_Combobox.value = settingTest
+    If settingTest <> "" And settingTest <> "<Default>" Then
+      If cptViewExists(settingTest) Then
+        Me.UserView_Combobox.Value = settingTest
+      Else
+        MsgBox "The saved view '" & settingTest & "' no longer exists." & vbCrLf & vbCrLf & "Please select a new view.", vbExclamation + vbOKOnly, "Driving Paths"
+      End If
     End If
     
     settingTest = cptGetSetting(cptSettingFeature, cptPathCountSetting)
     
     If settingTest <> "" Then
-        pathCnt_txtBox.value = settingTest
+        pathCnt_txtBox.Value = settingTest
     End If
 
 End Sub
@@ -224,7 +228,7 @@ Private Sub DisplayUserCustomFields(ByVal drivingPathField As String, ByVal grou
     
     If nameTest <> 0 Then
         If CustomFieldGetName(nameTest) = drivingPathField Then
-            PathField_Combobox.value = drivingPathField
+            PathField_Combobox.Value = drivingPathField
             GoTo CheckGroupPathField
         End If
     End If
@@ -239,7 +243,7 @@ CheckGroupPathField:
     
     If nameTest <> 0 Then
         If CustomFieldGetName(nameTest) = groupPathField Then
-            GroupField_Combobox.value = groupPathField
+            GroupField_Combobox.Value = groupPathField
             GoTo CheckSubPathField
         End If
     End If
@@ -254,7 +258,7 @@ CheckSubPathField:
     
     If nameTest <> 0 Then
         If CustomFieldGetName(nameTest) = SubPathField Then
-            SubPath_Combobox.value = SubPathField
+            SubPath_Combobox.Value = SubPathField
             GoTo CheckFieldsRenamed
         End If
     End If
