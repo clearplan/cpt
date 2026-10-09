@@ -954,8 +954,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   strErrDescription = Err.Description
   strErrSource = Err.Source
   
-  blnErrorTrapping = cptErrorTrapping
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If BLN_TRAP_ERRORS Then On Error GoTo err_here Else On Error GoTo 0
   
   'todo: has the code been modified?
   'todo: not until CurrentVersions.xml is revised
