@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptSaveLocal_bas"
 '<cpt_version>v1.3.4</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptSaveLocal_bas"
 Public strStartView As String
 Public strStartTable As String
 Public strStartFilter As String
@@ -12,7 +13,7 @@ Sub cptShowSaveLocal_frm()
   Dim mySaveLocal_frm As cptSaveLocal_frm
   Dim oTask As MSProject.Task
   Dim dTypes As Scripting.Dictionary
-  Dim rstECF As adodb.Recordset
+  Dim rstECF As ADODB.Recordset
   'strings
   Dim strDir As String
   Dim strURL As String
@@ -22,7 +23,7 @@ Sub cptShowSaveLocal_frm()
   'longs
   Dim lngECF As Long
   Dim lngLCF As Long
-  Dim lngSubprojectCount As Long
+  Dim lngSubProjectCount As Long
   Dim lngField As Long
   Dim lngType As Long
   Dim lngECFCount As Long
@@ -33,10 +34,13 @@ Sub cptShowSaveLocal_frm()
   'variants
   Dim vType As Variant
   'dates
-
+  
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+   
   'prevent spawning
   If Not cptGetUserForm("cptSaveLocal_frm") Is Nothing Then Exit Sub
-
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
@@ -60,9 +64,9 @@ Sub cptShowSaveLocal_frm()
   dTypes.Add "Text", 30
   
   'if master/sub then ensure LCFs match
-  lngSubprojectCount = ActiveProject.Subprojects.Count
-  If lngSubprojectCount > 0 Then
-    If MsgBox(lngSubprojectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "Master/Sub Detected") = vbYes Then
+  lngSubProjectCount = ActiveProject.Subprojects.Count
+  If lngSubProjectCount > 0 Then
+    If MsgBox(lngSubProjectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "Master/Sub Detected") = vbYes Then
       cptAlignLCF ActiveProject
     End If
   End If
@@ -127,8 +131,6 @@ next_type:
     .cboLCF.Value = "Text"
     .optTasks = True 'trigger
     
-    '.Show False
-  
     'get enterprise custom task fields
     For lngField = 188776000 To 188778000 '2000 should do it for now
       If FieldConstantToFieldName(lngField) <> "<Unavailable>" Then
@@ -199,7 +201,7 @@ End Sub
 
 Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim rstSavedMap As adodb.Recordset
+  Dim rstSavedMap As ADODB.Recordset
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
   Dim oResources As Resources
@@ -302,7 +304,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   
     'first save the mapping
     For lngItem = 0 To .lboECF.ListCount - 1
-      If .lboECF.List(lngItem, 3) > 0 Then
+      If .lboECF.List(lngItem, 3) <> "" Then
         lngECF = .lboECF.List(lngItem, 0)
         lngLCF = .lboECF.List(lngItem, 3)
         'no duplicates
@@ -335,12 +337,19 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
           Do While Not rstSavedMap.EOF
             lngECF = rstSavedMap(2)
             lngLCF = rstSavedMap(3)
-            'if ECF is formula, then skip it
+            'if ECF is formula, then skip it - already built it with cmdMap
             If Len(CustomFieldGetFormula(lngECF)) > 0 Then GoTo next_task_mapping
             'first clear the values
-            If Len(oTask.GetField(lngLCF)) > 0 Then oTask.SetField lngLCF, "" 'LCF is already emptied by Map
+            If Len(oTask.GetField(lngLCF)) > 0 Then oTask.SetField lngLCF, "" 'LCF is already emptied by cmdMap
             If Len(oTask.GetField(lngECF)) > 0 Then
+              On Error Resume Next
               oTask.SetField lngLCF, CStr(oTask.GetField(lngECF))
+              If Not Err Is Nothing Then
+                If ActiveProject <> oTask.Parent Then
+                  Debug.Print "ERROR: " & FieldConstantToFieldName(lngLCF) & " (" & ActiveProject.Name & " <> " & oTask.Parent.Name
+                  Err.Clear
+                End If
+              End If
               If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
               If oTask.GetField(lngLCF) <> CStr(oTask.GetField(lngECF)) Then
                 'todo: build list of errors: error coping from ECF to LCF on UID
@@ -565,7 +574,7 @@ Sub cptGetAllFields(lngFrom As Long, lngTo As Long)
   'objects
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
-  Dim rst As adodb.Recordset
+  Dim rst As ADODB.Recordset
   Dim oExcel As Excel.Application
   'strings
   Dim strCustomName As String
@@ -636,7 +645,7 @@ End Sub
 
 Sub cptAnalyzeAutoMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim rstAvailable As adodb.Recordset
+  Dim rstAvailable As ADODB.Recordset
   Dim dTypes As Scripting.Dictionary
   'strings
   Dim strMsg As String
@@ -819,7 +828,7 @@ End Sub
 
 Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, lngLCF As Long)
   'objects
-  Dim rstSavedMap As adodb.Recordset
+  Dim rstSavedMap As ADODB.Recordset
   Dim oLookupTableEntry As LookupTableEntry
   Dim oOutlineCodeLocal As OutlineCode
   Dim oOutlineCode As OutlineCode
@@ -855,7 +864,7 @@ Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, ln
     'if already mapped then prompt with ECF name and ask to remap
     For lngItem = 0 To .lboECF.ListCount - 1
       If .lboECF.List(lngItem, 3) = lngLCF Then
-        If .lboECF.List(lngItem, 0) = lngECF Then GoTo exit_here 'already mapped
+        'If .lboECF.List(lngItem, 0) = lngECF Then GoTo exit_here 'already mapped
         If MsgBox(FieldConstantToFieldName(lngLCF) & " is already mapped to " & .lboECF.List(lngItem, 1) & " - reassign it?", vbExclamation + vbYesNo, "Already Mapped") = vbYes Then '
           .lboECF.List(lngItem, 3) = ""
           .lboECF.List(lngItem, 4) = ""
@@ -866,7 +875,10 @@ Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, ln
 next_ecf:
     Next lngItem
     
-    CustomFieldDelete lngLCF
+    If Not CustomFieldDelete(lngLCF) Then
+      MsgBox "Could not delete LCF '" & FieldConstantToFieldName(lngLCF) & "'!", vbCritical + vbOKOnly, "Error"
+      GoTo exit_here
+    End If
     
     'capture rename
     If CustomFieldGetName(lngECF) = Replace(CustomFieldGetName(lngLCF), " (" & FieldConstantToFieldName(lngLCF) & ")", "") Then GoTo skip_rename
@@ -885,7 +897,7 @@ next_ecf:
       'rename it in msp
       CustomFieldRename lngLCF, CustomFieldGetName(lngECF) & " (" & FieldConstantToFieldName(lngLCF) & ")"
       'rename it in lboLCF
-      If Not .tglAutoMap Then .lboLCF.List(.lboLCF.ListIndex, 1) = FieldConstantToFieldName(.lboLCF) & " (" & CustomFieldGetName(.lboLCF) & ")"
+      If Not .tglAutoMap Then .lboLCF.List(.lboLCF.ListIndex, 1) = CustomFieldGetName(.lboLCF)
     End If
     
 skip_rename:
@@ -978,7 +990,7 @@ next_formula_field:
         CustomOutlineCodeEditEx FieldID:=lngLCF, OnlyLookUpTableCodes:=oOutlineCode.OnlyLookUpTableCodes, OnlyCompleteCodes:=oOutlineCode.OnlyCompleteCodes
         CustomOutlineCodeEditEx FieldID:=lngLCF, OnlyLeaves:=oOutlineCode.OnlyLeaves
         'todo: next line for RequiredCode throws an error, not sure why
-        'CustomOutlineCodeEditEx FieldID:=lngLCF, RequiredCode:=oOutlineCode.RequiredCode
+        'CustomOutlineCodeEditEx FieldID:=lngLCF, RequiredCode:=CLng(oOutlineCode.RequiredCode)
         If oOutlineCode.DefaultValue <> "" Then CustomOutlineCodeEditEx FieldID:=lngLCF, DefaultValue:=oOutlineCode.DefaultValue
         CustomOutlineCodeEditEx FieldID:=lngLCF, SortOrder:=oOutlineCode.SortOrder
       Else 'import just the pick list
@@ -1042,7 +1054,7 @@ End Sub
 
 Sub cptExportCFMap()
   'objects
-  Dim rstSavedMap As adodb.Recordset
+  Dim rstSavedMap As ADODB.Recordset
   'strings
   Dim strMsg As String
   Dim strSavedMapExport As String
@@ -1097,10 +1109,11 @@ Sub cptExportCFMap()
       MsgBox "You have no saved map for this project.", vbExclamation + vbOKOnly, "No Map"
       Close #lngFile
     Else
+      .MoveFirst
       Print #lngFile, .GetString(adClipString, , ",", vbCrLf, vbNullString)
       MsgBox "Map saved to '" & strSavedMapExport & "'", vbInformation + vbOKOnly, "Export Complete"
       Close #lngFile
-      Shell "notepad.exe '" & strSavedMapExport & "'", vbNormalFocus
+      Shell "notepad.exe """ & strSavedMapExport & """", vbNormalFocus
     End If
   End With
     
@@ -1118,7 +1131,7 @@ End Sub
 
 Sub cptImportCFMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim rstSavedMap As adodb.Recordset
+  Dim rstSavedMap As ADODB.Recordset
   Dim oStream As Scripting.TextStream
   Dim oFile As Scripting.File
   Dim oFSO As Scripting.FileSystemObject
@@ -1227,8 +1240,8 @@ End Sub
 
 Sub cptUpdateECF(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional strFilter As String)
   'objects
-  Dim rstECF As adodb.Recordset
-  Dim rstSavedMap As adodb.Recordset
+  Dim rstECF As ADODB.Recordset
+  Dim rstSavedMap As ADODB.Recordset
   'strings
   Dim strDir As String
   Dim strGUID As String
@@ -1498,8 +1511,8 @@ Function cptLocalCustomFieldsMatch() As Boolean
   Dim oListObject As Excel.ListObject
   Dim dTypes As Scripting.Dictionary
   Dim oMasterProject As MSProject.Project
-  Dim oSubproject As MSProject.Subproject
-  Dim rstProjects As adodb.Recordset
+  Dim oSubProject As MSProject.SubProject
+  Dim rstProjects As ADODB.Recordset
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
   Dim oExcel As Excel.Application
@@ -1564,10 +1577,10 @@ Function cptLocalCustomFieldsMatch() As Boolean
   rstProjects.Fields.Append "PROJECT", adVarChar, 200
   rstProjects.Open
   rstProjects.AddNew Array(0), Array(oMasterProject.Name)
-  For Each oSubproject In oMasterProject.Subprojects
-    FileOpenEx oSubproject.SourceProject.FullName, True
+  For Each oSubProject In oMasterProject.Subprojects
+    FileOpenEx oSubProject.SourceProject.FullName, True
     rstProjects.AddNew Array(0), Array(ActiveProject.Name)
-  Next oSubproject
+  Next oSubProject
   rstProjects.MoveFirst
   Do While Not rstProjects.EOF
     Application.StatusBar = "Analyzing " & rstProjects(0) & "..."
@@ -1721,7 +1734,7 @@ exit_here:
   Set oListObject = Nothing
   Set dTypes = Nothing
   Set oMasterProject = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   If rstProjects.State Then rstProjects.Close
   Set rstProjects = Nothing
   Set oWorksheet = Nothing
@@ -1736,7 +1749,7 @@ End Function
 
 Sub cptDeleteCFMap(mySaveLocal_frm As cptSaveLocal_frm)
   'objects
-  Dim oRecordset As adodb.Recordset
+  Dim oRecordset As ADODB.Recordset
   'strings
   Dim strSavedMap As String
   Dim strDir As String

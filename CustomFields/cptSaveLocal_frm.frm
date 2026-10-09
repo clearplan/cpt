@@ -446,6 +446,7 @@ End Sub
 Private Sub UserForm_Terminate()
 
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If MsgBox("Restore View/Table/Filter/Group?" & vbCrLf & vbCrLf & "(Click 'No' to keep current.)", vbQuestion + vbYesNo, "Restore View?") = vbNo Then GoTo exit_here
   On Error Resume Next
   If Len(strStartView) > 0 Then
     If Not ViewApply(strStartView, True) Then ViewApply "Gantt Chart"
