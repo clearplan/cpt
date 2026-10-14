@@ -13,7 +13,8 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.4</cpt_version>
+'<cpt_version>v1.3.5</cpt_version>
+Private Const THIS_MODULE As String = "cptSettings_frm"
 Option Explicit
 
 Private Sub cmdDone_Click()
@@ -164,7 +165,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSettings_frm", "cmdSetProgramAcronym_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdSetProgramAcronym_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -178,7 +179,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptBackbone_frm", "lblURL_Click", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -216,7 +217,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSettings_frm", "lboFeatures_AfterUpdate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboFeatures_AfterUpdate", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -303,6 +304,6 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSettings_frm", "cptUpdateSettings", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateSettings", Err, Erl)
   Resume exit_here
 End Sub
