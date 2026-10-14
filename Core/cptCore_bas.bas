@@ -3305,7 +3305,7 @@ exit_here:
 
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptValidMap", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidMap", Err, Erl)
   Resume exit_here
 
 End Function
@@ -3380,7 +3380,7 @@ exit_here:
   End If
   Exit Function
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptValidPath()", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptValidPath()", Err, Erl)
   Resume exit_here
 End Function
 
@@ -3432,7 +3432,7 @@ exit_here:
   
 err_here:
   On Error Resume Next
-  cptHandleErr "cptCore_bas", "cptGetShortPath", Err, Erl
+  cptHandleErr THIS_MODULE, "cptGetShortPath", Err, Erl
   strShortPath = ""
   Resume exit_here
 
@@ -4662,7 +4662,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptCore_bas", "cptAlignLCF", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptAlignLCF", Err, Erl)
   If Not oWorkbook Is Nothing Then
     oWorkbook.Close False
     oExcel.Quit
@@ -4670,40 +4670,3 @@ err_here:
   Resume exit_here
 End Sub
 
-Function cptHasFormula(ByRef oProject As MSProject.Project, lngCFC As Long) As Boolean
-  oProject.Activate
-  cptHasFormula = Len(CustomFieldGetFormula(lngCFC)) > 0
-End Function
-
-Function cptHasLookup(ByRef oProject As MSProject.Project, lngCFC As Long) As Boolean
-  Dim strFN As String
-  Dim strCFN As String
-  Dim blnHasLookup As Boolean
-  Dim blnErrorTrapping As Boolean
-  Dim oOutlineCode As MSProject.OutlineCode
-  
-  blnErrorTrapping = cptErrorTrapping
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-  oProject.Activate
-  strFN = FieldConstantToFieldName(lngCFC)
-  strCFN = CustomFieldGetName(lngCFC)
-  If InStr(strFN, "Outline Code") > 0 Then
-    On Error Resume Next
-    Set oOutlineCode = oProject.OutlineCodes(strCFN)
-    blnHasLookup = Not oOutlineCode Is Nothing
-  Else
-    On Error Resume Next
-    blnHasLookup = Len(CustomFieldValueListGetItem(lngCFC, pjValueListValue, 1)) > 0
-  End If
-  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  
-exit_here:
-  On Error Resume Next
-  cptHasLookup = blnHasLookup
-  Set oOutlineCode = Nothing
-  Exit Function
-err_here:
-  Call cptHandleErr("cptCore_bas", "cptHasLookup()", Err, Erl)
-  Resume exit_here
-End Function
