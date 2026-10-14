@@ -353,14 +353,14 @@
 	<Module>
 		<Name>cptSaveLocal_bas</Name>
 		<FileName>cptSaveLocal_bas.bas</FileName>
-		<Version>v1.3.4</Version>
+		<Version>v1.4.0</Version>
 		<Type>1</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
 	<Module>
 		<Name>cptSaveLocal_frm</Name>
 		<FileName>cptSaveLocal_frm.frm</FileName>
-		<Version>v1.3.4</Version>
+		<Version>v1.4.0</Version>
 		<Type>3</Type>
 		<Directory>CustomFields</Directory>
 	</Module>
@@ -381,7 +381,7 @@
 	<Module>
 		<Name>cptSettings_frm</Name>
 		<FileName>cptSettings_frm.frm</FileName>
-		<Version>v1.3.4</Version>
+		<Version>v1.3.5</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>
