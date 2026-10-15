@@ -740,7 +740,7 @@ Public Function cptBuildRibbonTab()
     If ActiveProject.Subprojects.Count > 0 Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnalyzeLCF"" imageMso=""CustomFieldDialog"" label=""Master/Sub LCF Alignment"" onAction=""cptAnalyzeLCF"" supertip=""Analyze Local Custom Field (LCF) usage between a Master project and its Subprojects."" />" 'size=""large""
       If cptModuleExists("cptFlowDown_bas") And cptModuleExists("cptFlowDown_frm") Then
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFlowDown"" imageMso=""CustomFieldDialog"" label=""LCF FlowDown"" onAction=""cptShowLCFFlowDown_frm"" supertip=""Flow Down Local Custom Field (LCF) settings from a Master project to its Subprojects."" />" 'size=""large""
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFlowDown"" imageMso=""CustomFieldDialog"" label=""LCF FlowDown"" onAction=""cptShowFlowDown_frm"" supertip=""Flow Down Local Custom Field (LCF) settings from a Master project to its Subprojects."" />" 'size=""large""
       End If
     End If
     If cptModuleExists("cptSaveLocal_bas") And cptModuleExists("cptSaveLocal_frm") Then
