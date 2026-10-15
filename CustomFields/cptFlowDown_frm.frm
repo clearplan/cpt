@@ -13,8 +13,10 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v0.0.0</cpt_version>
+
+'<cpt_version>v0.0.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptFlowDown_frm"
 Private oLCF As ADODB.Recordset
 
 Private Sub cboMoveTo_Change()
@@ -53,38 +55,53 @@ Private Sub chkText_Click()
   cptUpdateLCFList Me
 End Sub
 
+Private Sub cmdAssignmentRolldownFalse_Click()
+  cptAssignmentRolldown Me, False
+  'todo: also clear task-level data? if so use SetTaskField/SetField
+End Sub
+
+Private Sub cmdAssignmentRolldownTrue_Click()
+  cptAssignmentRolldown Me, True
+End Sub
+
 Private Sub cmdCancel_Click()
   Unload Me
 End Sub
 
+Private Sub cmdDone_Click()
+  Me.Hide
+End Sub
+
 Private Sub cmdLoad_Click()
   Dim oProject As MSProject.Project
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubProject As MSProject.SubProject
   Dim vLCF As Variant
   Dim lngRow As Long
   Set oProject = Projects(Me.cboMasterProject.Value)
   If Not oLCF Is Nothing Then oLCF.Close
   Set oLCF = CreateObject("ADODB.Recordset")
-  oLCF.Fields.Append "SP", adInteger
-  oLCF.Fields.Append "FC", adInteger
-  oLCF.Fields.Append "FN", adVarChar, 50
-  oLCF.Fields.Append "CFN", adVarChar, 100
+  oLCF.Fields.Append "SP", adInteger 'subproject index
+  oLCF.Fields.Append "FC", adInteger 'field constant
+  oLCF.Fields.Append "FN", adVarChar, 50 'field name (native)
+  oLCF.Fields.Append "CFN", adVarChar, 100 'custom field name
   oLCF.Open
-  For Each oSubproject In oProject.Subprojects
-    If Not oSubproject.IsLoaded Then FileOpenEx oSubproject.Path, False
-    Projects(oSubproject.Path).Activate
+  For Each oSubProject In oProject.Subprojects
+    Debug.Print oSubProject.SourceProject.Tasks.Count 'forces load
+    FileOpenEx oSubProject.Path, False
+    Projects(oSubProject.Path).Activate
     vLCF = cptGetCustomFields("t", "Text", "c,fn,cfn")
     For lngRow = 0 To UBound(vLCF, 1)
-      oLCF.AddNew Array(0, 1, 2, 3), Array(oSubproject.Index, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
+      oLCF.AddNew Array(0, 1, 2, 3), Array(oSubProject.Index, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
       'todo: progress %
     Next lngRow
     oLCF.Update
-  Next oSubproject
+  Next oSubProject
   Me.lboSubprojects.Enabled = True
   oProject.Activate
   WindowArrangeAll
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oProject = Nothing
+  'keep oLCF open for life of the userform
 End Sub
 
 Private Sub cmdMoveLCF_Click()
@@ -97,18 +114,45 @@ End Sub
 
 Private Sub cmdUnload_Click()
   Dim oProject As MSProject.Project
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubProject As MSProject.SubProject
   Set oProject = Projects(Me.cboMasterProject.Value)
-  For Each oSubproject In oProject.Subprojects
-    If oSubproject.IsLoaded Then
-      Projects(Replace(Dir(oSubproject.Path), ".mpp", "")).Activate
-      FileCloseEx pjPromptSave
-    End If
-  Next oSubproject
+  For Each oSubProject In oProject.Subprojects
+    On Error GoTo next_subproject
+    oSubProject.SourceProject.Activate
+    FileCloseEx pjPromptSave
+next_subproject:
+    Err.Clear
+  Next oSubProject
   Me.lboSubprojects.Enabled = False
   oProject.Activate
-  Set oSubproject = Nothing
+  ActiveWindow.WindowState = pjMaximized
+  
+exit_here:
+  On Error Resume Next
+  Set oSubProject = Nothing
   Set oProject = Nothing
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptFlowDown_frm", "cmdUnload_Click", Err)
+  Resume exit_here
+End Sub
+
+Private Sub lblURL_Click()
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
+
+exit_here:
+  On Error Resume Next
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 Private Sub lboMasterLCF_AfterUpdate()
@@ -141,6 +185,7 @@ Private Sub lboMasterLCF_AfterUpdate()
   'clear subproject lookup
   For lngItem = 0 To Me.lboSubprojects.ListCount - 1
     Me.lboSubprojects.List(lngItem, 2) = "..."
+    Me.lboSubprojects.List(lngItem, 3) = ""
     DoEvents
   Next lngItem
   Me.lboSubprojects.ListIndex = -1
@@ -203,6 +248,9 @@ Private Sub lboMasterLCF_AfterUpdate()
     oLCF.Filter = "SP=" & lngItem + 1 & " AND FC=" & lngLCF
     If Not oLCF.EOF Then
       Me.lboSubprojects.List(lngItem, 2) = oLCF(3)
+      If oLCF(3) <> strCFN Then
+        Me.lboSubprojects.List(lngItem, 3) = "<!>"
+      End If
       DoEvents
     End If
     oLCF.Filter = 0
@@ -269,6 +317,7 @@ Private Sub lboSubprojects_AfterUpdate()
   Me.lblFormula1.Visible = False
   Me.lblFormula1.Left = Me.lblLookup2.Left
   Me.lblLookup2.Visible = False
+  If IsNull(Me.lboMasterLCF) Then Exit Sub
   If Not IsNull(Me.lboSubprojects.ListIndex) Then
     Set oProject = Projects(Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 1))
     oProject.Activate
@@ -278,9 +327,7 @@ Private Sub lboSubprojects_AfterUpdate()
     strCFN = Me.lboSubprojects.List(Me.lboSubprojects.ListIndex, 2)
     lngLCF = FieldNameToFieldConstant(strCFN)
     blnHasFormula = cptHasFormula(oProject, lngLCF)
-    Me.lblFormula1.Visible = blnHasFormula
     blnHasLookup = cptHasLookup(oProject, lngLCF)
-    Me.lblLookup2.Visible = blnHasLookup
     If blnHasFormula And blnHasLookup Then
       Me.lblFormula1.Left = Me.cmdMoveLCF.Left
       Me.optNone.Value = True
@@ -292,6 +339,8 @@ Private Sub lboSubprojects_AfterUpdate()
     Else
       Me.optNone.Value = True
     End If
+    Me.lblFormula1.Visible = blnHasFormula
+    Me.lblLookup2.Visible = blnHasLookup
   Else
     Me.tglMove.Enabled = False
   End If
@@ -300,7 +349,7 @@ End Sub
 
 Private Sub stxtSearch_Change()
   Dim oProject As MSProject.Project
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubProject As MSProject.SubProject
   Dim strText As String
   strText = Me.stxtSearch.Text
   Me.lboSubprojects.Clear
@@ -314,9 +363,11 @@ Private Sub stxtSearch_Change()
     Me.chkCost.Enabled = False
     Me.chkDate.Enabled = False
     Me.chkDuration.Enabled = False
+    Me.chkFinish.Enabled = False
     Me.chkFlag.Enabled = False
     Me.chkNumber.Enabled = False
     Me.chkOutlineCode.Enabled = False
+    Me.chkStart.Enabled = False
     Me.chkText.Enabled = False
     Me.optFormula.Enabled = False
     Me.optLookup.Enabled = False
@@ -340,22 +391,24 @@ Private Sub stxtSearch_Change()
     Me.chkCost.Enabled = True
     Me.chkDate.Enabled = True
     Me.chkDuration.Enabled = True
+    Me.chkFinish.Enabled = True
     Me.chkFlag.Enabled = True
     Me.chkNumber.Enabled = True
     Me.chkOutlineCode.Enabled = True
+    Me.chkStart.Enabled = True
     Me.chkText.Enabled = True
     Me.optFormula.Enabled = True
     Me.optLookup.Enabled = True
     Me.optNone.Enabled = True
-    For Each oSubproject In oProject.Subprojects
+    For Each oSubProject In oProject.Subprojects
       Me.lboSubprojects.AddItem
-      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubproject.Index
-      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oSubproject.InsertedProjectSummary.Name
+      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubProject.Index
+      Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oSubProject.InsertedProjectSummary.Name
       Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 2) = "..."
-    Next oSubproject
+    Next oSubProject
   End If
   oLCF.Filter = 0
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oProject = Nothing
 End Sub
 
@@ -388,7 +441,7 @@ End Sub
 Private Sub UserForm_Initialize()
   'objects
   Dim oProject As MSProject.Project
-  Dim oSubproject As MSProject.Subproject
+  Dim oSubProject As MSProject.SubProject
   'strings
   Dim strCFN As String
   'longs
@@ -436,11 +489,13 @@ Private Sub UserForm_Initialize()
         oLCF.AddNew Array(0, 1, 2, 3), Array(0, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
       Next lngRow
       'get subprojects
-      For Each oSubproject In oProject.Subprojects
-        If oSubproject.IsLoaded Then
+      For Each oSubProject In oProject.Subprojects
+        Debug.Print oSubProject.SourceProject.Tasks.Count 'forces load
+        If oSubProject.IsLoaded = True Then
           'adjust the view
           On Error Resume Next
-          Projects(oSubproject.SourceProject.Name).Activate
+          FileOpenEx oSubProject.Path, False
+          Projects(oSubProject.SourceProject.Name).Activate
           ActiveWindow.TopPane.Activate
           FilterClear
           GroupClear
@@ -449,16 +504,16 @@ Private Sub UserForm_Initialize()
           OutlineShowAllTasks
           'add to lboSubprojects
           Me.lboSubprojects.AddItem
-          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubproject.Index
-          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oSubproject.InsertedProjectSummary.Name
-          If Not oSubproject.IsLoaded Then FileOpenEx oSubproject.Path, False
+          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 0) = oSubProject.Index
+          Me.lboSubprojects.List(Me.lboSubprojects.ListCount - 1, 1) = oSubProject.InsertedProjectSummary.Name
+          If oSubProject.IsLoaded = False Then FileOpenEx oSubProject.Path, False
           vLCF = cptGetCustomFields("t", "Cost,Date,Duration,Finish,Flag,Number,Outline Code,Start,Text", "c,fn,cfn")
           For lngRow = 0 To UBound(vLCF, 1)
-            oLCF.AddNew Array(0, 1, 2, 3), Array(oSubproject.Index, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
+            oLCF.AddNew Array(0, 1, 2, 3), Array(oSubProject.Index, CLng(vLCF(lngRow, 0)), vLCF(lngRow, 1), vLCF(lngRow, 2))
           Next lngRow
           oLCF.Update
         End If
-      Next oSubproject
+      Next oSubProject
       oProject.Activate
       WindowArrangeAll
     End If
@@ -481,7 +536,7 @@ Private Sub UserForm_Initialize()
   
 exit_here:
   On Error Resume Next
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   Set oProject = Nothing
 
   Exit Sub

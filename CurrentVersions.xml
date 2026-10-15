@@ -260,6 +260,20 @@
 		<Directory>Calendar</Directory>
 	</Module>
 	<Module>
+		<Name>cptFlowDown_bas</Name>
+		<FileName>cptFlowDown_bas.bas</FileName>
+		<Version>v0.0.1</Version>
+		<Type>1</Type>
+		<Directory>CustomFields</Directory>
+	</Module>
+	<Module>
+		<Name>cptFlowDown_frm</Name>
+		<FileName>cptFlowDown_frm.frm</FileName>
+		<Version>v0.0.1</Version>
+		<Type>3</Type>
+		<Directory>CustomFields</Directory>
+	</Module>
+	<Module>
 		<Name>cptFiscal_frm</Name>
 		<FileName>cptFiscal_frm.frm</FileName>
 		<Version>v1.4.0</Version>
