@@ -1,11 +1,19 @@
 Attribute VB_Name = "cptFlowDown_bas"
-'<cpt_version>v0.0.0</cpt_version>
+'<cpt_version>v0.0.1</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptFlowDown_bas"
 
-Sub cptShowLCFFlowDown_frm()
+Sub cptShowFlowDown_frm()
   Dim oProject As MSProject.Project
   Dim myFlowDown_frm As cptFlowDown_frm
   Dim blnMaster As Boolean
+  
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+  
+  'prevent spawning
+  If Not cptGetUserForm("cptFiscal_frm") Is Nothing Then Exit Sub
+  
   'the boolean should never actually come into play since
   'the ribbon menu only appears if the activeproject has subprojects
   'but just in case someone triggers this manually...
@@ -13,6 +21,7 @@ Sub cptShowLCFFlowDown_frm()
   Set myFlowDown_frm = New cptFlowDown_frm
   blnMaster = False
   With myFlowDown_frm
+    .Caption = "LCF FlowDown (" & cptGetVersion("cptFlowDown_bas") & ") - ClearPlan Toolbar"
     For Each oProject In Projects
       If oProject.Subprojects.Count > 0 Then
         .cboMasterProject.AddItem oProject.Name
@@ -38,6 +47,35 @@ exit_here:
 err_here:
   Call cptHandleErr("cptFlowDown_bas", "cptShowLCFFlowDown_frm", Err, Erl)
   Resume exit_here
+End Sub
+
+Sub cptAssignmentRolldown(myFlowDown_frm As cptFlowDown_frm, blnRolldown As Boolean)
+  'objects
+  Dim oProject As MSProject.Project
+  'longs
+  Dim lngItem As Long
+  Dim lngLCF As Long
+  'strings
+  Dim strProject As String
+  
+  With myFlowDown_frm
+    If IsNull(.lboMasterLCF) Then GoTo exit_here
+    For lngItem = 0 To .lboSubprojects.ListCount - 1
+      strProject = .lboSubprojects.List(lngItem, 1)
+      lngLCF = .lboMasterLCF
+      Application.Projects(strProject).Activate
+      CustomFieldPropertiesEx FieldID:=lngLCF, AutomaticallyRolldownToAssn:=blnRolldown
+    Next lngItem
+  End With
+  
+exit_here:
+  On Error Resume Next
+  Set oProject = Nothing
+  Exit Sub
+err_here:
+  Call cptHandleErr("cptFlowDown_bas", "cptAssignmentRolldown", Err)
+  Resume exit_here
+
 End Sub
 
 Sub cptUpdateMoveToLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Recordset)
@@ -147,7 +185,7 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
   Dim oLookupTableFrom As MSProject.LookupTable
   Dim oOutlineCodeFrom As MSProject.OutlineCode
   Dim oOutlineCodeTo As MSProject.OutlineCode
-  Dim oSubproject As MSProject.Project
+  Dim oSubProject As MSProject.Project
   Dim oTask As MSProject.Task
   'strings
   Dim strValue As String
@@ -196,17 +234,17 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
     lngTo = .cboMoveTo.Value
     strToType = cptRegEx(FieldConstantToFieldName(lngTo), "(Cost|Date|Duration|Finish|Flag|Number|Outline Code|Start|Text)")
     
-    Set oSubproject = Projects(.lboSubprojects.List(.lboSubprojects.ListIndex, 1))
-    oSubproject.Activate
+    Set oSubProject = Projects(.lboSubprojects.List(.lboSubprojects.ListIndex, 1))
+    oSubProject.Activate
     
-    blnHasFormula = cptHasFormula(oSubproject, lngFrom)
+    blnHasFormula = cptHasFormula(oSubProject, lngFrom)
     If blnHasFormula Then 'get it
       strFormula = CustomFieldGetFormula(lngFrom)
     End If
     'todo: if strFormula contains [Cost|Date|Duration|Finish|Flag|Number|Outline Code|Start]
     'todo: has the other custom field been moved already?
     'todo: replace formula with CFN and prompt?
-    blnHasLookup = cptHasLookup(oSubproject, lngFrom)
+    blnHasLookup = cptHasLookup(oSubProject, lngFrom)
     
     strCFN = CustomFieldGetName(lngFrom)
     CustomFieldRename lngFrom, strCFN & "_OLD"
@@ -221,11 +259,11 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
     'move lookup
     If blnHasLookup Then
       On Error Resume Next
-      Set oOutlineCodeFrom = oSubproject.OutlineCodes(strCFN & "_OLD")
+      Set oOutlineCodeFrom = oSubProject.OutlineCodes(strCFN & "_OLD")
       If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
       If Not oOutlineCodeFrom Is Nothing Then
         'first copy the codemask
-        Set oOutlineCodeTo = oSubproject.OutlineCodes(strCFN)
+        Set oOutlineCodeTo = oSubProject.OutlineCodes(strCFN)
         For lngItem = 1 To oOutlineCodeFrom.CodeMask.Count
           oOutlineCodeTo.CodeMask.Add oOutlineCodeFrom.CodeMask(lngItem).Sequence, oOutlineCodeFrom.CodeMask(lngItem).Length, oOutlineCodeFrom.CodeMask(lngItem).Separator
         Next lngItem
@@ -269,7 +307,7 @@ Sub cptMoveLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
     'now move task-level data (if not a formula
     For lngItem = 0 To .lboMoveLCF.ListCount - 1
       lngUID = .lboMoveLCF.List(lngItem, 0)
-      Set oTask = oSubproject.Tasks.UniqueID(lngUID)
+      Set oTask = oSubProject.Tasks.UniqueID(lngUID)
       If .optFormula Then
         oTask.SetField lngFrom, ""
       Else
@@ -321,7 +359,7 @@ exit_here:
   Set oTask = Nothing
   Set oOutlineCodeFrom = Nothing
   Set oOutlineCodeTo = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
 
   Exit Sub
 err_here:
@@ -375,6 +413,7 @@ Sub cptTakeLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
   Dim strFormula As String
   Dim strCFN As String
   'longs
+  Dim lngIndex As Long
   Dim lngLookupItem As Long
   Dim lngLCF As Long
   Dim lngItem As Long
@@ -423,19 +462,49 @@ Sub cptTakeLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
     If blnSingle And Not myFlowDown_frm.lboSubprojects.Selected(lngItem) Then GoTo next_subproject
     myFlowDown_frm.lboSubprojects.List(lngItem, 2) = "..."
     DoEvents
-    Set oSP = Projects(myFlowDown_frm.lboSubprojects.List(lngItem, 1))
+    Set oSP = Projects(myFlowDown_frm.lboSubprojects.List(lngItem, 1)) 'name
+    lngIndex = myFlowDown_frm.lboSubprojects.List(lngItem, 0) 'index
     lngTask = 0
     lngTasks = oSP.Tasks.Count
     oSP.Activate
-    'todo: before doing anything, ensure LCF doesn't already exist on another field
-    'todo: rename existing to *_OLD
-    'todo: prompt user what to do
-    'todo: create the new; delete the old
     'delete the LCF
     CustomFieldDelete lngLCF
     'rename the LCF
-    'todo: what if name already exists? check oLCF
-    CustomFieldRename lngLCF, strCFN
+    oLCF.Filter = 0
+    oLCF.Filter = "SP=" & lngIndex & " AND CFN='" & strCFN & "' AND FC<>" & lngLCF
+    If oLCF.EOF Then
+      CustomFieldRename lngLCF, strCFN
+      Stop
+      oLCF.Filter = 0
+      oLCF.Filter = "SP=" & lngIndex & " AND FC=" & lngLCF
+      If Not oLCF.EOF Then
+        oLCF(3) = strCFN
+      End If
+      oLCF.Filter = 0
+      myFlowDown_frm.lboSubprojects.List(lngItem, 2) = strCFN
+      myFlowDown_frm.lboSubprojects.List(lngItem, 3) = ""
+    Else 'already exists in this subproject
+      strMsg = "Subproject '" & oMP.Subprojects(oLCF(0)).InsertedProjectSummary.Name & "' already has a '" & oLCF(3) & "' in " & oLCF(2) & "!" & vbCrLf & vbCrLf
+      strMsg = strMsg & "Rename " & oLCF(2) & " '" & oLCF(3) & "_OLD' and proceed?" & vbCrLf & vbCrLf
+      If MsgBox(strMsg, vbExclamation + vbOKCancel, "Custom Field Name Already Exists") = vbCancel Then
+        oLCF.Filter = 0
+        GoTo exit_here
+      Else
+        CustomFieldRename oLCF(1), strCFN & "_OLD"
+        DoEvents
+        'update oLCF for old
+        oLCF(3) = strCFN & "_OLD"
+        'update oLCF for new
+        oLCF.Filter = 0
+        oLCF.Filter = "SP=" & lngIndex & " AND FC=" & lngLCF
+        oLCF(3) = strCFN
+        CustomFieldRename lngLCF, strCFN
+        'update listbox
+        myFlowDown_frm.lboSubprojects.List(lngItem, 2) = strCFN
+        myFlowDown_frm.lboSubprojects.List(lngItem, 3) = ""
+      End If
+    End If
+    oLCF.Filter = 0
     'formula
     blnHasFormula = cptHasFormula(oMP, lngLCF)
     If blnHasFormula Then
@@ -525,6 +594,8 @@ Sub cptTakeLCF(ByRef myFlowDown_frm As cptFlowDown_frm, ByRef oLCF As ADODB.Reco
       End If
     End If
     SetAutoFilter strCFN, pjAutoFilterIn, "does not equal", ""
+    'todo: use SetField it's much faster
+    'todo: or maybe SetTaskField
     If Not myFlowDown_frm.optFormula Then
       If blnClearTaskData Then
         'now delete the data
@@ -539,8 +610,6 @@ next_task:
         Next oTask
       End If
     End If
-    'update listbox
-    myFlowDown_frm.lboSubprojects.List(lngItem, 2) = strCFN
     DoEvents
 next_subproject:
   Next lngItem
