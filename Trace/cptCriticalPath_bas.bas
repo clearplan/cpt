@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCriticalPath_bas"
-'<cpt_version>v3.5.4</cpt_version>
+'<cpt_version>v3.5.5</cpt_version>
 Option Explicit
 Private CritField As String 'Stores comma seperated values for each task showing which paths they are a part of
 Private GroupField As String 'Stores a single value - used to group/sort tasks in final CP view
@@ -58,15 +58,16 @@ Sub DrivingPaths()
 
     'prevent spawning
     If Not cptGetUserForm("cptCriticalPath_frm") Is Nothing Then Exit Sub
-    
-    If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
+    Dim blnErrorTrapping As Boolean
+    blnErrorTrapping = cptErrorTrapping 'get once
+    If blnErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     Dim t As Task 'Stores initial user selected task
     Dim tdp As TaskDependency
     Dim tdps As TaskDependencies
     Dim i As Integer 'Used to iterate through Primary/Secondary/Tertiary driver arrays
     Dim analysisTaskUID As String 'Stores user selected task for recall and selection after setting final view
     
-    If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
     'Store users active project
     Set curProj = ActiveProject 'v2.9.0 get active project before displaying field selection form
@@ -120,7 +121,7 @@ Sub DrivingPaths()
         Exit Sub
     End If
     
-    If cptErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
+    If blnErrorTrapping Then On Error GoTo ErrorHandler Else On Error GoTo 0
     
     'v2.9.0 Diplay Field Selection dialog
     Dim critPathFieldMapForm As cptCritPathFields_frm
@@ -140,7 +141,7 @@ Sub DrivingPaths()
             .SubPath_Combobox.AddItem CustTextFields(i)
         Next i
         
-        .pathCnt_txtBox.value = 3
+        .pathCnt_txtBox.Value = 3
         
         .Caption = "cptCritical Path " & cptGetVersion("cptCriticalPath_bas")
         
@@ -367,7 +368,7 @@ ShowAndTell:
     
 ErrorHandler:
 
-    Call cptHandleErr(MODULE_NAME, "cptCriticalPath", err, Erl, "Error identifying driving paths")
+    Call cptHandleErr(MODULE_NAME, "cptCriticalPath_bas", Err, Erl, "Error identifying driving paths")
 
 CleanUp:
 
@@ -477,7 +478,7 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     Else
     
         'Create CP Driving Path Table
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, fieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
+        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, FieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
         
         'Add fields to CP Driving Path Table
         curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Unique ID", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1, LockFirstColumn:=True
@@ -491,15 +492,15 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     End If
 
     'Create CP Driving Path Filter
-    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, fieldName:=GroupField, test:="is greater than", value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
+    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
     
     'On Error Resume Next
     
     'Create CP Driving Path Group
     Dim cpGroup As Group
-    Set cpGroup = curProj.TaskGroups.Add(Name:="*ClearPlan Driving Path Group", fieldName:=GroupField)
+    Set cpGroup = curProj.TaskGroups.Add(Name:="*ClearPlan Driving Path Group", FieldName:=GroupField)
     
-    If SubPaths Then cpGroup.GroupCriteria.Add fieldName:=SubPathField, Ascending:=True
+    If SubPaths Then cpGroup.GroupCriteria.Add FieldName:=SubPathField, Ascending:=True
     
     'Create and apply CP Driving Path view if necessary
     If userView = "<Default>" Then
@@ -1011,13 +1012,13 @@ Public Function ExistsInCollection(ByVal col As Collection, ByVal vKey As Varian
 'Check for task dependency relationship in the analyzed tasks collection
 
     'If error encountered, value does not exist in the collection
-    On Error GoTo err
+    On Error GoTo err_here
     
     col.Item vKey 'Store found item; if not found, will produce error
     ExistsInCollection = True 'Set True
     Exit Function
     
-err: 'If error encountered, item does not exist - return "False" boolean vlaue
+err_here: 'If error encountered, item does not exist - return "False" boolean vlaue
     ExistsInCollection = False
     
 End Function
@@ -1102,12 +1103,12 @@ Function get_subProj_index(ByVal mProj As Project, ByVal subprojectFilename As S
     Else
         On Error Resume Next
         cached = subProjIndexCache.Item(subprojectFilename)
-        If err.Number = 0 Then
+        If Err.Number = 0 Then
             On Error GoTo 0
             get_subProj_index = CInt(cached)
             Exit Function
         End If
-        err.Clear
+        Err.Clear
         On Error GoTo 0
     End If
 
