@@ -186,7 +186,7 @@ Private Sub UserForm_Activate()
       If cptViewExists(settingTest) Then
         Me.UserView_Combobox.Value = settingTest
       Else
-        MsgBox "The saved view '" & settingTest & "' no longer exists." & vbCrLf & vbCrLf & "Please select a new view.", vbExclamation + vbOKOnly, "Driving Paths"
+        MsgBox "The saved view '" & settingTest & "' no longer exists (or is no longer valid)." & vbCrLf & vbCrLf & "Please select a new view.", vbExclamation + vbOKOnly, "Driving Paths"
       End If
     End If
     

@@ -2013,11 +2013,12 @@ End Function
 Function cptViewExists(strView As String) As Boolean
   'objects
   Dim oView As MSProject.View
-  Dim oTable As MSProject.Table
-  Dim oFilter As MSProject.Filter
-  Dim oGroup As MSProject.Group
   Dim oViewSingle As MSProject.ViewSingle
   Dim oViewCombo As MSProject.ViewCombination
+  'strings
+  Dim strTable As String
+  Dim strFilter As String
+  Dim strGroup As String
   'booleans
   Dim blnExists As Boolean
 
@@ -2036,9 +2037,18 @@ Function cptViewExists(strView As String) As Boolean
     If oView.Single Then
       Set oViewSingle = oView
       If oViewSingle.Screen = pjGantt Or oViewSingle.Screen = pjTaskSheet Or oViewSingle.Screen = pjTaskUsage Then
-        blnExists = cptTableExists(oViewSingle.Table) And cptFilterExists(oViewSingle.Filter) And cptGroupExists(oViewSingle.Group)
+        On Error Resume Next
+        strTable = oViewSingle.Table    'triggers err 1104 if argument is not valid
+        strFilter = oViewSingle.Filter  'triggers err 1104 if argument is not valid
+        strGroup = oViewSingle.Group    'triggers err 1104 if argument is not valid
+        If Err.Number = 0 Then
+          blnExists = cptTableExists(strTable) And cptFilterExists(strFilter) And cptGroupExists(strGroup)
+        Else
+          Err.Clear
+          blnExists = False
+        End If
       Else
-        blnExists = True 'I guess?
+        blnExists = True
       End If
     Else
       Set oViewCombo = oView
@@ -2052,9 +2062,6 @@ exit_here:
   On Error Resume Next
   Set oViewSingle = Nothing
   Set oViewCombo = Nothing
-  Set oGroup = Nothing
-  Set oFilter = Nothing
-  Set oTable = Nothing
   Set oView = Nothing
 
   Exit Function
