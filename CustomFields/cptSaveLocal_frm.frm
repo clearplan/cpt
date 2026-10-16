@@ -235,11 +235,13 @@ Private Sub lboECF_Change()
         cptAnalyzeAutoMap Me
       Else
         If Me.chkAutoSwitch Then
+          'update cboLCF
           If Me.lboECF.List(Me.lboECF.ListIndex, 2) = "" Then
             Me.cboLCF = "Text"
           Else
             Me.cboLCF = Replace(Me.lboECF.List(Me.lboECF.ListIndex, 2), "Maybe", "")
           End If
+          'auto-select LCF
           For lngItem = 0 To Me.lboLCF.ListCount - 1
             If Not IsNull(Me.lboECF.List(Me.lboECF.ListIndex, 3)) Then
               If Me.lboLCF.List(lngItem, 0) = Me.lboECF.List(Me.lboECF.ListIndex, 3) Then
