@@ -241,6 +241,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   Dim oSavedMap As ADODB.Recordset
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
+  Dim oSkipped As Scripting.Dictionary
   'strings
   Dim strExportMapName As String
   Dim strImportMapName As String
@@ -267,6 +268,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'booleans
   Dim blnMaster As Boolean
   Dim blnErrorTrapping As Boolean
+  Dim blnClearExisting As Boolean
   'variants
   Dim vMap As Variant
   'dates
@@ -280,7 +282,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   blnMaster = ActiveProject.Subprojects.Count > 0
   
   strServerURL = Application.Profiles.ActiveProfile.Server
-    
+  strProgramAcronym = cptGetProgramAcronym
   'save map
   Set oSavedMap = CreateObject("ADODB.Recordset")
   strSavedMap = cptDir & "\settings\cpt-save-local.adtg"
@@ -295,8 +297,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   End If
   'get total task count
   ActiveWindow.TopPane.Activate
-  If ActiveProject.CurrentView <> ".cptSaveLocal Task View" Then
-    ViewApply ".cptSaveLocal Task View"
+  If ActiveProject.CurrentView <> ".cptSaveLocal View" Then
+    ViewApply ".cptSaveLocal View"
   End If
   FilterClear
   GroupClear
@@ -331,6 +333,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
       End If
     Next lngItem
     If blnMaster Then
+      Set oSkipped = CreateObject("Scripting.Dictionary")
       For lngItem = 0 To lngItems
         If .lboECF.List(lngItem, 3) > 0 Then
           lngECF = .lboECF.List(lngItem, 0)
@@ -356,6 +359,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
           For Each oTask In oTasks
             If oTask Is Nothing Then GoTo next_task_master
             If oTask.ExternalTask Then GoTo next_task_master
+            If oSkipped.Exists(oTask.SubProject & "|" & lngLCF) Then GoTo next_task_master
             strECF = CStr(oTask.GetField(lngECF))
             On Error Resume Next
             oTask.SetField lngLCF, strECF
@@ -364,8 +368,20 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
             If strLCF <> strECF Then
               Find "Unique ID", "equals", oTask.UniqueID
               strErrors = strErrors & oTask.Project & "," & oTask.UniqueID & "," & CustomFieldGetName(lngECF) & "," & CustomFieldGetName(lngLCF) & "," & FieldConstantToFieldName(lngLCF) & vbCrLf
-              If MsgBox("PROJECT: " & oTask.Project & vbCrLf & "TASK: " & oTask.UniqueID & vbCrLf & vbCrLf & "Error copying from ECF '" & CustomFieldGetName(lngECF) & "' to LCF '" & CustomFieldGetName(lngLCF) & "' (" & FieldConstantToFieldName(lngLCF) & ")" & vbCrLf & vbCrLf & "Please validate data type mapping." & vbCrLf & vbCrLf & "Proceed anyway?" & vbCrLf & vbCrLf & "Yes: Skip this LCF and keep going" & vbCrLf & "No: Exit this process", vbExclamation + vbYesNo, "Failed!") = vbYes Then
-                GoTo next_mapped_master
+              strMsg = "PROJECT: " & oTask.Project & vbCrLf
+              strMsg = strMsg & "TASK: " & oTask.UniqueID & vbCrLf & vbCrLf
+              strMsg = strMsg & "Error copying from ECF '" & CustomFieldGetName(lngECF) & "' to LCF '" & CustomFieldGetName(lngLCF) & "' (" & FieldConstantToFieldName(lngLCF) & ")" & vbCrLf & vbCrLf
+              strMsg = strMsg & "- ensure data type (e.g., 'Text' cannot be copied into 'Number')" & vbCrLf
+              strMsg = strMsg & "- ensure pick-lists match" & vbCrLf
+              strMsg = strMsg & "- ensure no formula in LC" & vbCrLf & vbCrLf
+              strMsg = strMsg & "Proceed anyway?" & vbCrLf & vbCrLf
+              If oSkipped.Count > 0 Then
+                strMsg = strMsg & "(You have " & oSkipped.Count & " SUBPROJECT-LCF pairs so far.)" & vbCrLf & vbCrLf
+              End If
+              strMsg = strMsg & "YES: Skip this SUBPROJECT-LCF pairing and keep going" & vbCrLf
+              strMsg = strMsg & "NO: Exit this process"
+              If MsgBox(strMsg, vbExclamation + vbYesNo, "Failed!") = vbYes Then
+                oSkipped.Add oTask.SubProject & "|" & lngLCF, FieldConstantToFieldName(lngLCF) & "," & CustomFieldGetName(lngLCF)
               Else
                 GoTo exit_here
               End If
@@ -376,20 +392,6 @@ next_task_master:
             DoEvents
           Next oTask
           lngMapped = lngMapped + 1
-          
-  '        'no duplicates - doesn't this happen real-time via form controls?
-  '        oSavedMap.Filter = "PROGRAM_ACRONYM='" & strProgramAcronym & "' AND ECF=" & lngECF
-  '        If oSavedMap.RecordCount = 1 Then 'overwrite it
-  '          oSavedMap.Delete adAffectCurrent
-  '        End If
-  '        oSavedMap.Filter = ""
-  '        oSavedMap.Filter = "PROGRAM_ACRONYM='" & strProgramAcronym & "' AND LCF=" & lngLCF
-  '        If oSavedMap.RecordCount = 1 Then 'overwrite it
-  '          oSavedMap.Delete adAffectCurrent
-  '        End If
-  '        oSavedMap.Filter = ""
-  '        'add the new record
-  '        oSavedMap.AddNew Array(0, 1, 2, 3), Array(strServerURL, strProgramAcronym, lngECF, lngLCF)
         End If
 next_mapped_master:
         Application.StatusBar = "Processing... " & Format(lngMapped, "#,##0") & " / " & Format(lngMappedCount, "#,##0") & " (" & Format(lngMapped / lngMappedCount, "0%") & ") | " & Format(Now - tmr, "hh:nn:ss")
@@ -397,6 +399,7 @@ next_mapped_master:
       Next lngItem
       FilterClear
     Else
+      blnClearExisting = MsgBox("Clear existing LCF data first?", vbQuestion + vbYesNo, "Please confirm:") = vbYes
       'create map for export
       strExportMapName = "cpt-ecf-to-lcf-export-map"
       Application.MapEdit Name:=strExportMapName, Create:=True, OverwriteExisting:=True, _
@@ -423,12 +426,17 @@ next_mapped_master:
       Do While Not oSavedMap.EOF
         strECF = FieldConstantToFieldName(oSavedMap(2))
         strLCF = FieldConstantToFieldName(oSavedMap(3))
+        If blnClearExisting Then
+          SelectTaskColumn strLCF
+          SetTaskField strLCF, "", True
+        End If
         Application.MapEdit Name:=strExportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strECF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
         Application.MapEdit Name:=strImportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strLCF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
         oSavedMap.MoveNext
       Loop
       'export to csv
       strFileName = Environ("TMP") & "\cpt-ecf-to-lcf.csv"
+      If Dir(strFileName) <> vbNullString Then Kill strFileName
       ActiveProject.SaveAs strFileName, Format:=pjCSV, FormatID:="MSProject.csv", Map:=strExportMapName
       
       'import the csv
@@ -460,6 +468,17 @@ next_mapped_master:
 exit_here:
   On Error Resume Next
   cptSpeed False
+  If oSkipped.Count > 0 Then
+    lngFile = FreeFile
+    strFileName = Environ("TMP") & "\cpt-ecf-to-lcf-skipped.txt"
+    Print #lngFile, "SUBPROJECT,FIELD_CONSTANT,FIELD_NAME,CUSTOM_FIELD_NAME"
+    For lngItem = 0 To oSkipped.Count - 1
+      Print #lngFile, Replace(oSkipped.Keys(lngItem), "|", ",") & "," & oSkipped.Items(lngItem)
+    Next lngItem
+    Close #lngFile
+    cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
+  End If
+  Set oSkipped = Nothing
   If Len(strErrors) > 0 Then
     lngFile = FreeFile
     strFileName = Environ("TMP") & "\cpt-ecf-to-lcf-errors.txt"
