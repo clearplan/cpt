@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.5.4</cpt_version>
+'<cpt_version>v3.5.40</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -401,7 +401,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                 If Not t Is Nothing Then
 
-                    If t.Summary = False And t.Active = True And t.ExternalTask = False Then
+                    If t.Active = True And t.ExternalTask = False Then
 
                         taskCount = taskCount + 1
                         taskFound = True
@@ -535,7 +535,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
             If Not t Is Nothing Then
 
-                If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+                If t.Active = True And t.ExternalTask = False Then
 
                     taskCount = taskCount + 1
                     taskFound = True
@@ -1457,7 +1457,7 @@ Export_Project_Data:
 
         If Not t Is Nothing Then
 
-            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+            If t.Active = True And t.ExternalTask = False Then
 
                 If (ResourceLoaded And (t.BaselineWork > 0 Or t.BaselineCost > 0)) Or (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "") Then
 
@@ -1902,7 +1902,7 @@ Export_Project_Data:
 
         If Not t Is Nothing Then
 
-            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+            If t.Active = True And t.ExternalTask = False Then
 
                 If (ResourceLoaded And (t.Work > 0 Or t.Cost > 0)) Or (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "") Then
 
@@ -2149,7 +2149,7 @@ Export_Project_Data:
 
         If Not t Is Nothing Then
 
-            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+            If t.Active = True And t.ExternalTask = False Then
 
                 If (ResourceLoaded And (t.BaselineWork > 0 Or t.BaselineCost > 0)) Or (Not ResourceLoaded And t.GetField(FieldNameToFieldConstant(fWP)) <> "") Then
 
@@ -2367,7 +2367,7 @@ Export_Project_Data:
 
         If Not t Is Nothing Then
 
-            If t.Active = True And t.Summary = False And t.ExternalTask = False Then
+            If t.Active = True And t.ExternalTask = False Then
 
                 If (ResourceLoaded And ((t.BaselineWork > 0 Or t.BaselineCost > 0) And _
                 (t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "d" And t.GetField(FieldNameToFieldConstant(fWhatIf)) <> "D")) _
@@ -2851,7 +2851,7 @@ Private Function Find_BCRs(ByVal curProj As Project, ByVal fWP As String, ByVal 
 
                 If Not t Is Nothing Then
                 
-                    If t.Active = True And t.Summary = False Then
+                    If t.Active = True Then
                     '3.3.12: ignore summary and inactive tasks
                     
                         tempBCRstr = t.GetField(FieldNameToFieldConstant(fBCR))
@@ -2901,7 +2901,7 @@ Next_SubProj_WPtask:
 
             If Not t Is Nothing Then
             
-                If t.Active = True And t.Summary = False Then
+                If t.Active = True Then
                 '3.3.12: ignore summary and inactive tasks
                 
                     tempBCRstr = t.GetField(FieldNameToFieldConstant(fBCR))
@@ -3817,7 +3817,7 @@ Private Sub AssignShortID(ByRef ACTarray() As ACTrowWP, ByVal idx As Integer, By
 
     If Len(ACTarray(idx).ID) > 58 Then
         ActIDCounter = ActIDCounter + 1
-        ACTarray(idx).ShortID = ACTarray(idx).WP & " (" & ActIDCounter & ")"
+        ACTarray(idx).ShortID = ACTarray(idx).WP '& " (" & ActIDCounter & ")"
     Else
         ACTarray(idx).ShortID = ACTarray(idx).ID
     End If
