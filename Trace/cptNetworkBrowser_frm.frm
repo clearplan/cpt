@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.0</cpt_version>
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptNetworkBrowser_frm"
 
@@ -91,10 +91,10 @@ Private Sub cmdBack_Click()
 exit_here:
   Exit Sub
 err_here:
-  If err.Number = 380 Then
-    err.Clear
+  If Err.Number = 380 Then
+    Err.Clear
   Else
-    Call cptHandleErr("cptNetworkBrowser_frm", "cmdBack_Click", err, Erl)
+    Call cptHandleErr(THIS_MODULE, "cmdBack_Click", Err, Erl)
   End If
   Resume exit_here
   
@@ -127,10 +127,10 @@ Private Sub cmdFwd_Click()
 exit_here:
   Exit Sub
 err_here:
-  If err.Number = 380 Then
-    err.Clear
+  If Err.Number = 380 Then
+    Err.Clear
   Else
-    Call cptHandleErr("cptNetworkBrowser_frm", "cmdFwd_Click", err, Erl)
+    Call cptHandleErr(THIS_MODULE, "cmdFwd_Click", Err, Erl)
   End If
   Resume exit_here
 
@@ -203,7 +203,7 @@ exit_here:
   Exit Sub
 err_here:
   On Error Resume Next
-  Call cptHandleErr("cptNetworkBrowser_frm", "cmdMark_Click", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdMark_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -273,7 +273,7 @@ exit_here:
   cptSpeed False
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "cmdUnmark_Click", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdUnmark_Click", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -305,7 +305,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "cmdUnmarkAll_Click", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cmdUnmarkAll_Click", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -360,7 +360,7 @@ Sub lboPredecessors_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
 exit_here:
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "lboPredecesors_DblClick", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboPredecesors_DblClick", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -422,7 +422,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptNetworkBrowser_frm", "lboSuccessors_DblClick", err, Erl)
+  Call cptHandleErr(THIS_MODULE, "lboSuccessors_DblClick", Err, Erl)
   Resume exit_here
 End Sub
 

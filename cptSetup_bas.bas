@@ -527,6 +527,7 @@ Public Function cptBuildRibbonTab()
       If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCPL"" label=""Export CPLs"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptExportCrossProjectLinks"" visible=""true"" supertip=""Export Cross-Project Links to Excel; identify 'ghost tasks.'"" />"
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" size=""large"" supertip=""Find circular logic in your IMS instantly."" />"
       End If
       If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
         ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" >"
@@ -539,6 +540,7 @@ Public Function cptBuildRibbonTab()
       If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
         ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" size=""large"" supertip=""Find circular logic in your IMS instantly."" />"
       End If
       If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
         ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" size=""large"" >"
