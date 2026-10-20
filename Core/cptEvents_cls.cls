@@ -32,7 +32,6 @@ Private Sub MyMSPApplication_WindowSelectionChange(ByVal Window As Window, ByVal
   'integers
   'booleans
   Dim blnErrorTrapping As Boolean
-  Dim blnModuleExists As Boolean
   'variants
   'dates
 
@@ -72,19 +71,16 @@ Private Sub MyMSPApplication_WindowSelectionChange(ByVal Window As Window, ByVal
         Else
           Application.StatusBar = Format(lngItems, "#,##0") & " task" & IIf(lngItems = 1, "", "s") & " selected"
         End If
-        blnModuleExists = cptModuleExists("cptFiscal_bas")
-        #If blnModuleExists Then
-          If cptGetSetting("Fiscal", "chkShowFiscalPeriodCountInStatusBar") = 1 Then
-            lngFiscalPeriods = cptGetFiscalPeriods(oTasks)
-            If lngFiscalPeriods > 0 And cptCalendarExists("cptFiscalCalendar") Then 'todo: and setting
-              If Len(Application.StatusBar) > 0 Then
-                Application.StatusBar = Application.StatusBar & " | " & lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
-              Else
-                Application.StatusBar = lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
-              End If
+        If cptGetSetting("Fiscal", "chkShowFiscalPeriodCountInStatusBar") = 1 Then
+          lngFiscalPeriods = cptGetFiscalPeriods(oTasks)
+          If lngFiscalPeriods > 0 And cptCalendarExists("cptFiscalCalendar") Then 'todo: and setting
+            If Len(Application.StatusBar) > 0 Then
+              Application.StatusBar = Application.StatusBar & " | " & lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
+            Else
+              Application.StatusBar = lngFiscalPeriods & " fiscal period" & IIf(lngFiscalPeriods = 1, "", "s")
             End If
           End If
-        #End If
+        End If
       Else
         Application.StatusBar = "0 tasks selected"
       End If
