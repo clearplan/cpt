@@ -62,6 +62,7 @@ Sub cptDECM_GET_DATA()
   Dim strFileName As String
   Dim strLOE As String
   Dim strList As String
+  Dim strFieldName As String
   'longs
   Dim lngDefaultDateFormat As Long
   Dim lngToUID As Long
@@ -103,6 +104,7 @@ Sub cptDECM_GET_DATA()
   Dim lngBLC As Long
   Dim lngRW As Long
   Dim lngRC As Long
+  Dim lngDataType As Long
   'integers
   'doubles
   Dim dblScore As Double
@@ -594,7 +596,7 @@ next_task:
     FileCopy strFileName, strDir & "\cpt-cei.adtg"
     
     'convert to csv for sql query...
-    strFileName = strDir & "\cpt-cei.adtg"
+    strFileName = strDir & "\cpt-cei.adtg" 'TMP
     Set oRecordset = CreateObject("ADODB.Recordset")
     oRecordset.Open strFileName
     'limit to program
@@ -603,13 +605,13 @@ next_task:
     oRecordset.Close
     
     'clean it up (remove commas)
-    'todo: any other fields that might have a comma?
     oRecordset.Open strFileName
     oRecordset.Filter = "TASK_NAME LIKE '%,%'"
     If Not oRecordset.EOF Then
       oRecordset.MoveFirst
       Do While Not oRecordset.EOF
         oRecordset.Fields("TASK_NAME") = Replace(oRecordset.Fields("TASK_NAME"), ",", "-")
+        'todo: any other fields that might have a comma?
         oRecordset.MoveNext
       Loop
     End If
@@ -628,8 +630,26 @@ next_task:
       oFile.Write strList & vbCrLf
       oRecordset.MoveFirst
       oFile.Write oRecordset.GetString(adClipString, , ",", vbCrLf, vbNullString)
+      'append to schema
+      lngFile = FreeFile
+      Open Environ("TMP") & "\Schema.ini" For Append As #lngFile
+      Print #lngFile, "[cpt-cei.csv]"
+      Print #lngFile, "ColNameHeader=True"
+      Print #lngFile, "Format=CSVDelimited"
+      For lngItem = 0 To oRecordset.Fields.Count - 1
+        strFieldName = oRecordset.Fields(lngItem).Name
+        Select Case oRecordset.Fields(lngItem).Type
+          Case 200 'text
+            Print #lngFile, "Col" & lngItem + 1 & "=" & strFieldName & " text"
+          Case 3 'integer
+            Print #lngFile, "Col" & lngItem + 1 & "=" & strFieldName & " integer"
+          Case 7 'datetime
+            Print #lngFile, "Col" & lngItem + 1 & "=" & strFieldName & " datetime"
+        End Select
+      Next lngItem
+      Close #lngFile
       oRecordset.Close
-      Kill strDir & "\cpt-cei.adtg"
+      Kill strDir & "\cpt-cei.adtg" 'strDir = environ("TMP"), no fear
       oFile.Close
     End If
   Else
@@ -755,9 +775,14 @@ next_task:
     strSQL = strSQL & "    ) AS T2 ON T2.TASK_UID = T1.TASK_UID "
     strSQL = strSQL & "WHERE "
     strSQL = strSQL & "    PROJECT = '" & strProgramAcronym & "' "
-    strSQL = strSQL & "    AND TASK_AS IS NOT NULL "
     strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrent & "# "
-    strSQL = strSQL & "    AND T1.TASK_AS <> T2.TASK_AS_WAS; "
+    strSQL = strSQL & "    AND ("
+    strSQL = strSQL & "     (T1.TASK_AS <> T2.TASK_AS_WAS)"
+    strSQL = strSQL & "     OR("
+    strSQL = strSQL & "       T2.TASK_AS_WAS IS NOT NULL "
+    strSQL = strSQL & "       AND T1.TASK_AS IS NULL"
+    strSQL = strSQL & "       )"
+    strSQL = strSQL & "     );"
 
     oRecordset.Open strSQL, strCon, adOpenKeyset
     If Not oRecordset.EOF Then lngX = oRecordset.RecordCount Else lngX = 0
@@ -850,9 +875,15 @@ next_task:
     strSQL = strSQL & "    ) AS T2 ON T2.TASK_UID = T1.TASK_UID "
     strSQL = strSQL & "WHERE "
     strSQL = strSQL & "    PROJECT = '" & strProgramAcronym & "' "
-    strSQL = strSQL & "    AND TASK_AF IS NOT NULL "
     strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrent & "# "
-    strSQL = strSQL & "    AND T1.TASK_AF <> T2.TASK_AF_WAS; "
+    strSQL = strSQL & "    AND ("
+    strSQL = strSQL & "     (T1.TASK_AF <> T2.TASK_AF_WAS)"
+    strSQL = strSQL & "     OR("
+    strSQL = strSQL & "       T2.TASK_AF_WAS IS NOT NULL "
+    strSQL = strSQL & "       AND T1.TASK_AF IS NULL"
+    strSQL = strSQL & "       )"
+    strSQL = strSQL & "     );"
+    
     oRecordset.Open strSQL, strCon, adOpenKeyset
     If Not oRecordset.EOF Then lngX = oRecordset.RecordCount Else lngX = 0
     strList = ""
@@ -1717,6 +1748,7 @@ Sub DECM_10A102a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
       oWorksheet.[C2].Style = "percent"
       oWorksheet.[A1:C2].HorizontalAlignment = xlCenter
       If Dir(Environ("tmp") & "\" & strMetric & ".xlsx") <> vbNullString Then Kill Environ("tmp") & "\" & strMetric & ".xlsx"
+      MsgBox "If your company requires security labeling, please do that in the Excel window now.", vbInformation + vbOKOnly, "DECM 10A102a"
       oWorkbook.SaveAs Environ("tmp") & "\" & strMetric & ".xlsx"
       oWorkbook.Close True
     End If
@@ -4042,8 +4074,9 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
-            oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
+            Set oRange = oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
+            oRange.Columns.AutoFit
+            cptAddBorders oRange
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
           End If
@@ -4057,8 +4090,9 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
-            oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
+            Set oRange = oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
+            oRange.Columns.AutoFit
+            cptAddBorders oRange
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
           End If
@@ -5211,6 +5245,7 @@ Private Function cptGetEVTAnalysis() As Excel.Workbook
   oExcel.Windows("10A103a.xlsx").Close False
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   If Dir(Environ("tmp") & "\10A103a.xlsx") <> vbNullString Then Kill Environ("tmp") & "\10A103a.xlsx"
+  MsgBox "If your company requires security labeling, please do that in the Excel window now.", vbInformation + vbOKOnly, "DECM: 10A103a"
   oWorkbook.SaveAs Environ("tmp") & "\10A103a.xlsx", 51
   Set cptGetEVTAnalysis = oWorkbook
   
