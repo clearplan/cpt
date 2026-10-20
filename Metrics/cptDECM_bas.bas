@@ -945,7 +945,7 @@ next_task:
   myDECM_frm.lboMetrics.AddItem
   myDECM_frm.lboMetrics.TopIndex = myDECM_frm.lboMetrics.ListCount - 1
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 0) = strMetric
-  'myDECM_Frm.lboMetrics.Value = "06A506b"
+  'myDECM_Frm.lboMetrics.Value = "06A506c"
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 1) = "Riding the Status Date"
   myDECM_frm.lboMetrics.List(myDECM_frm.lboMetrics.ListCount - 1, 2) = "X/Y <= 1%"
   DoEvents
@@ -980,7 +980,7 @@ next_task:
     strSQL = strSQL & "        FROM "
     strSQL = strSQL & "            [cpt-cei.csv] "
     strSQL = strSQL & "        WHERE "
-    strSQL = strSQL & "            PROJECT = 'IBL' "
+    strSQL = strSQL & "            PROJECT = '" & strProgramAcronym & "' "
     strSQL = strSQL & "            AND IS_LOE = FALSE "
     strSQL = strSQL & "            AND TASK_AF IS NULL "
     strSQL = strSQL & "            AND TASK_FINISH >= #" & dtCurrent & "# "
@@ -995,7 +995,7 @@ next_task:
     strSQL = strSQL & "        FROM "
     strSQL = strSQL & "            [cpt-cei.csv] "
     strSQL = strSQL & "        WHERE "
-    strSQL = strSQL & "            PROJECT = 'IBL' "
+    strSQL = strSQL & "            PROJECT = '" & strProgramAcronym & "' "
     strSQL = strSQL & "            AND IS_LOE = FALSE "
     strSQL = strSQL & "            AND TASK_AF IS NULL "
     strSQL = strSQL & "            AND TASK_FINISH >= #" & dtPrevious & "# "
