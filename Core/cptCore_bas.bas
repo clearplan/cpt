@@ -3031,7 +3031,6 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
     End If
   Next vControl
   
-  #If blnModuleExists Then
   Set myIntegration_frm = New cptIntegration_frm
   With myIntegration_frm
     
@@ -3294,7 +3293,6 @@ next_control:
     End If
     
   End With
-  #End If
 
 exit_here:
   On Error Resume Next
