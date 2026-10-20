@@ -22,6 +22,8 @@ Private lngY As Long
 Private blnResourceLoaded As Boolean
 Public oDECM As Scripting.Dictionary
 Private oSubMap As Scripting.Dictionary
+Private dtCurrentPeriod As Date
+Private dtPreviousPeriod As Date
 
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
@@ -123,8 +125,6 @@ Sub cptDECM_GET_DATA()
   Dim vField As Variant
   'dates
   Dim dtRollingWaveDate As Date
-  Dim dtPrevious As Date
-  Dim dtCurrent As Date
   Dim dtStatus As Date
   
   'prevent spawning
@@ -699,10 +699,10 @@ next_task:
         oRecordset.Close
         blnTaskHistoryExists = False
       End If
-      dtCurrent = oRecordset(0)
+      dtCurrentPeriod = oRecordset(0)
       oRecordset.Close
       'get 2nd most recent fiscal end/status date
-      strSQL = strSQL & " WHERE STATUS_DATE<#" & dtCurrent & "#"
+      strSQL = strSQL & " WHERE STATUS_DATE<#" & dtCurrentPeriod & "#"
       oRecordset.Open strSQL, strCon, adOpenKeyset
       If oRecordset.EOF Then
         blnTaskHistoryExists = False
@@ -711,7 +711,7 @@ next_task:
         blnTaskHistoryExists = False
         oRecordset.Close
       Else
-        dtPrevious = oRecordset(0)
+        dtPreviousPeriod = oRecordset(0)
         oRecordset.Close
       End If
     End If
@@ -750,7 +750,7 @@ next_task:
     'get Y
     strSQL = "SELECT TASK_UID,TASK_AS FROM [cpt-cei.csv] "
     strSQL = strSQL & "WHERE PROJECT='" & strProgramAcronym & "' AND TASK_AS IS NOT NULL "
-    strSQL = strSQL & "AND STATUS_DATE = #" & dtPrevious & "#"
+    strSQL = strSQL & "AND STATUS_DATE = #" & dtPreviousPeriod & "#"
     oRecordset.Open strSQL, strCon, adOpenKeyset
     If Not oRecordset.EOF Then lngY = oRecordset.RecordCount Else lngY = 1
     oRecordset.Close
@@ -771,11 +771,11 @@ next_task:
     strSQL = strSQL & "        WHERE "
     strSQL = strSQL & "            PROJECT = '" & strProgramAcronym & "' "
     strSQL = strSQL & "            AND TASK_AS IS NOT NULL "
-    strSQL = strSQL & "            AND STATUS_DATE = #" & dtPrevious & "#"
+    strSQL = strSQL & "            AND STATUS_DATE = #" & dtPreviousPeriod & "#"
     strSQL = strSQL & "    ) AS T2 ON T2.TASK_UID = T1.TASK_UID "
     strSQL = strSQL & "WHERE "
     strSQL = strSQL & "    PROJECT = '" & strProgramAcronym & "' "
-    strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrent & "# "
+    strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrentPeriod & "# "
     strSQL = strSQL & "    AND ("
     strSQL = strSQL & "     (T1.TASK_AS <> T2.TASK_AS_WAS)"
     strSQL = strSQL & "     OR("
@@ -850,7 +850,7 @@ next_task:
     'get Y
     strSQL = "SELECT TASK_UID,TASK_AF FROM [cpt-cei.csv] "
     strSQL = strSQL & "WHERE PROJECT='" & strProgramAcronym & "' AND TASK_AF IS NOT NULL "
-    strSQL = strSQL & "AND STATUS_DATE = #" & dtPrevious & "#"
+    strSQL = strSQL & "AND STATUS_DATE = #" & dtPreviousPeriod & "#"
     oRecordset.Open strSQL, strCon, adOpenKeyset
     If Not oRecordset.EOF Then lngY = oRecordset.RecordCount Else lngY = 1
     oRecordset.Close
@@ -871,11 +871,11 @@ next_task:
     strSQL = strSQL & "        WHERE "
     strSQL = strSQL & "            PROJECT = '" & strProgramAcronym & "' "
     strSQL = strSQL & "            AND TASK_AF IS NOT NULL "
-    strSQL = strSQL & "            AND STATUS_DATE = #" & dtPrevious & "#"
+    strSQL = strSQL & "            AND STATUS_DATE = #" & dtPreviousPeriod & "#"
     strSQL = strSQL & "    ) AS T2 ON T2.TASK_UID = T1.TASK_UID "
     strSQL = strSQL & "WHERE "
     strSQL = strSQL & "    PROJECT = '" & strProgramAcronym & "' "
-    strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrent & "# "
+    strSQL = strSQL & "    AND STATUS_DATE = #" & dtCurrentPeriod & "# "
     strSQL = strSQL & "    AND ("
     strSQL = strSQL & "     (T1.TASK_AF <> T2.TASK_AF_WAS)"
     strSQL = strSQL & "     OR("
@@ -983,8 +983,8 @@ next_task:
     strSQL = strSQL & "            PROJECT = '" & strProgramAcronym & "' "
     strSQL = strSQL & "            AND IS_LOE = FALSE "
     strSQL = strSQL & "            AND TASK_AF IS NULL "
-    strSQL = strSQL & "            AND TASK_FINISH >= #" & dtCurrent & "# "
-    strSQL = strSQL & "            AND STATUS_DATE = #" & dtCurrent & "# "
+    strSQL = strSQL & "            AND TASK_FINISH >= #" & dtCurrentPeriod & "# "
+    strSQL = strSQL & "            AND STATUS_DATE = #" & dtCurrentPeriod & "# "
     strSQL = strSQL & "    ) P1 "
     strSQL = strSQL & "    INNER JOIN ( "
     strSQL = strSQL & "        SELECT "
@@ -998,8 +998,8 @@ next_task:
     strSQL = strSQL & "            PROJECT = '" & strProgramAcronym & "' "
     strSQL = strSQL & "            AND IS_LOE = FALSE "
     strSQL = strSQL & "            AND TASK_AF IS NULL "
-    strSQL = strSQL & "            AND TASK_FINISH >= #" & dtPrevious & "# "
-    strSQL = strSQL & "            AND STATUS_DATE = #" & dtPrevious & "# "
+    strSQL = strSQL & "            AND TASK_FINISH >= #" & dtPreviousPeriod & "# "
+    strSQL = strSQL & "            AND STATUS_DATE = #" & dtPreviousPeriod & "# "
     strSQL = strSQL & "    ) P2 ON P2.TASK_UID = P1.TASK_UID "
     strSQL = strSQL & "WHERE "
     strSQL = strSQL & "    P1.DELTA = P2.DELTA "
@@ -4079,6 +4079,8 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oRange
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            oWorksheet.[D3].AddComment "STATUS DATE: " & FormatDateTime(dtPreviousPeriod, vbShortDate)
+            oWorksheet.[E3].AddComment "STATUS DATE: " & FormatDateTime(dtCurrentPeriod, vbShortDate)
           End If
         ElseIf strMetric = "06A504b" Then 'Changed Actual Finish
           If Dir(strDir & "\06A504b.csv") <> vbNullString Then
@@ -4095,6 +4097,8 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oRange
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            oWorksheet.[D3].AddComment "STATUS DATE: " & FormatDateTime(dtPreviousPeriod, vbShortDate)
+            oWorksheet.[E3].AddComment "STATUS DATE: " & FormatDateTime(dtCurrentPeriod, vbShortDate)
           End If
         ElseIf strMetric = "06A505a" Then 'In-Progress Tasks w/o Actual Start
           If Len(oDECM(strMetric)) > 0 Then
@@ -4150,7 +4154,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
           End If
         ElseIf strMetric = "06A506b" Then 'Invalid Forecast
           If Len(oDECM(strMetric)) > 0 Then
-            oWorksheet.[A3].Value = "Status Date:"
+            oWorksheet.[A3].Value = "STATUS DATE:"
             oWorksheet.[B3].Value = FormatDateTime(ActiveProject.StatusDate, vbShortDate)
             strSQL = "SELECT UID,CAM,TASK_NAME,FS,FF "
             strSQL = strSQL & "FROM [tasks.csv] "
