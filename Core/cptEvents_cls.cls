@@ -71,7 +71,7 @@ Private Sub MyMSPApplication_WindowSelectionChange(ByVal Window As Window, ByVal
         Else
           Application.StatusBar = Format(lngItems, "#,##0") & " task" & IIf(lngItems = 1, "", "s") & " selected"
         End If
-        If cptGetSetting("Fiscal", "chkShowFiscalPeriodCountInStatusBar") = 1 Then
+        If cptGetSetting("Fiscal", "chkShowStatusBarFiscalPeriodCount") = 1 Then
           lngFiscalPeriods = cptGetFiscalPeriods(oTasks)
           If lngFiscalPeriods > 0 And cptCalendarExists("cptFiscalCalendar") Then 'todo: and setting
             If Len(Application.StatusBar) > 0 Then
