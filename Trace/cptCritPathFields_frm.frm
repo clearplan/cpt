@@ -1,7 +1,7 @@
 VERSION 5.00
 Begin {C62A69F0-16DC-11CE-9E98-00AA00574A4F} cptCritPathFields_frm 
    Caption         =   "cpt Driving Paths"
-   ClientHeight    =   4968
+   ClientHeight    =   4965
    ClientLeft      =   105
    ClientTop       =   450
    ClientWidth     =   4065
@@ -78,7 +78,8 @@ End Function
 
 Private Sub RunBtn_Click()
         
-    If PathField_Combobox.Text = "" Or GroupField_Combobox.Text = "" Then
+    If PathField_Combobox.Text = "" Or GroupField_Combobox.Text = "" _
+        Or (Me.SubPath_Checkbox = True And Me.SubPath_Combobox = "") Then
         MsgBox "Please complete the required field mapping."
         Exit Sub
     End If
@@ -252,6 +253,8 @@ CheckGroupPathField:
     
 CheckSubPathField:
 
+  If Me.SubPath_Checkbox Then
+  
     If Len(SubPathField) = 0 Then GoTo CheckFieldsRenamed
     
     nameTest = cptCustomFieldExists(SubPathField)
@@ -264,6 +267,8 @@ CheckSubPathField:
     End If
     
     fieldsRenamed = True
+  
+  End If
     
 CheckFieldsRenamed:
     

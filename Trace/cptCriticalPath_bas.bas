@@ -143,13 +143,15 @@ Sub DrivingPaths()
         
         .pathCnt_txtBox.Value = 3
         
-        .Caption = "cptCritical Path " & cptGetVersion("cptCriticalPath_bas")
+        .Caption = "cptCritical Path " & cptGetVersion(MODULE_NAME)
         
         With .UserView_Combobox
             .AddItem "<Default>"
             Dim v As View
             For Each v In curProj.Views
+              If v.Name <> "*ClearPlan Driving Path View" Then
                 .AddItem v.Name
+              End If
             Next v
             .ListIndex = 0
         End With
@@ -368,7 +370,7 @@ ShowAndTell:
     
 ErrorHandler:
 
-    Call cptHandleErr(MODULE_NAME, "cptCriticalPath_bas", Err, Erl, "Error identifying driving paths")
+    Call cptHandleErr(MODULE_NAME, "DrivingPaths", Err, Erl, "Error identifying driving paths")
 
 CleanUp:
 
