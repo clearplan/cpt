@@ -253,7 +253,9 @@ CheckGroupPathField:
     
 CheckSubPathField:
 
-  If Me.SubPath_Checkbox Then
+  Dim blnSubPaths As Boolean
+  blnSubPaths = cptGetSetting("Driving Paths", "SubPaths") = True
+  If blnSubPaths Then
   
     If Len(SubPathField) = 0 Then GoTo CheckFieldsRenamed
     
