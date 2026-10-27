@@ -4187,6 +4187,87 @@ err_here:
 
 End Function
 
+Function cptOnLatest() As Boolean
+  Dim oComponent As vbComponent
+  Dim strComponent As String
+  Dim strLatest
+  Dim strInstalled As String
+  Dim blnOnLatest As Boolean
+  blnOnLatest = True
+  For Each oComponent In ThisProject.VBProject.VBComponents
+    strComponent = oComponent.Name
+    If Left(strComponent, 3) = "cpt" Then
+      strInstalled = cptGetVersion(strComponent) 'in cptSetup_bas
+      strLatest = cptGetLatest(strComponent) 'in cptSetup_bas
+      If strLatest <> "" And strInstalled <> strLatest Then
+        blnOnLatest = False
+        Exit For
+      End If
+    End If
+  Next oComponent
+  cptOnLatest = blnOnLatest
+  Application.StatusBar = ""
+  Set oComponent = Nothing
+End Function
+
+Sub cptGetOnLatest()
+  'todo: ignore if user cannot reach github
+  Application.StatusBar = "Checking..."
+  If cptOnLatest Then
+    MsgBox "You're on the latest version.", vbInformation + vbOKOnly, "Updates"
+  Else
+    MsgBox "Updates available!", vbExclamation + vbOKOnly, "Updates"
+  End If
+  Application.StatusBar = ""
+End Sub
+
+Function cptProceedOnUpdate(strModule As String) As Boolean
+  'strings
+  Dim strSetting As String
+  Dim strInstalled As String
+  Dim strLatest As String
+  Dim strMsg As String
+  'booleans
+  Dim blnProceedOnUpdate As Boolean
+  'longs
+  Dim lngDays As Long
+  'module name -> settting name
+  strSetting = cptRxReplace(strModule, "^(?:cpt)|_(?:bas|frm|cls|frx)$", "") 'requires cptDynamicFilter_bas
+  'this is per-feature otherwise a single check check for a single feature would return true/false for all features
+  'so this means, check for updates [to this particular feature] every X days
+  'if user finds this annoying, he can set to 'Never'
+  'those without access to the internet should have this option disabled or at least set to "Never"
+  blnProceedOnUpdate = True 'default (meaning do not update)
+  lngDays = CLng(cptGetSetting("General", "cboCheckForUpdates"))
+  If lngDays > 0 Then
+    'capture first check
+    If Not IsDate(cptGetSetting(strSetting, "LastCheck")) Then
+      cptSaveSetting strSetting, "LastCheck", Format(Now, "yyyy-mm-dd")
+    End If
+    If DateAdd("d", lngDays, CDate(cptGetSetting(strSetting, "LastCheck"))) <= Now Then
+      'check latest
+      strInstalled = cptGetVersion(strModule)
+      strLatest = cptGetLatest(strModule)
+      If Len(strLatest) > 0 Then
+        If strInstalled <> strLatest Then
+          strMsg = strMsg & "An update is available for " & strModule & ":" & vbCrLf
+          strMsg = strMsg & "Installed: " & strInstalled & vbCrLf
+          strMsg = strMsg & "Latest: " & strLatest & vbCrLf & vbCrLf
+          strMsg = strMsg & "Click OK to proceed with " & strInstalled & " (installed) and upgrade later" & vbCrLf
+          strMsg = strMsg & "Click Cancel to abort (and then go upgrade*)" & vbCrLf & vbCrLf
+          strMsg = strMsg & "*ClearPlan > Help > Check for Upgrades > Upgrade All"
+          If MsgBox(strMsg, vbInformation + vbOKCancel, "Upgrade Available!") = vbCancel Then
+            blnProceedOnUpdate = False
+          End If
+        End If
+      End If
+      'update lastcheck
+      cptSaveSetting strSetting, "LastCheck", Format(Now, "yyyy-mm-dd")
+    End If
+  End If
+  cptProceedOnUpdate = blnProceedOnUpdate
+End Function
+
 
 Sub cptAnalyzeLCF()
   Dim oProject As MSProject.Project
