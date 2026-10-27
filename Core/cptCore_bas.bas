@@ -4268,6 +4268,120 @@ Function cptProceedOnUpdate(strModule As String) As Boolean
   cptProceedOnUpdate = blnProceedOnUpdate
 End Function
 
+Sub cptProgramBackup()
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  Dim oSettingsFiles As Scripting.Dictionary
+  'strings
+  Dim strInputDir As String
+  Dim strInputFile As String
+  Dim strOutputDir As String
+  Dim strOutputFile As String
+  Dim strProgramAcronym As String
+  Dim strHeader As String
+  'longs
+  Dim lngItem As Long
+  Dim lngField As Long
+  Dim lngFile As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  strProgramAcronym = cptGetProgramAcronym
+  If Len(strProgramAcronym) = 0 Then
+    MsgBox "Program acronym is required for this feature to work properly. Exiting.", vbCritical + vbOKOnly, "cptProgramBackup"
+    GoTo exit_here
+  End If
+  
+  'set source-destination dirs
+  strInputDir = cptDir
+  strOutputDir = strInputDir & "\" & strProgramAcronym & "-backup-" & Format(Now, "yyyy-mm-dd-hh-nn-ss")
+  MkDir strOutputDir
+  
+  'capture ini
+  strInputFile = "\settings\" & cptGetSettingsFile("StatusSheet")
+  strOutputFile = Replace(strInputFile, ".ini", "-backup.txt")
+  strOutputFile = Replace(strOutputFile, "\settings", "")
+  FileCopy strInputDir & strInputFile, strOutputDir & strOutputFile
+  
+  'capture list of potential settings files (adtg)
+  Set oSettingsFiles = CreateObject("Scripting.Dictionary")
+  oSettingsFiles.Add "\settings\cpt-cei.adtg", "PROJECT"
+  oSettingsFiles.Add "\settings\cpt-data-dictionary.adtg", "PROJECT_NAME"
+  oSettingsFiles.Add "\settings\cpt-export-resource-userfields.adtg", "PROGRAM"
+  cptMigrateSaveMarked
+  oSettingsFiles.Add "\settings\cpt-marked.adtg", "PROJECT_ID"
+  oSettingsFiles.Add "\settings\cpt-metrics.adtg", "PROGRAM"
+  'oSettingsFiles.Add "\settings\cpt-qbd.adtg", "PROGRAM"
+  'oSettingsFiles.Add "\settings\cpt-sanitize.adtg", "PROGRAM"
+  oSettingsFiles.Add "\settings\cpt-save-local.adtg", "PROGRAM_ACRONYM"
+  oSettingsFiles.Add "\settings\cpt-status-sheet-userfields.adtg", "PROGRAM"
+  
+  For lngItem = 0 To oSettingsFiles.Count - 1
+    strInputFile = oSettingsFiles.Keys(lngItem)
+    If Dir(strInputDir & strInputFile) <> vbNullString Then
+      strOutputFile = Replace(strInputFile, ".adtg", "-backup.csv")
+      strOutputFile = Replace(strOutputFile, "\settings", "")
+      'open the input file
+      Set oRecordset = CreateObject("ADODB.Recordset")
+      oRecordset.Open strInputDir & strInputFile, , adOpenKeyset, adLockReadOnly
+      oRecordset.Filter = oSettingsFiles.Items(lngItem) & "='" & strProgramAcronym & "'"
+      If Not oRecordset.EOF Then
+        Application.StatusBar = "backing up " & strProgramAcronym & ": " & strInputFile & " (" & Format(oRecordset.RecordCount, "#,##0") & " records)..."
+        'todo: clean recordsets of commas?
+        'create export file (csv)
+        lngFile = FreeFile
+        Open strOutputDir & strOutputFile For Output As #lngFile
+        'grab headers
+        strHeader = ""
+        For lngField = 0 To oRecordset.Fields.Count - 1
+          strHeader = strHeader & oRecordset.Fields(lngField).Name & ","
+        Next lngField
+        strHeader = Left(strHeader, Len(strHeader) - 1) 'hack off trailing comma
+        Print #lngFile, strHeader
+        'get data
+        oRecordset.MoveFirst
+        Print #lngFile, oRecordset.GetString(adClipString, , ",", vbCrLf, vbNullString)
+        Close #lngFile
+        'cptShellExecute 0, "open", "notepad.exe", strOutputDir & strOutputFile, vbNullString, 1 'debug
+        Application.StatusBar = "backing up " & strProgramAcronym & ": " & strInputFile & " (" & Format(oRecordset.RecordCount, "#,##0") & " records)...done."
+      Else
+        Application.StatusBar = "NO RECORDS FOUND IN '" & strInputFile & "' for '" & strProgramAcronym & "'!"
+      End If
+      oRecordset.Filter = 0
+      oRecordset.Close
+    End If
+  Next lngItem
+
+  Application.StatusBar = "...backup complete for '" & strProgramAcronym & "'"
+  If MsgBox("Backup complete for '" & strProgramAcronym & "'." & vbCrLf & vbCrLf & "Open backup directory now?", vbQuestion + vbYesNo, "cptProgramBackup") = vbYes Then
+    Shell "explorer.exe " & strOutputDir, vbMaximizedFocus
+  End If
+  
+exit_here:
+  On Error Resume Next
+  Reset
+  Application.StatusBar = ""
+  If oRecordset.State Then
+    oRecordset.Filter = 0
+    oRecordset.Close
+  End If
+  Set oRecordset = Nothing
+  Set oSettingsFiles = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptProgramBackup", Err, Erl)
+  Resume exit_here
+
+End Sub
+
 
 Sub cptAnalyzeLCF()
   Dim oProject As MSProject.Project
