@@ -25,7 +25,9 @@ Private Sub cboCheckForUpdates_Change()
 End Sub
 
 Private Sub chkUpdateIndicator_Click()
+  If Not Me.Visible Then Exit Sub
   cptSaveSetting "General", "chkUpdateIndicator", IIf(Me.chkUpdateIndicator, 1, 0)
+  cptUpdateSetting "General", "chkUpdateIndicator", IIf(Me.chkUpdateIndicator, 1, 0)
   'hacky way to trigger a ribbon refresh
   Dim oProject As MSProject.Project
   Set oProject = ActiveProject
@@ -36,6 +38,7 @@ Private Sub chkUpdateIndicator_Click()
   DoEvents
   oProject.Activate
   Set oProject = Nothing
+  cptSpeed False
 End Sub
 
 Private Sub cmdDone_Click()
