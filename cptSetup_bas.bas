@@ -741,6 +741,15 @@ Public Function cptBuildRibbonTab()
     ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator id=""cleanup_" & cptIncrement(lngCleanUp) & """ title=""Uninstall"" />"
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bUninstall"" label=""Uninstall ClearPlan Toolbar"" imageMso=""TasksUnlink"" onAction=""cptUninstall"" visible=""true"" />"
     ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
+    'button showing available updates (or updated)
+    strSetting = cptGetSetting("General", "chkUpdateIndicator", 1)
+    If CBool(strSetting) Then
+      If cptOnLatest Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bOnLatest"" label=""Latest"" imageMso=""AcceptInvitation"" onAction=""cptGetOnLatest"" visible=""true"" size=""large"" supertip=""You are on the latest version."" />"
+      Else
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bUpdateNow"" label=""Upgrades Available!"" imageMso=""Refresh"" onAction=""cptShowUpgrades_frm"" visible=""true"" size=""large"" supertip=""Upgrades available!"" />"
+      End If
+    End If
   End If
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAbout"" label=""About"" imageMso=""Info"" onAction=""cptShowAbout_frm""  size=""large"" visible=""true"" />"
   ribbonXML = ribbonXML + vbCrLf & "</mso:group>"

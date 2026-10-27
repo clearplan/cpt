@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheet_bas"
-'<cpt_version>v1.8.0</cpt_version>
+'<cpt_version>v1.9.0</cpt_version>
 Option Explicit
 Private Const adVarChar As Long = 200
 Private strStartingViewTopPane As String
@@ -22,6 +22,7 @@ Sub cptShowStatusSheet_frm()
   'populate UID,[user selections],Task Name,Duration,Forecast Start,Forecast Finish,Total Slack,[EVT],EV%,New EV%,BLW,Remaining Work,New ETC,BLS,BLF,Reason/Impact/Action
   'add pick list for EV% or default to Physical % Complete
   'objects
+  Dim oPrograms As Scripting.Dictionary
   Dim myStatusSheet_frm As cptStatusSheet_frm
   Dim oRecordset As ADODB.Recordset 'Object
   Dim oShell As Object
@@ -37,37 +38,19 @@ Sub cptShowStatusSheet_frm()
   'integers
   'strings
   Dim strCptDir As String
-  Dim strCustomFieldName As String
+  Dim strProgramAcronym As String
   Dim strNewCustomFieldName As String
   Dim strLOE As String
-  Dim strIgnoreLOE As String
-  Dim strLookahead As String
-  Dim strLookaheadDays As String
-  Dim strAssignments As String
-  Dim strKeepOpen As String
-  Dim strExportNotes As String
-  Dim strAllowAssignmentNotes As String
-  Dim strNotesColTitle As String
-  Dim strFileNamingConvention As String
   Dim strPathSeparator As String
   Dim strDir As String
-  Dim strAllItems As String
-  Dim strAppendStatusDate As String
-  Dim strQuickPart As String
-  Dim strCC As String
-  Dim strSubject As String
-  Dim strProtect As String
-  Dim strDataValidation As String
-  Dim strConditionalFormatting As String
-  Dim strEmail As String
   Dim strEach As String
-  Dim strCostTool As String
-  Dim strHide As String
   Dim strCreate As String
-  Dim strEVP As String
   Dim strEVT As String
   Dim strFieldName As String
+  Dim strCustomFieldName As String
   Dim strFileName As String
+  Dim strSetting As String
+  Dim strMsg As String
   'booleans
   Dim blnErrorTrapping As Boolean
   Dim blnRemove As Boolean
@@ -121,6 +104,8 @@ Sub cptShowStatusSheet_frm()
   End If
   'requires scripting (cptRegEx)
   If Not cptCheckReference("Scripting") Then GoTo exit_here
+  
+  strProgramAcronym = cptGetProgramAcronym
   
   'reset options
   Application.StatusBar = "Loading default settings..."
@@ -254,22 +239,21 @@ skip_fields:
     End With
   End If
   
-  'todo: get rid of all these strings and just use one: strSetting
   'import saved settings
   With myStatusSheet_frm
     Application.StatusBar = "Getting saved settings..."
     DoEvents
     strCreate = cptGetSetting("StatusSheet", "cboCreate")
     If strCreate <> "" Then .cboCreate.Value = CLng(strCreate)
-    strHide = cptGetSetting("StatusSheet", "chkHide")
-    If strHide <> "" Then
-      .chkHide = CBool(strHide)
+    strSetting = cptGetSetting("StatusSheet", "chkHide")
+    If strSetting <> "" Then
+      .chkHide = CBool(strSetting)
     Else
       .chkHide = False
     End If
     .txtHideCompleteBefore.Enabled = .chkHide
-    strCostTool = cptGetSetting("StatusSheet", "cboCostTool")
-    If strCostTool <> "" Then .cboCostTool.Value = strCostTool
+    strSetting = cptGetSetting("StatusSheet", "cboCostTool")
+    If strSetting <> "" Then .cboCostTool.Value = strSetting
     If .cboCreate <> 0 Then
       strEach = cptGetSetting("StatusSheet", "cboEach")
       If strEach <> "" Then
@@ -282,7 +266,7 @@ skip_fields:
             .txtFileName = "StatusRequest_[item]_[yyyy-mm-dd]"
             If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
             If Err.Number > 0 Then
-              MsgBox "Unable to set 'For Each' Field to '" & rstFields(1) & "' - contact help@ClearPlanConsulting.com if you need assistance.", vbExclamation + vbOKOnly, "Cannot assign For Each"
+              MsgBox "Unable to set 'For Each' Field to '" & strEach & "' - contact help@ClearPlanConsulting.com if you need assistance.", vbExclamation + vbOKOnly, "Cannot assign For Each"
               Err.Clear
             End If
           End If
@@ -290,9 +274,9 @@ skip_fields:
       End If
       ActiveWindow.TopPane.Activate
       FilterClear
-      strAllItems = cptGetSetting("StatusSheet", "chkAllItems")
-      If strAllItems <> "" Then
-        .chkAllItems = CBool(strAllItems)
+      strSetting = cptGetSetting("StatusSheet", "chkAllItems")
+      If strSetting <> "" Then
+        .chkAllItems = CBool(strSetting)
       Else
         .chkAllItems = False
       End If
@@ -309,12 +293,12 @@ skip_fields:
       strDir = Replace(strDir, "[yyyy-mm-dd]" & strPathSeparator, "")
       .txtDir = strDir
     End If
-    strFileNamingConvention = cptGetSetting("StatusSheet", "txtFileName")
-    If strFileNamingConvention <> "" Then .txtFileName = strFileNamingConvention
+    strSetting = cptGetSetting("StatusSheet", "txtFileName")
+    If strSetting <> "" Then .txtFileName = strSetting
     
-    strEmail = cptGetSetting("StatusSheet", "chkEmail")
-    If strEmail <> "" Then
-      .chkSendEmails.Value = CBool(strEmail)  'this refreshes the quickparts list
+    strSetting = cptGetSetting("StatusSheet", "chkEmail")
+    If strSetting <> "" Then
+      .chkSendEmails.Value = CBool(strSetting)  'this refreshes the quickparts list
       If .chkSendEmails Then
         .chkKeepOpen.Value = False
         .chkKeepOpen.Enabled = False
@@ -324,58 +308,55 @@ skip_fields:
       .chkKeepOpen.Enabled = True
     End If
     If .chkSendEmails Then
-      strSubject = cptGetSetting("StatusSheet", "txtSubject")
-      If strSubject <> "" Then
-        .txtSubject.Value = strSubject
+      strSetting = cptGetSetting("StatusSheet", "txtSubject")
+      If strSetting <> "" Then
+        .txtSubject.Value = strSetting
       Else
         .txtSubject = "Status Request WE [yyyy-mm-dd]"
       End If
-      strCC = cptGetSetting("StatusSheet", "txtCC")
-      If strCC <> "" Then .txtCC.Value = strCC
+      strSetting = cptGetSetting("StatusSheet", "txtCC")
+      If strSetting <> "" Then .txtCC.Value = strSetting
       'cboQuickParts updated when .chkSendEmails = true
     End If
     
-    strConditionalFormatting = cptGetSetting("StatusSheet", "chkConditionalFormatting")
-    If strConditionalFormatting <> "" Then
-      .chkConditionalFormatting.Value = CBool(strConditionalFormatting)
+    strSetting = cptGetSetting("StatusSheet", "chkConditionalFormatting")
+    If strSetting <> "" Then
+      .chkConditionalFormatting.Value = CBool(strSetting)
     Else
       .chkConditionalFormatting.Value = False
     End If
     
-'    strDataValidation = cptGetSetting("StatusSheet", "chkDataValidation")
-'    If strDataValidation <> "" Then
-'      .chkValidation = CBool(strDataValidation)
-'    Else
-      .chkValidation = True
-      .chkValidation.Enabled = False
-'    End If
+    'no choice here
+    .chkValidation = True
+    .chkValidation.Enabled = False
     
-    strProtect = cptGetSetting("StatusSheet", "chkLocked")
-    If strProtect <> "" Then
-      .chkProtect.Value = CBool(strProtect)
-      cptSaveSetting "StatusSheet", "chkProtect", strProtect
+    strSetting = cptGetSetting("StatusSheet", "chkLocked")
+    If strSetting <> "" Then
+      .chkProtect.Value = CBool(strSetting)
+      cptSaveSetting "StatusSheet", "chkProtect", strSetting
     Else
       .chkProtect.Value = True
     End If
     cptDeleteSetting "StatusSheet", "chkLocked"
+    cptDeleteSetting "StatusSheet", "chkLocked", True
     
-    strNotesColTitle = cptGetSetting("StatusSheet", "txtNotesColTitle")
-    If Len(strNotesColTitle) > 0 Then
-      .txtNotesColTitle.Value = strNotesColTitle
+    strSetting = cptGetSetting("StatusSheet", "txtNotesColTitle")
+    If Len(strSetting) > 0 Then
+      .txtNotesColTitle.Value = strSetting
     Else
       .txtNotesColTitle = "Reason / Action / Impact"
     End If
     
-    strExportNotes = cptGetSetting("StatusSheet", "chkExportNotes")
-    If strExportNotes <> "" Then
-      .chkExportNotes.Value = CBool(strExportNotes)
+    strSetting = cptGetSetting("StatusSheet", "chkExportNotes")
+    If strSetting <> "" Then
+      .chkExportNotes.Value = CBool(strSetting)
     Else
       .chkExportNotes.Value = False
     End If
         
-    strKeepOpen = cptGetSetting("StatusSheet", "chkKeepOpen")
-    If strKeepOpen <> "" Then
-      .chkKeepOpen.Value = CBool(strKeepOpen)
+    strSetting = cptGetSetting("StatusSheet", "chkKeepOpen")
+    If strSetting <> "" Then
+      .chkKeepOpen.Value = CBool(strSetting)
       If .chkKeepOpen Then
         .chkSendEmails.Value = False
         .chkSendEmails.Enabled = False
@@ -386,18 +367,18 @@ skip_fields:
       .chkKeepOpen.Value = False
     End If
     
-    strAssignments = cptGetSetting("StatusSheet", "chkAssignments")
-    If strAssignments <> "" Then
-      .chkAssignments.Value = CBool(strAssignments)
+    strSetting = cptGetSetting("StatusSheet", "chkAssignments")
+    If strSetting <> "" Then
+      .chkAssignments.Value = CBool(strSetting)
     Else
       .chkAssignments.Value = True 'default
     End If
     
     If .chkAssignments Then
       .chkAllowAssignmentNotes.Enabled = True
-      strAllowAssignmentNotes = cptGetSetting("StatusSheet", "chkAllowAssignmentNotes")
-      If strAllowAssignmentNotes <> "" Then
-        .chkAllowAssignmentNotes.Value = CBool(strAllowAssignmentNotes)
+      strSetting = cptGetSetting("StatusSheet", "chkAllowAssignmentNotes")
+      If strSetting <> "" Then
+        .chkAllowAssignmentNotes.Value = CBool(strSetting)
       Else
         .chkAllowAssignmentNotes.Value = False 'default
       End If
@@ -409,18 +390,18 @@ skip_fields:
     .txtLookaheadDays.Enabled = False
     .txtLookaheadDate.Enabled = False
     .lblLookaheadWeekday.Visible = False
-    strLookahead = cptGetSetting("StatusSheet", "chkLookahead")
-    If Len(strLookahead) > 0 Then
-      .chkLookahead = CBool(strLookahead)
+    strSetting = cptGetSetting("StatusSheet", "chkLookahead")
+    If Len(strSetting) > 0 Then
+      .chkLookahead = CBool(strSetting)
     Else
       .chkLookahead = False 'default
     End If
     
     If .chkLookahead Then
       .txtLookaheadDays.Enabled = True
-      strLookaheadDays = cptGetSetting("StatusSheet", "txtLookaheadDays")
-      If Len(strLookaheadDays) > 0 Then
-        .txtLookaheadDays = CLng(strLookaheadDays)
+      strSetting = cptGetSetting("StatusSheet", "txtLookaheadDays")
+      If Len(strSetting) > 0 Then
+        .txtLookaheadDays = CLng(strSetting)
         .lblLookaheadWeekday.Visible = True
       End If
       .txtLookaheadDate.Enabled = True
@@ -432,9 +413,9 @@ skip_fields:
     If Len(strEVT) > 0 And Len(strLOE) > 0 Then
       .chkIgnoreLOE.Enabled = True
       .chkIgnoreLOE.ControlTipText = "Limit to tasks where " & strEVT & " <> " & strLOE
-      strIgnoreLOE = cptGetSetting("StatusSheet", "chkIgnoreLOE")
-      If Len(strIgnoreLOE) > 0 Then
-        .chkIgnoreLOE = CBool(strIgnoreLOE)
+      strSetting = cptGetSetting("StatusSheet", "chkIgnoreLOE")
+      If Len(strSetting) > 0 Then
+        .chkIgnoreLOE = CBool(strSetting)
       Else
         .chkIgnoreLOE = False
       End If
@@ -447,68 +428,119 @@ skip_fields:
   blnRemove = False
   If Dir(strFileName) <> vbNullString Then
     Set oRecordset = CreateObject("ADODB.Recordset")
-    With oRecordset
-      .Open strFileName
-      'todo: add program acronym field and filter for it?
-      If .RecordCount > 0 Then
-        .MoveFirst
-        lngItem = 0
-        Do While Not .EOF
-          myStatusSheet_frm.lboExport.AddItem
-          myStatusSheet_frm.lboExport.List(lngItem, 0) = .Fields(0) 'Field Constant
-          myStatusSheet_frm.lboExport.List(lngItem, 1) = .Fields(1) 'Custom Field Name
-          myStatusSheet_frm.lboExport.List(lngItem, 2) = .Fields(2) 'Local Field Name
-          'todo: what was this for? no FieldConstantToFieldName(constant) returns "Custom"?
-          'todo: was this for filtering out enterprise fields since CFGN = FCFN?
-          'If cptRegEx(FieldConstantToFieldName(.Fields(0)), "[0-9]{1,}$") = "" Then GoTo next_item
-          'If InStr("Custom", FieldConstantToFieldName(FieldNameToFieldConstant(.Fields(2)))) = 0 Then GoTo next_item
-          If .Fields(0) >= 188776000 Then 'it's an ECF
-            If FieldConstantToFieldName(.Fields(0)) = "<Unavailable>" Then 'it's no longer available
-              MsgBox "Saved export field '" & .Fields(1) & "' is no longer accessible and will be removed.", vbExclamation + vbOKOnly, "Status Sheet"
-              blnRemove = True
-              GoTo remove_saved_ecf
-            End If
-          End If
-          strCustomFieldName = CustomFieldGetName(.Fields(0))
-          If strCustomFieldName <> CStr(.Fields(1)) Then
-            If FieldConstantToFieldName(.Fields(0)) = CStr(.Fields(1)) Then GoTo next_item 'skip unnamed saved
-            If Len(strCustomFieldName) > 0 Then
-              strNewCustomFieldName = strCustomFieldName
-            Else
-              strNewCustomFieldName = "<unnamed>"
-            End If
-            'prompt user to accept changed name or remove from list
-            If MsgBox("Saved export field '" & .Fields(1) & "' has been renamed to '" & strNewCustomFieldName & "'." & vbCrLf & vbCrLf & "Click Yes to accept the name change." & vbCrLf & "Click No to remove from export list.", vbExclamation + vbYesNo, "Confirm Export Field") = vbYes Then
-              'update export list
-              myStatusSheet_frm.lboExport.List(lngItem, 1) = strCustomFieldName
-              'update the adtg
-              .Fields(1) = strCustomFieldName
-              .Update
-            Else
-              blnRemove = True
-            End If
-          End If
-remove_saved_ecf:
-          If blnRemove Then
-            'remove from export list
-            myStatusSheet_frm.lboExport.RemoveItem (lngItem)
-            'remove from adtg
-            .Delete adAffectCurrent
-            .Update
-            lngItem = lngItem - 1
-          End If
-next_item:
-          lngItem = lngItem + 1
-          .MoveNext
-        Loop
+    oRecordset.Open strFileName
+    If oRecordset.RecordCount = 0 Then 'skip if empty
+      oRecordset.Close
+      GoTo skip_custom_fields
+    End If
+    If oRecordset.Fields.Count = 3 Then 'convert it for multi-config
+      strMsg = "Would you like to migrate your saved export fields to this project?" & vbCrLf & vbCrLf
+      oRecordset.MoveFirst
+      Do While Not oRecordset.EOF
+        strFieldName = FieldConstantToFieldName(oRecordset.Fields(0))
+        strCustomFieldName = CustomFieldGetName(oRecordset.Fields(0))
+        If Len(strCustomFieldName) > 0 Then
+          strMsg = strMsg & "- " & strCustomFieldName & " (" & strFieldName & ")" & vbCrLf
+        Else
+          strMsg = strMsg & "- " & strFieldName & vbCrLf
+        End If
+        oRecordset.MoveNext
+      Loop
+      strMsg = strMsg & vbCrLf & "(If you click no, you will need to add export fields from scratch.)"
+      If MsgBox(strMsg, vbQuestion + vbYesNo, "Migrate settings?") = vbYes Then
+        'prompt user to import saved fields to *this* project?
+        oRecordset.Close
+        cptAppendColumn strFileName, "PROGRAM", adVarChar, 50, strProgramAcronym
+        Set oRecordset = CreateObject("ADODB.Recordset")
+        oRecordset.Open strFileName, , adOpenKeyset, adLockReadOnly
+      Else
+        oRecordset.Save strFileName, adPersistADTG
+        oRecordset.Close
+        cptAppendColumn strFileName, "PROGRAM", adVarChar, 50, "legacy"
+        GoTo skip_custom_fields
       End If
+    End If
+    'add selections to cboPrograms
+    oRecordset.Filter = 0
+    oRecordset.MoveFirst
+    Set oPrograms = CreateObject("Scripting.Dictionary")
+    Do While Not oRecordset.EOF
+      If Not oPrograms.Exists(oRecordset.Fields(3)) And oRecordset.Fields(3) <> strProgramAcronym Then
+        oPrograms.Add oRecordset.Fields(3), oRecordset.Fields(3)
+        myStatusSheet_frm.cboPrograms.AddItem oRecordset.Fields(3)
+      End If
+      oRecordset.MoveNext
+    Loop
+    With myStatusSheet_frm.cboPrograms
+      If .ListCount = 0 Then .Enabled = False
+    End With
+    
+    'populate the saved settings
+    With oRecordset
+      .Filter = "PROGRAM='" & strProgramAcronym & "'"
+      If .EOF Then
+        .Close
+        GoTo skip_custom_fields
+      End If
+      .MoveFirst
+      lngItem = 0
+      Do While Not .EOF
+        myStatusSheet_frm.lboExport.AddItem
+        myStatusSheet_frm.lboExport.List(lngItem, 0) = .Fields(0) 'Field Constant
+        myStatusSheet_frm.lboExport.List(lngItem, 1) = .Fields(1) 'Custom Field Name
+        myStatusSheet_frm.lboExport.List(lngItem, 2) = .Fields(2) 'Local Field Name
+        'todo: what was this for? no FieldConstantToFieldName(constant) returns "Custom"?
+        'todo: was this for filtering out enterprise fields since CFGN = FCFN?
+        'If cptRegEx(FieldConstantToFieldName(.Fields(0)), "[0-9]{1,}$") = "" Then GoTo next_item
+        'If InStr("Custom", FieldConstantToFieldName(FieldNameToFieldConstant(.Fields(2)))) = 0 Then GoTo next_item
+        If .Fields(0) >= 188776000 Then 'it's an ECF
+          If FieldConstantToFieldName(.Fields(0)) = "<Unavailable>" Then 'it's no longer available
+            MsgBox "Saved export field '" & .Fields(1) & "' is no longer accessible and will be removed.", vbExclamation + vbOKOnly, "Status Sheet"
+            blnRemove = True
+            GoTo remove_saved_ecf
+          End If
+        End If
+        strCustomFieldName = CustomFieldGetName(.Fields(0))
+        If strCustomFieldName <> CStr(.Fields(1)) Then
+          If FieldConstantToFieldName(.Fields(0)) = CStr(.Fields(1)) Then GoTo next_item 'skip unnamed saved
+          If Len(strCustomFieldName) > 0 Then
+            strNewCustomFieldName = strCustomFieldName
+          Else
+            strNewCustomFieldName = "<unnamed>"
+          End If
+          'prompt user to accept changed name or remove from list
+          If MsgBox("Saved export field '" & .Fields(1) & "' has been renamed to '" & strNewCustomFieldName & "'." & vbCrLf & vbCrLf & "Click Yes to accept the name change." & vbCrLf & "Click No to remove from export list.", vbExclamation + vbYesNo, "Confirm Export Field") = vbYes Then
+            'update export list
+            myStatusSheet_frm.lboExport.List(lngItem, 1) = strCustomFieldName
+            'update the adtg
+            .Fields(1) = strCustomFieldName
+            .Update
+          Else
+            blnRemove = True
+          End If
+        End If
+remove_saved_ecf:
+        If blnRemove Then
+          'remove from export list
+          myStatusSheet_frm.lboExport.RemoveItem (lngItem)
+          'remove from adtg
+          .Delete adAffectCurrent
+          .Update
+          lngItem = lngItem - 1
+        End If
+next_item:
+        lngItem = lngItem + 1
+        .MoveNext
+      Loop
       .Filter = 0
       'overwrite in case of field name changes
       .Save strFileName, adPersistADTG
       .Close
     End With
   End If
-    
+  
+skip_custom_fields:
+
   'set the status date / hide complete
   If ActiveProject.StatusDate = "NA" Then
     myStatusSheet_frm.txtStatusDate.Value = FormatDateTime(DateAdd("d", 6 - Weekday(Now), Now), vbShortDate)
@@ -519,9 +551,9 @@ next_item:
   'default to one week prior to status date
   myStatusSheet_frm.txtHideCompleteBefore.Value = DateAdd("d", -7, dtStatus)
 
-  strAppendStatusDate = cptGetSetting("StatusSheet", "chkAppendStatusDate")
-  If strAppendStatusDate <> "" Then
-    myStatusSheet_frm.chkAppendStatusDate = CBool(strAppendStatusDate)
+  strSetting = cptGetSetting("StatusSheet", "chkAppendStatusDate")
+  If strSetting <> "" Then
+    myStatusSheet_frm.chkAppendStatusDate = CBool(strSetting)
     If myStatusSheet_frm.chkAppendStatusDate Then
       myStatusSheet_frm.txtDir = strDir & Format(dtStatus, "yyyy-mm-dd") & strPathSeparator
     End If
@@ -633,6 +665,7 @@ next_item:
   
 exit_here:
   On Error Resume Next
+  Set oPrograms = Nothing
   Unload myStatusSheet_frm
   Set myStatusSheet_frm = Nothing
   Set oRecordset = Nothing
@@ -2787,6 +2820,7 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
+  Dim strProgramAcronym
   Dim strPathSeparator As String
   Dim strBaseDir As String
   Dim strFileName As String
@@ -2800,11 +2834,15 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
     
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
+  strProgramAcronym = cptGetProgramAcronym
+
   With myStatusSheet_frm
     'save settings
     cptDeleteSetting "StatusSheet", "cboEVP" 'moved to Integration
+    cptDeleteSetting "StatusSheet", "cboEVP", True 'moved to Integration
     cptSaveSetting "StatusSheet", "cboCostTool", .cboCostTool.Value
     cptDeleteSetting "StatusSheet", "cboEVT" 'moved to Integration
+    cptDeleteSetting "StatusSheet", "cboEVT", True 'moved to Integration
     cptSaveSetting "StatusSheet", "chkHide", IIf(.chkHide, 1, 0)
     If Not IsNull(.cboCreate) Then
       cptSaveSetting "StatusSheet", "cboCreate", .cboCreate
@@ -2861,16 +2899,20 @@ Sub cptSaveStatusSheetSettings(ByRef myStatusSheet_frm As cptStatusSheet_frm)
     'save user fields - overwrite
     strFileName = cptDir & "\settings\cpt-status-sheet-userfields.adtg"
     Set oRecordset = CreateObject("ADODB.Recordset")
-    oRecordset.Fields.Append "Field Constant", adInteger
-    oRecordset.Fields.Append "Custom Field Name", adVarChar, 255
-    oRecordset.Fields.Append "Local Field Name", adVarChar, 100
-    oRecordset.Open
+    oRecordset.Open strFileName, , adOpenKeyset, adLockOptimistic
+    oRecordset.Filter = "PROGRAM='" & strProgramAcronym & "'"
+    If oRecordset.RecordCount > 0 Then
+      Do While Not oRecordset.EOF
+        oRecordset.Delete adAffectCurrent
+        oRecordset.MoveNext
+      Loop
+    End If
+    oRecordset.Filter = 0
     If .lboExport.ListCount > 0 Then
       For lngItem = 0 To .lboExport.ListCount - 1
-        oRecordset.AddNew Array(0, 1, 2), Array(.lboExport.List(lngItem, 0), .lboExport.List(lngItem, 1), .lboExport.List(lngItem, 2))
+        oRecordset.AddNew Array(0, 1, 2, 3), Array(.lboExport.List(lngItem, 0), .lboExport.List(lngItem, 1), .lboExport.List(lngItem, 2), strProgramAcronym)
       Next lngItem
     End If
-    If Dir(strFileName) <> vbNullString Then Kill strFileName
     oRecordset.Save strFileName, adPersistADTG
     oRecordset.Close
 
@@ -2892,7 +2934,7 @@ End Sub
 Sub cptAdvanceStatusDate()
   'objects
   Dim oMaster As MSProject.Project
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   'strings
   Dim strMsg As String
   'longs
@@ -2917,22 +2959,22 @@ Sub cptAdvanceStatusDate()
       Application.StatusBar = "Checking Subproject Status Dates...(" & Format(0 / lngCount, "0%") & ")"
       blnMatch = True 'default
       strMsg = "[ok] " & FormatDateTime(oMaster.StatusDate, vbShortDate) & " - " & oMaster.ProjectSummaryTask.Name & vbCrLf
-      For Each oSubproject In oMaster.Subprojects
-        If IsDate(oSubproject.SourceProject.StatusDate) Then
-          If oSubproject.SourceProject.StatusDate <> oMaster.StatusDate Then
-            strMsg = strMsg & vbCrLf & "<!> " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+      For Each oSubProject In oMaster.Subprojects
+        If IsDate(oSubProject.SourceProject.StatusDate) Then
+          If oSubProject.SourceProject.StatusDate <> oMaster.StatusDate Then
+            strMsg = strMsg & vbCrLf & "<!> " & FormatDateTime(oSubProject.SourceProject.StatusDate, vbShortDate) & " - " & oSubProject.InsertedProjectSummary.Name
             blnMatch = False
             lngMismatch = lngMismatch + 1
           Else
-            strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
+            strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubProject.SourceProject.StatusDate, vbShortDate) & " - " & oSubProject.InsertedProjectSummary.Name
           End If
         Else
-          strMsg = strMsg & vbCrLf & "<!> [No Status Date] - " & oSubproject.InsertedProjectSummary.Name
+          strMsg = strMsg & vbCrLf & "<!> [No Status Date] - " & oSubProject.InsertedProjectSummary.Name
           blnMatch = False
           lngMismatch = lngMismatch + 1
         End If
-        Application.StatusBar = "Checking Subproject Status Dates...(" & Format(oSubproject.Index / lngCount, "0%") & ")"
-      Next oSubproject
+        Application.StatusBar = "Checking Subproject Status Dates...(" & Format(oSubProject.Index / lngCount, "0%") & ")"
+      Next oSubProject
       If blnMatch Then
         MsgBox strMsg & vbCrLf & vbCrLf & "Subproject Status Dates match!", vbInformation + vbOKOnly, "Status Date FlowDown"
       Else
@@ -2943,23 +2985,23 @@ Sub cptAdvanceStatusDate()
         If MsgBox(strMsg, vbExclamation + vbYesNo, "Status Date FlowDown") = vbYes Then
           Application.OpenUndoTransaction "cpt - Status Date Flow Down"
           strMsg = "[ok] " & FormatDateTime(oMaster.StatusDate, vbShortDate) & " - " & oMaster.ProjectSummaryTask.Name & vbCrLf
-          For Each oSubproject In ActiveProject.Subprojects
+          For Each oSubProject In ActiveProject.Subprojects
             blnMatch = True
-            If Not IsDate(oSubproject.SourceProject.StatusDate) Then
+            If Not IsDate(oSubProject.SourceProject.StatusDate) Then
               lngFixed = lngFixed + 1
               blnMatch = False
             Else
-              If oSubproject.SourceProject.StatusDate <> oMaster.StatusDate Then
+              If oSubProject.SourceProject.StatusDate <> oMaster.StatusDate Then
                 lngFixed = lngFixed + 1
                 blnMatch = False
               End If
             End If
             If Not blnMatch Then
-              oSubproject.SourceProject.StatusDate = oMaster.StatusDate
+              oSubProject.SourceProject.StatusDate = oMaster.StatusDate
             End If
-            Application.StatusBar = "Flowing Down Status Dates...(" & Format(oSubproject.Index / lngCount, "0%") & ")"
-            strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubproject.SourceProject.StatusDate, vbShortDate) & " - " & oSubproject.InsertedProjectSummary.Name
-          Next oSubproject
+            Application.StatusBar = "Flowing Down Status Dates...(" & Format(oSubProject.Index / lngCount, "0%") & ")"
+            strMsg = strMsg & vbCrLf & "[ok] " & FormatDateTime(oSubProject.SourceProject.StatusDate, vbShortDate) & " - " & oSubProject.InsertedProjectSummary.Name
+          Next oSubProject
           strMsg = strMsg & "Complete."
           If Len(strMsg) > 255 Then
             MsgBox Format(lngFixed, "#,##0") & " SubProject Status Dates aligned.", vbInformation + vbOKOnly, "Status Date FlowDown"
@@ -2976,7 +3018,7 @@ exit_here:
   Application.CloseUndoTransaction
   Application.StatusBar = ""
   Set oMaster = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
 
   Exit Sub
 err_here:
@@ -3795,13 +3837,13 @@ End Sub
 
 Function cptGetEarliestStart() As Date
   Dim dtStart As Date
-  Dim oSubproject As SubProject
+  Dim oSubProject As SubProject
   dtStart = #12/31/2149#
-  For Each oSubproject In ActiveProject.Subprojects
-    If oSubproject.InsertedProjectSummary.Start < dtStart Then
-      dtStart = oSubproject.InsertedProjectSummary.Start
+  For Each oSubProject In ActiveProject.Subprojects
+    If oSubProject.InsertedProjectSummary.Start < dtStart Then
+      dtStart = oSubProject.InsertedProjectSummary.Start
     End If
-  Next oSubproject
+  Next oSubProject
   cptGetEarliestStart = dtStart
 End Function
 

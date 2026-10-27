@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptStatusSheetImport_bas"
-'<cpt_version>v1.5.0</cpt_version>
+'<cpt_version>v1.6.0</cpt_version>
 Option Explicit
 Private rBad As Excel.Range
 Private oBad As Scripting.Dictionary
@@ -20,7 +20,7 @@ Sub cptShowStatusSheetImport_frm()
   Dim strFS As String
   Dim strAF As String
   Dim strAS As String
-  Dim strGuid As String
+  Dim strGUID As String
   Dim strSettings As String
   Dim strCustomFieldName As String
   'longs
@@ -272,7 +272,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim oDict As Scripting.Dictionary
   Dim oShell As Object
   Dim oRecordset As ADODB.Recordset
-  Dim oSubproject As MSProject.SubProject
+  Dim oSubProject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oResource As MSProject.Resource
   Dim oAssignment As MSProject.Assignment
@@ -303,7 +303,7 @@ Sub cptStatusSheetImport(ByRef myStatusSheetImport_frm As cptStatusSheetImport_f
   Dim strImportLog As String
   Dim strAppendTo As String
   Dim strSettings As String
-  Dim strGuid As String
+  Dim strGUID As String
   Dim strUserView As String
   'longs
   Dim lngUID As Long
@@ -1022,7 +1022,7 @@ exit_here:
   Set oShell = Nothing
   If oRecordset.State = 1 Then oRecordset.Close
   Set oRecordset = Nothing
-  Set oSubproject = Nothing
+  Set oSubProject = Nothing
   myStatusSheetImport_frm.lblStatus.Caption = "Import Complete."
   myStatusSheetImport_frm.lblProgress.Width = myStatusSheetImport_frm.lblStatus.Width
   DoEvents
@@ -1067,14 +1067,19 @@ End Sub
 
 Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetImport_frm, Optional blnUsageBelow As Boolean = False)
   'objects
-  Dim rst As Object 'ADODB.Recordset 'Object
+  Dim oPrograms As Scripting.Dictionary
+  Dim rst As ADODB.Recordset 'Object
   'strings
+  Dim strMsg As String
   Dim strDir As String
   Dim strBottomPaneViewName As String
   Dim strEVT As String
   Dim strEVP As String
-  Dim strSettings As String
+  Dim strFileName As String
   Dim strUserGroup As String
+  Dim strProgramAcronym As String
+  Dim strFieldName As String
+  Dim strCustomFieldName As String
   'longs
   Dim lngEVT As Long
   Dim lngETC As Long
@@ -1098,13 +1103,14 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
   If Not myStatusSheetImport_frm.Visible Then GoTo exit_here
 
   cptSpeed True
-  
+  strProgramAcronym = cptGetProgramAcronym
   'get saved settings
   'get EVP and EVT
-  strSettings = strDir & "\settings\cpt-status-sheet.adtg" 'todo: keep for a few more versions
-  If Dir(strSettings) <> vbNullString Then
+  
+  strFileName = strDir & "\settings\cpt-status-sheet.adtg" 'todo: keep for a few more versions
+  If Dir(strFileName) <> vbNullString Then
     Set rst = CreateObject("ADODB.Recordset")
-    rst.Open strSettings
+    rst.Open strFileName
     If Not rst.EOF Then
       'todo: does field name still match?
       strEVP = rst("cboEVP")
@@ -1125,11 +1131,46 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
   TableEditEx Name:="cptStatusSheetImport Table", TaskTable:=True, NewFieldName:="Unique ID", Title:="UID", Width:=10, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
   
   'import user fields
-  strSettings = strDir & "\settings\cpt-status-sheet-userfields.adtg"
-  If Dir(strSettings) <> vbNullString Then
+  strFileName = strDir & "\settings\cpt-status-sheet-userfields.adtg"
+  If Dir(strFileName) <> vbNullString Then
     'import user settings
     Set rst = CreateObject("ADODB.Recordset")
-    rst.Open strSettings
+    rst.Open strFileName
+    If rst.RecordCount = 0 Then 'skip if empty
+      rst.Close
+      GoTo skip_custom_fields
+    End If
+    If rst.Fields.Count = 3 Then 'convert it for multi-config
+      strMsg = "Would you like to migrate your saved export fields to this project?" & vbCrLf & vbCrLf
+      rst.MoveFirst
+      Do While Not rst.EOF
+        strFieldName = FieldConstantToFieldName(rst.Fields(0))
+        strCustomFieldName = CustomFieldGetName(rst.Fields(0))
+        If Len(strCustomFieldName) > 0 Then
+          strMsg = strMsg & "- " & strCustomFieldName & " (" & strFieldName & ")" & vbCrLf
+        Else
+          strMsg = strMsg & "- " & strFieldName & vbCrLf
+        End If
+        rst.MoveNext
+      Loop
+      strMsg = strMsg & vbCrLf & "(If you click no, you will need to add export fields from scratch.)"
+      If MsgBox(strMsg, vbQuestion + vbYesNo, "Migrate settings?") = vbYes Then
+        'prompt user to import saved fields to *this* project?
+        rst.Close
+        cptAppendColumn strFileName, "PROGRAM", adVarChar, 50, strProgramAcronym
+        Set rst = CreateObject("ADODB.Recordset")
+        rst.Open strFileName, , adOpenKeyset, adLockReadOnly
+      Else
+        rst.Save strFileName, adPersistADTG
+        rst.Close
+        cptAppendColumn strFileName, "PROGRAM", adVarChar, 50, "legacy"
+        GoTo skip_custom_fields
+      End If
+    End If
+    
+    'no cboPrograms
+    
+    rst.Filter = "PROGRAM='" & strProgramAcronym & "'"
     If Not rst.EOF Then
       rst.MoveFirst
       Do While Not rst.EOF
@@ -1148,6 +1189,9 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     End If
     rst.Close
   End If
+  
+skip_custom_fields:
+  
   TableEditEx Name:="cptStatusSheetImport Table", TaskTable:=True, NewFieldName:="Name", Title:="", Width:=60, Align:=0, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
   TableEditEx Name:="cptStatusSheetImport Table", TaskTable:=True, NewFieldName:="Total Slack", Title:="", Width:=8, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
   TableEditEx Name:="cptStatusSheetImport Table", TaskTable:=True, NewFieldName:="Actual Start", Title:="", Width:=14, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
@@ -1223,11 +1267,12 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
     TableEditEx Name:="cptStatusSheetImportDetails Table", TaskTable:=True, NewFieldName:="Unique ID", Title:="UID", Width:=10, Align:=1, LockFirstColumn:=True, DateFormat:=255, RowHeight:=1, AlignTitle:=1, HeaderAutoRowHeightAdjustment:=False, WrapText:=False
     
     'import user fields
-    strSettings = strDir & "\settings\cpt-status-sheet-userfields.adtg"
-    If Dir(strSettings) <> vbNullString Then
+    strFileName = strDir & "\settings\cpt-status-sheet-userfields.adtg"
+    If Dir(strFileName) <> vbNullString Then
       'import user settings
       Set rst = CreateObject("ADODB.Recordset")
-      rst.Open strSettings
+      rst.Open strFileName, , adOpenKeyset, adLockOptimistic
+      rst.Filter = "PROGRAM='" & strProgramAcronym & "'"
       If Not rst.EOF Then
         rst.MoveFirst
         Do While Not rst.EOF
@@ -1302,6 +1347,7 @@ Sub cptRefreshStatusImportTable(ByRef myStatusSheetImport_frm As cptStatusSheetI
 
 exit_here:
   On Error Resume Next
+  Set oPrograms = Nothing
   If rst.State = 1 Then rst.Close
   Set rst = Nothing
   cptSpeed False

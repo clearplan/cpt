@@ -13,9 +13,30 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.3.5</cpt_version>
-Private Const THIS_MODULE As String = "cptSettings_frm"
+'<cpt_version>v1.4.0</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptSettings_frm"
+
+Private Sub cboCheckForUpdates_Change()
+  If Not IsNull(Me.cboCheckForUpdates.Value) Then
+    cptSaveSetting "General", "cboCheckForUpdates", Me.cboCheckForUpdates.Value
+    cptUpdateSetting "General", "cboCheckForUpdates", Me.cboCheckForUpdates.Value
+  End If
+End Sub
+
+Private Sub chkUpdateIndicator_Click()
+  cptSaveSetting "General", "chkUpdateIndicator", IIf(Me.chkUpdateIndicator, 1, 0)
+  'hacky way to trigger a ribbon refresh
+  Dim oProject As MSProject.Project
+  Set oProject = ActiveProject
+  cptSpeed True
+  FileNew
+  DoEvents
+  FileClose pjDoNotSave
+  DoEvents
+  oProject.Activate
+  Set oProject = Nothing
+End Sub
 
 Private Sub cmdDone_Click()
   Me.Hide
@@ -29,7 +50,7 @@ Private Sub cmdEdit_Click()
   strMsg = strMsg & "Do you still wish to venture forth?"
   If MsgBox(strMsg, vbCritical + vbYesNo, "Do Not Attempt This...") = vbYes Then
     MsgBox "...you've been warned.", vbInformation + vbOKOnly, "OK"
-    strFileName = cptDir & "\settings\cpt-settings.ini"
+    strFileName = Replace(Me.lblDir.Caption, "%USERPROFILE%", Environ("USERPROFILE")) 'cptDir & "\settings\cpt-settings.ini"
     cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
 End Sub
@@ -39,12 +60,16 @@ Private Sub cmdSetProgramAcronym_Click()
   Dim oRecordset As ADODB.Recordset
   Dim oDocProp As DocumentProperty
   Dim oDocProps As DocumentProperties
+  Dim oSettingsFiles As Scripting.Dictionary
   'strings
   Dim strDir As String
   Dim strUpdated As String
-  Dim strFileName  As String
-  Dim strOld As String, strNew As String
+  Dim strFileName As String
+  Dim strFieldName As String
+  Dim strOld As String
+  Dim strNew As String
   'longs
+  Dim lngItem As Long
   Dim lngUpdated As Long
   Dim lngResponse As Long
   'integers
@@ -64,86 +89,56 @@ Private Sub cmdSetProgramAcronym_Click()
     strOld = oDocProp.Value
     strNew = Me.txtProgramAcronym
     oDocProp.Value = strNew
-    lngResponse = MsgBox("Also replace all instances of '" & strOld & "' with '" & strNew & "' in stored program data and settings (CEI, Data Dictionary, Marked tasks, and Metrics)?" & vbCrLf & vbCrLf & "Hit Cancel to ignore all updates.", vbQuestion + vbYesNoCancel, "Confirm Overwrite")
+    lngResponse = MsgBox("Also replace all instances of '" & strOld & "' with '" & strNew & "' in stored program data and settings (CEI, Data Dictionary, Marked tasks, Metrics, etc.)?" & vbCrLf & vbCrLf & "Hit Cancel to ignore all updates.", vbQuestion + vbYesNoCancel, "Confirm Overwrite")
     Select Case lngResponse
       Case vbYes
-        Set oRecordset = CreateObject("ADODB.Recordset")
-        '\settings\cpt-cei.adtg
-        strFileName = strDir & "\settings\cpt-cei.adtg"
-        lngUpdated = 0
-        If Dir(strFileName) <> vbNullString Then
-          With oRecordset
-            .Open strFileName
-            .MoveFirst
-            Do While Not .EOF
-              If .Fields("PROJECT") = strOld Then
-                .Fields("PROJECT") = strNew
-                lngUpdated = lngUpdated + 1
-              End If
-              .MoveNext
-            Loop
-            .Save strFileName, adPersistADTG
-            .Close
-          End With
-          strUpdated = Format(lngUpdated, "#,##0") & " record(s) updated in CEI data." & vbCrLf
+        Set oSettingsFiles = CreateObject("Scripting.Dictionary")
+        oSettingsFiles.Add "\settings\cpt-cei.adtg", "PROJECT"
+        oSettingsFiles.Add "\settings\cpt-data-dictionary.adtg", "PROJECT_NAME"
+        oSettingsFiles.Add "\settings\cpt-export-resource-userfields.adtg", "PROGRAM"
+        cptMigrateSaveMarked
+        oSettingsFiles.Add "\settings\cpt-marked.adtg", "PROJECT_ID"
+        oSettingsFiles.Add "\settings\cpt-metrics.adtg", "PROGRAM"
+        oSettingsFiles.Add "\settings\cpt-qbd.adtg", "PROGRAM"
+        'oSettingsFiles.Add "\settings\cpt-sanitize.adtg", "PROGRAM"
+        oSettingsFiles.Add "\settings\cpt-save-local.adtg", "PROGRAM_ACRONYM"
+        oSettingsFiles.Add "\settings\cpt-status-sheet-userfields.adtg", "PROGRAM"
+        
+        'update all data sources
+        For lngItem = 0 To oSettingsFiles.Count - 1
+          strFileName = strDir & oSettingsFiles.Keys(lngItem)
+          strFieldName = oSettingsFiles.Items(lngItem)
+          If Dir(strFileName) <> vbNullString Then
+            lngUpdated = 0
+            Set oRecordset = CreateObject("ADODB.Recordset")
+            With oRecordset
+              .Open strFileName, , adOpenKeyset, adLockOptimistic
+              .MoveFirst
+              Do While Not .EOF
+                If .Fields(strFieldName) = strOld Then
+                  .Fields(strFieldName) = strNew
+                  lngUpdated = lngUpdated + 1
+                End If
+                .MoveNext
+              Loop
+              .Save strFileName, adPersistADTG
+              .Close
+            End With
+            strUpdated = strUpdated & Dir(strFileName) & ": " & Format(lngUpdated, "#,##0") & " record(s) updated." & vbCrLf
+          Else
+            MsgBox strFileName, vbExclamation + vbOKOnly, "File Not Found:"
+          End If
+        Next lngItem
+        
+        '\settings\cpt-settings-[PROGRAM].ini
+        strOld = strDir & "\settings\cpt-settings-" & strOld & ".ini"
+        strNew = strDir & "\settings\cpt-settings-" & strNew & ".ini"
+        If Dir(strOld) <> vbNullString Then
+          Name strOld As strNew
+        Else
+          MsgBox "Could not find:" & strOld & vbCrLf & vbCrLf & "Rename your settings file manually to:" & vbCrLf & strNew, vbCritical + vbOKOnly, "File Not Found"
         End If
-        'settings\cpt-data-dictionary.adtg
-        strFileName = strDir & "\settings\cpt-data-dictionary.adtg"
-        lngUpdated = 0
-        If Dir(strFileName) <> vbNullString Then
-          With oRecordset
-            .Open strFileName
-            .MoveFirst
-            Do While Not .EOF
-              If .Fields("PROJECT_NAME") = strOld Then
-                .Fields("PROJECT_NAME") = strNew
-                lngUpdated = lngUpdated + 1
-              End If
-              .MoveNext
-            Loop
-            .Save strFileName, adPersistADTG
-            .Close
-          End With
-          strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in Data Dictionary." & vbCrLf
-        End If
-        '\cpt-marked.adtg
-        strFileName = strDir & "\cpt-marked.adtg"
-        lngUpdated = 0
-        If Dir(strFileName) <> vbNullString Then
-          With oRecordset
-            .Open strFileName
-            .MoveFirst
-            Do While Not .EOF
-              If .Fields("PROJECT_ID") = strOld Then
-                .Fields("PROJECT_ID") = strNew
-                lngUpdated = lngUpdated + 1
-              End If
-              .MoveNext
-            Loop
-            .Save strFileName, adPersistADTG
-            .Close
-          End With
-          strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in Marked tasks data." & vbCrLf
-        End If
-        '\settings\cpt-metrics.adtg
-        strFileName = strDir & "\settings\cpt-metrics.adtg"
-        lngUpdated = 0
-        If Dir(strFileName) <> vbNullString Then
-          With oRecordset
-            .Open strFileName
-            .MoveFirst
-            Do While Not .EOF
-              If .Fields("PROGRAM") = strOld Then
-                .Fields("PROGRAM") = strNew
-                lngUpdated = lngUpdated + 1
-              End If
-              .MoveNext
-            Loop
-            .Save strFileName, adPersistADTG
-            .Close
-          End With
-          strUpdated = strUpdated & Format(lngUpdated, "#,##0") & " record(s) updated in Metrics data." & vbCrLf
-        End If
+        'todo: lblDir.Caption
         MsgBox strUpdated, vbInformation + vbOKOnly, "Data Files Updated"
       Case vbNo
         If MsgBox("CEI, Data Dictionary, Marked tasks, and Metrics entries associated with '" & strOld & "' will be disconnected from this project file. Are you sure you wish to proceed?", vbQuestion + vbYesNo) = vbNo Then
@@ -162,6 +157,7 @@ exit_here:
   Set oRecordset = Nothing
   Set oDocProp = Nothing
   Set oDocProps = Nothing
+  Set oSettingsFiles = Nothing
 
   Exit Sub
 err_here:
@@ -170,9 +166,12 @@ err_here:
 End Sub
 
 Private Sub lblURL_Click()
+
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
-  If cptInternetIsConnected Then Application.FollowHyperlink "https://www.ClearPlanConsulting.com"
+  If cptInternetIsConnected Then
+    CreateObject("WScript.Shell").Run "https://www.ClearPlanConsulting.com"
+  End If
 
 exit_here:
   On Error Resume Next
@@ -181,12 +180,14 @@ exit_here:
 err_here:
   Call cptHandleErr(THIS_MODULE, "lblURL_Click", Err, Erl)
   Resume exit_here
+  
 End Sub
 
 Sub lboFeatures_AfterUpdate()
   'objects
   Dim oRecordset As ADODB.Recordset
   'strings
+  Dim strFeature As String
   'longs
   'integers
   'doubles
@@ -197,13 +198,18 @@ Sub lboFeatures_AfterUpdate()
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   Me.lboSettings.Clear
+  If IsNull(Me.lboFeatures.Value) Then GoTo exit_here
+  If Len(Me.lboFeatures.Value) = 0 Then GoTo exit_here
+  strFeature = Me.lboFeatures.Value
+  strFeature = Left(strFeature, Len(strFeature) - 4)
+  Me.lblDir.Caption = "%USERPROFILE%\cpt-backup\settings\" & cptGetSettingsFile(strFeature)
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
     .Open cptDir & "\settings\cpt-settings.adtg"
     .Sort = "Setting"
     .MoveFirst
     Do While Not .EOF
-      If .Fields(0) = Me.lboFeatures.Value And .Fields(1) <> "" Then
+      If .Fields(0) = strFeature And .Fields(1) <> "" Then
         Me.lboSettings.AddItem .Fields(1)
       End If
       .MoveNext

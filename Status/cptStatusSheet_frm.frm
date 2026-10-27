@@ -13,7 +13,7 @@ Attribute VB_GlobalNameSpace = False
 Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
-'<cpt_version>v1.8.0</cpt_version>
+'<cpt_version>v1.9.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptStatusSheet_frm"
 Private Const lngForeColorValid As Long = -2147483630
@@ -248,6 +248,124 @@ exit_here:
   Exit Sub
 err_here:
   Call cptHandleErr(THIS_MODULE, "cboEach_Change", Err, Erl)
+  Resume exit_here
+End Sub
+
+Private Sub cboPrograms_Change()
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strDir As String
+  Dim strFileName As String
+  Dim strFieldName As String
+  Dim strProgramAcronym As String
+  Dim strImportedFieldName As String
+  Dim strCustomFieldName As String
+  Dim strMsg As String
+  'longs
+  Dim lngItem As Long
+  Dim lngConstant As Long
+  Dim lngResponse As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  Dim blnOverwrite As Boolean
+  'variants
+  'dates
+  
+  If Not Me.Visible Then GoTo exit_here
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  If Me.lboExport.ListCount > 0 Then
+    lngResponse = MsgBox("Overwrite existing list?" & vbCrLf & vbCrLf & "(Click No to append.)", vbQuestion + vbYesNoCancel, "Do what now?")
+    If lngResponse = vbCancel Then
+      GoTo exit_here
+    ElseIf lngResponse = vbYes Then
+      blnOverwrite = True
+    ElseIf lngResponse = vbNo Then
+      blnOverwrite = False
+    End If
+  End If
+  strDir = cptDir
+  strFileName = strDir & "\settings\cpt-status-sheet-userfields.adtg"
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  oRecordset.Open strFileName, , adOpenKeyset, adLockOptimistic
+  strProgramAcronym = cptGetProgramAcronym
+  With oRecordset
+    If blnOverwrite Then
+      'clear listbox
+      Me.lboExport.Clear
+    End If
+    'don't filter that's weird
+    .Filter = 0
+    If Not .EOF Then
+      .MoveFirst
+      Do While Not .EOF
+        If .Fields(3) = Me.cboPrograms.Value Then
+          lngConstant = .Fields(0)
+          strImportedFieldName = .Fields(1)
+          strFieldName = .Fields(2)
+          If lngConstant >= 188776000 Then 'enterprise
+            strCustomFieldName = FieldConstantToFieldName(lngConstant)
+          Else
+            strCustomFieldName = CustomFieldGetName(lngConstant)
+            If Len(strCustomFieldName) = 0 Then strCustomFieldName = FieldConstantToFieldName(lngConstant)
+          End If
+          If strImportedFieldName <> strCustomFieldName Then
+            strMsg = "In '" & oRecordset(3) & "'" & vbCrLf
+            strMsg = strMsg & strFieldName & " is named [" & strImportedFieldName & "]" & vbCrLf & vbCrLf
+            strMsg = strMsg & "In '" & strProgramAcronym & "'" & vbCrLf
+            strMsg = strMsg & strFieldName & " is named [" & strCustomFieldName & "]" & vbCrLf & vbCrLf
+            strMsg = strMsg & "Import [" & FieldConstantToFieldName(lngConstant) & "] anyway?" & vbCrLf & vbCrLf
+            strMsg = strMsg & "(It will not be renamed.)"
+            If MsgBox(strMsg, vbExclamation + vbYesNo, "Fields Don't Match!") = vbNo Then GoTo next_import_field
+          End If
+          'ensure not already exists
+          For lngItem = 0 To Me.lboExport.ListCount - 1
+            If CLng(Me.lboExport.List(lngItem, 0)) = .Fields(0) Then GoTo next_import_field
+          Next lngItem
+          'add to lbo
+          Me.lboExport.AddItem
+          Me.lboExport.List(Me.lboExport.ListCount - 1, 0) = lngConstant
+          Me.lboExport.List(Me.lboExport.ListCount - 1, 1) = strCustomFieldName 'overwrite with local CFN
+          Me.lboExport.List(Me.lboExport.ListCount - 1, 2) = FieldConstantToFieldName(lngConstant)
+          'note: can't addnew here bc it resets the index
+        End If
+next_import_field:
+        .MoveNext
+      Loop
+    End If
+    'filter for current program
+    .Filter = "PROGRAM='" & strProgramAcronym & "'"
+    If Not .EOF Then
+      'delete saved list (listbox caches new list)
+      .MoveFirst
+      Do While Not .EOF
+        .Delete adAffectCurrent
+        .MoveNext
+      Loop
+    End If
+    'reset the filter
+    .Filter = 0
+    For lngItem = 0 To Me.lboExport.ListCount - 1
+      lngConstant = Me.lboExport.List(lngItem, 0)
+      strCustomFieldName = Me.lboExport.List(lngItem, 1)
+      strFieldName = Me.lboExport.List(lngItem, 2)
+      .AddNew Array(0, 1, 2, 3), Array(lngConstant, strCustomFieldName, strFieldName, strProgramAcronym) 'resets the index
+    Next lngItem
+  End With
+     
+exit_here:
+  On Error Resume Next
+  oRecordset.Filter = 0
+  oRecordset.Save strFileName, adPersistADTG
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cboPrograms_Change", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -961,6 +1079,118 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "lblURL", Err, Erl)
   Resume exit_here
   
+End Sub
+
+Private Sub lboExport_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strFileName As String
+  Dim strProgramAcronym As String
+  'longs
+  Dim lngExport As Long
+  Dim lngConstant As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnExists As Boolean
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  strProgramAcronym = cptGetProgramAcronym
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  strFileName = cptDir & "/settings/cpt-status-sheet-userfields.adtg"
+  oRecordset.Open strFileName, , adOpenKeyset, adLockOptimistic
+
+  If Not IsNull(Me.lboExport.Value) Then
+    lngConstant = Me.lboExport.List(Me.lboExport.ListIndex, 0)
+    oRecordset.Filter = 0
+    oRecordset.Filter = "PROGRAM='" & strProgramAcronym & "' AND [Field Constant]='" & CStr(lngConstant) & "'"
+    If Not oRecordset.EOF Then
+      oRecordset.Delete adAffectCurrent
+    End If
+    For lngExport = Me.lboExport.ListCount - 1 To 0 Step -1
+      If Me.lboExport.Selected(lngExport) Then
+        Me.lboExport.RemoveItem lngExport
+        Exit For
+      End If
+    Next lngExport
+  End If
+  
+  oRecordset.Filter = 0
+  oRecordset.Save strFileName, adPersistADTG
+
+exit_here:
+  On Error Resume Next
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lboExport_DblClick", Err, Erl)
+  Resume exit_here
+
+End Sub
+
+Private Sub lboFields_DblClick(ByVal Cancel As MSForms.ReturnBoolean)
+  'objects
+  Dim oRecordset As ADODB.Recordset
+  'strings
+  Dim strFileName As String
+  Dim strCustomFieldName As String
+  Dim strFieldName As String
+  Dim strProgramAcronym As String
+  'longs
+  'Dim lngField As Long
+  Dim lngExport As Long
+  Dim lngConstant As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnExists As Boolean
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+
+  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  strProgramAcronym = cptGetProgramAcronym
+  Set oRecordset = CreateObject("ADODB.Recordset")
+  strFileName = cptDir & "/settings/cpt-status-sheet-userfields.adtg"
+  oRecordset.Open strFileName, , adOpenKeyset, adLockOptimistic
+
+  If Not IsNull(Me.lboFields.Value) Then
+    lngConstant = Me.lboFields.List(Me.lboFields.ListIndex, 0)
+    strCustomFieldName = Me.lboFields.List(Me.lboFields.ListIndex, 1)
+    strFieldName = Me.lboFields.List(Me.lboFields.ListIndex, 2)
+    'ensure doesn't already exist
+    blnExists = False
+    For lngExport = 0 To Me.lboExport.ListCount - 1
+      If Me.lboExport.List(lngExport, 0) = lngConstant Then
+        blnExists = True
+      End If
+    Next lngExport
+    If Not blnExists Then
+      Me.lboExport.AddItem
+      Me.lboExport.List(lngExport, 0) = lngConstant
+      Me.lboExport.List(lngExport, 1) = strCustomFieldName
+      Me.lboExport.List(lngExport, 2) = strFieldName
+      oRecordset.AddNew Array(0, 1, 2, 3), Array(lngConstant, strCustomFieldName, strFieldName, strProgramAcronym)
+    End If
+  End If
+  oRecordset.Filter = 0
+  oRecordset.Save strFileName, adPersistADTG
+
+exit_here:
+  On Error Resume Next
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "lboFields_DblClick", Err, Erl)
+  Resume exit_here
 End Sub
 
 Private Sub lboItems_Change()

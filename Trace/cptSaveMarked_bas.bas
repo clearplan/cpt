@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptSaveMarked_bas"
-'<cpt_version>v1.1.1</cpt_version>
+'<cpt_version>v1.2.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptSaveMarked_bas"
 
@@ -7,9 +7,8 @@ Sub cptShowSaveMarked_frm()
   'objects
   Dim mySaveMarked_frm As cptSaveMarked_frm
   'strings
-  Dim strFileName As String
   Dim strApplyFilter As String
-  Dim strProgram As String
+  Dim strProgramAcronym As String
   'longs
   'integers
   'doubles
@@ -35,10 +34,10 @@ Sub cptShowSaveMarked_frm()
     Else
       .chkApplyFilter = False
     End If
-    strProgram = cptGetProgramAcronym
-    If Len(strProgram) > 0 Then
-      .cboProjects.AddItem strProgram
-      .cboProjects.Value = strProgram
+    strProgramAcronym = cptGetProgramAcronym
+    If Len(strProgramAcronym) > 0 Then
+      .cboProjects.AddItem strProgramAcronym
+      .cboProjects.Value = strProgramAcronym
       .cboProjects.Locked = True
       .cboProjects.Enabled = False
     End If
@@ -53,7 +52,7 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveMarked_bas", "cptShowSaveMarked_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowSaveMarked_frm", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -62,8 +61,8 @@ Sub cptUpdateMarked(ByRef mySaveMarked_frm As cptSaveMarked_frm, Optional strFil
   Dim rstMarked As Object 'ADODB.Recordset 'Object
   'strings
   Dim strDir As String
-  Dim strProject As String
-  Dim strMarked As String
+  Dim strProgramAcronym As String
+  Dim strFileName As String
   'longs
   Dim lngItem As Long
   'integers
@@ -73,9 +72,8 @@ Sub cptUpdateMarked(ByRef mySaveMarked_frm As cptSaveMarked_frm, Optional strFil
   'dates
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  strDir = cptDir
-  strProject = cptGetProgramAcronym
-  If Len(strProject) = 0 Then
+  strProgramAcronym = cptGetProgramAcronym
+  If Len(strProgramAcronym) = 0 Then
     MsgBox "Program Acronym is required for this feature.", vbExclamation + vbOKOnly, "Program Acronym Needed"
     GoTo exit_here
   End If
@@ -96,20 +94,21 @@ Sub cptUpdateMarked(ByRef mySaveMarked_frm As cptSaveMarked_frm, Optional strFil
   End With
   
   'get list of marked sets
-  'todo: filter for where PROJECT=cptGetProgramAcronym?
-  strMarked = strDir & "\cpt-marked.adtg"
-  If Dir(strMarked) = vbNullString Then
+  cptMigrateSaveMarked
+  strDir = cptDir
+  strFileName = strDir & "\settings\cpt-marked.adtg"
+  If Dir(strFileName) = vbNullString Then
     MsgBox "No marked tasks saved.", vbCritical + vbOKOnly, "Nada"
     GoTo exit_here
   End If
   Set rstMarked = CreateObject("ADODB.Recordset")
   With rstMarked
-    .Open strMarked
+    .Open strFileName
     .Sort = "TSTAMP DESC"
     If Len(strFilter) > 0 Then
-      .Filter = "DESCRIPTION Like '*" & strFilter & "*' AND PROJECT_ID='" & strProject & "'"
+      .Filter = "DESCRIPTION Like '*" & strFilter & "*' AND PROJECT_ID='" & strProgramAcronym & "'"
     Else
-      .Filter = "PROJECT_ID='" & strProject & "'"
+      .Filter = "PROJECT_ID='" & strProgramAcronym & "'"
     End If
     If .RecordCount > 0 Then
       .MoveFirst
@@ -127,8 +126,8 @@ Sub cptUpdateMarked(ByRef mySaveMarked_frm As cptSaveMarked_frm, Optional strFil
     .Close
     
     'get marked task count
-    strMarked = strDir & "\cpt-marked-details.adtg"
-    rstMarked.Open strMarked
+    strFileName = strDir & "\settings\cpt-marked-details.adtg"
+    rstMarked.Open strFileName
     With mySaveMarked_frm
       For lngItem = 1 To .lboMarked.ListCount - 1
         rstMarked.Filter = "TSTAMP=#" & CDate(.lboMarked.List(lngItem, 0)) & "#"
@@ -145,7 +144,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveMarked_bas", "cptUpdateMarked", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdateMarked", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -155,10 +154,11 @@ Sub cptSaveMarked()
   Dim oTask As MSProject.Task
   Dim rstMarked As Object 'ADODB.Recordset
   'strings
-  Dim strProject As String
+  Dim strProgramAcronym As String
   Dim strGUID As String
   Dim strDescription As String
-  Dim strMarked As String
+  Dim strDir As String
+  Dim strFileName As String
   'longs
   Dim lngMarked As Long
   'integers
@@ -169,6 +169,14 @@ Sub cptSaveMarked()
   Dim dtTimestamp As Date
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  strProgramAcronym = cptGetProgramAcronym(True)
+  If Len(strProgramAcronym) = 0 Then
+    MsgBox "You must set a program acronym to use this feature.", vbCritical + vbOKOnly, "Program Acronym Needed"
+    GoTo exit_here
+  End If
+  
+  strDir = cptDir
   
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_one
@@ -183,25 +191,20 @@ next_one:
     GoTo exit_here
   End If
   
+  cptMigrateSaveMarked
   Set rstMarked = CreateObject("ADODB.Recordset")
-  strMarked = cptDir & "\cpt-marked.adtg"
-  If Dir(strMarked) = vbNullString Then
+  strFileName = strDir & "\settings\cpt-marked.adtg"
+  If Dir(strFileName) = vbNullString Then
     rstMarked.Fields.Append "GUID", adGUID
     rstMarked.Fields.Append "TSTAMP", adDBTimeStamp
     rstMarked.Fields.Append "PROJECT_ID", adVarChar, 255
     rstMarked.Fields.Append "Description", adVarChar, 255
     rstMarked.Open
-    rstMarked.Save strMarked, adPersistADTG
+    rstMarked.Save strFileName, adPersistADTG
     rstMarked.Close
   End If
-  If rstMarked.State <> 1 Then rstMarked.Open strMarked
+  If rstMarked.State <> 1 Then rstMarked.Open strFileName
   
-  strProject = cptGetProgramAcronym
-  If Len(strProject) = 0 Then
-    MsgBox "You must set a program acronym to use this feature.", vbCritical + vbOKOnly, "Program Acronym Needed"
-    GoTo exit_here
-  End If
-
   If ActiveProject.Subprojects.Count > 0 Then
     MsgBox "Saved set will use UIDs keyed to this master project. You must, therefore, import this saved set back to this master project. Importing to the standalone subproject will fail.", vbExclamation + vbOKOnly, "Nota Bene"
   End If
@@ -212,19 +215,19 @@ next_one:
     GoTo exit_here
   End If
   dtTimestamp = Now()
-  rstMarked.AddNew Array(1, 2, 3), Array(dtTimestamp, strProject, strDescription)
+  rstMarked.AddNew Array(1, 2, 3), Array(dtTimestamp, strProgramAcronym, strDescription)
   rstMarked.Update
-  rstMarked.Save strMarked, adPersistADTG
+  rstMarked.Save strFileName, adPersistADTG
   rstMarked.Close
   
   Set rstMarked = CreateObject("ADODB.Recordset")
-  strMarked = cptDir & "\cpt-marked-details.adtg"
-  If Dir(strMarked) = vbNullString Then
+  strFileName = strDir & "\settings\cpt-marked-details.adtg"
+  If Dir(strFileName) = vbNullString Then
     rstMarked.Fields.Append "TSTAMP", adDBTimeStamp
     rstMarked.Fields.Append "UID", adInteger
     rstMarked.Open
   Else
-    rstMarked.Open strMarked
+    rstMarked.Open strFileName
   End If
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_task
@@ -234,7 +237,7 @@ next_one:
     End If
 next_task:
   Next oTask
-  rstMarked.Save strMarked, adPersistADTG
+  rstMarked.Save strFileName, adPersistADTG
   rstMarked.Close
   
   dtTimestamp = 0
@@ -244,6 +247,8 @@ next_task:
     cptUpdateMarked mySaveMarked_frm
     If dtTimestamp > 0 Then mySaveMarked_frm.lboMarked.Value = dtTimestamp
   End If
+  
+  MsgBox Format(lngMarked, "#,##0") & " marked tasks saved.", vbInformation + vbOKOnly, "cptSaveMarked"
 
 exit_here:
   On Error Resume Next
@@ -253,6 +258,33 @@ exit_here:
   
   Exit Sub
 err_here:
-  Call cptHandleErr("cptSaveMarked_bas", "cptSaveMarked", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptSaveMarked", Err, Erl)
   Resume exit_here
+End Sub
+
+Sub cptMigrateSaveMarked()
+  Dim strDir As String
+  Dim strMoveFrom As String
+  Dim strMoveTo As String
+  
+  strDir = cptDir
+  
+  strMoveTo = strDir & "\settings\cpt-marked.adtg"
+  If Dir(strMoveTo) = vbNullString Then 'not moved yet
+    strMoveFrom = strDir & "\cpt-marked.adtg"
+    If Dir(strMoveFrom) <> vbNullString Then 'move it
+      VBA.FileCopy strMoveFrom, strMoveTo
+      If Dir(strMoveTo) <> vbNullString Then Kill strMoveFrom
+    End If
+  End If
+  
+  strMoveTo = strDir & "\settings\cpt-marked-details.adtg"
+  If Dir(strMoveTo) = vbNullString Then 'also not moved yet
+    strMoveFrom = strDir & "\cpt-marked-details.adtg"
+    If Dir(strMoveFrom) <> vbNullString Then
+      VBA.FileCopy strMoveFrom, strMoveTo
+      If Dir(strMoveTo) <> vbNullString Then Kill strMoveFrom
+    End If
+  End If
+  
 End Sub

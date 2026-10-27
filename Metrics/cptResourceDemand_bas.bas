@@ -152,33 +152,6 @@ Sub cptExportResourceDemand(ByRef myResourceDemand_frm As cptResourceDemand_frm,
     cptDeleteSetting "ResourceDemand", "chkNonLabor"
   End With
   
-  strFileName = cptDir & "\settings\cpt-export-resource-userfields.adtg."
-  Set oSettings = CreateObject("ADODB.Recordset")
-  With oSettings
-    .Fields.Append "Field Constant", adVarChar, 255
-    .Fields.Append "Custom Field Name", adVarChar, 255
-    .Open
-    strSettings = "Week=" & myResourceDemand_frm.cboWeeks & ";"
-    strSettings = strSettings & "Weekday=" & myResourceDemand_frm.cboWeekday & ";"
-    strSettings = strSettings & "Costs=" & myResourceDemand_frm.chkCosts & ";"
-    strSettings = strSettings & "AssociatedBaseline=" & blnExportAssociatedBaseline & ";"
-    strSettings = strSettings & "FullBaseline=" & blnExportFullBaseline & ";"
-    strSettings = strSettings & "RateSets="
-    For Each vChk In Split("A,B,C,D,E", ",")
-      strFields = strFields & IIf(myResourceDemand_frm.Controls("chk" & vChk), vChk & ",", "")
-    Next vChk
-    .AddNew Array(0, 1), Array("settings", strSettings)
-    .Update
-    'save userfields
-    For lngExport = 0 To UBound(aUserFields, 1)
-      .AddNew Array(0, 1), Array(aUserFields(lngExport, 0), aUserFields(lngExport, 1))
-      .Update
-    Next lngExport
-    If Dir(strFileName) <> vbNullString Then Kill strFileName
-    .Save strFileName, adPersistADTG
-    .Close
-  End With
-  
   Application.StatusBar = "Preparing to export..."
   myResourceDemand_frm.lblStatus.Caption = "Preparing to export..."
   
@@ -513,15 +486,15 @@ next_task:
   
   On Error Resume Next
   If oWorkbook Is Nothing Then GoTo exit_here 'todo
-  If Dir(Environ("TEMP") & "\ExportResourceDemand.xlsx") <> vbNullString Then Kill Environ("TEMP") & "\ExportResourceDemand.xlsx"
+  If Dir(Environ("TEMP") & "\ExportStaffingProfile.xlsx") <> vbNullString Then Kill Environ("TEMP") & "\ExportStaffingProfile.xlsx"
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   MsgBox "If your company requires security classifications, please make them from within the Excel Window.", vbExclamation + vbOKOnly, "Heads up"
   oExcel.Visible = True
   oExcel.WindowState = xlNormal
-  If Dir(Environ("TEMP") & "\ExportResourceDemand.xlsx") <> vbNullString Then 'kill failed, rename it
-    oWorkbook.SaveAs Environ("TEMP") & "\ExportResourceDemand_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".xlsx", 51
+  If Dir(Environ("TEMP") & "\ExportStaffingProfile.xlsx") <> vbNullString Then 'kill failed, rename it
+    oWorkbook.SaveAs Environ("TEMP") & "\ExportStaffingProfile_" & Format(Now, "yyyy-mm-dd-hh-nn-ss") & ".xlsx", 51
   Else
-    oWorkbook.SaveAs Environ("TEMP") & "\ExportResourceDemand.xlsx", 51
+    oWorkbook.SaveAs Environ("TEMP") & "\ExportStaffingProfile.xlsx", 51
   End If
   oExcel.Visible = False
   
@@ -672,7 +645,7 @@ next_task:
   'add a new Worksheet for the oPivotTable
   Set oWorksheet = oWorkbook.Sheets.Add(Before:=oWorkbook.Sheets("SourceData"))
   'rename the new Worksheet
-  oWorksheet.Name = "ResourceDemand"
+  oWorksheet.Name = "StaffingProfile"
   
   Application.StatusBar = "Creating PivotTable..."
   myResourceDemand_frm.lblStatus.Caption = Application.StatusBar
@@ -680,7 +653,7 @@ next_task:
   'create the PivotTable
   oWorkbook.PivotCaches.Create(SourceType:=1, _
        SourceData:=strRange, Version:= _
-       3).CreatePivotTable TableDestination:="ResourceDemand!R3C1", TableName:="RESOURCE_DEMAND", DefaultVersion:=3
+       3).CreatePivotTable TableDestination:="StaffingProfile!R3C1", TableName:="STAFFING_PROFILE", DefaultVersion:=3
   Set oPivotTable = oWorksheet.PivotTables(1)
   If blnFiscal Then
     oPivotTable.AddFields Array("RESOURCE_NAME", "[UID] TASK"), Array("FISCAL_MONTH")
@@ -791,7 +764,7 @@ next_task:
   Set oWorksheet = oWorkbook.Sheets.Add
   With oWorksheet
     .Name = "PivotChart_Source"
-    Set oPivotTable = oWorkbook.Worksheets("ResourceDemand").PivotTables("RESOURCE_DEMAND")
+    Set oPivotTable = oWorkbook.Worksheets("StaffingProfile").PivotTables("STAFFING_PROFILE")
     oPivotTable.PivotCache.CreatePivotTable TableDestination:="PivotChart_Source!R1C1", TableName:="PivotTable1", DefaultVersion:=3
     .Activate
     .[A1].Select
@@ -837,7 +810,7 @@ next_task:
     .ClearToMatchStyle
     .HasTitle = True
     .SetElement (msoElementChartTitleAboveChart)
-    .ChartTitle.Text = "Resource Demand"
+    .ChartTitle.Text = "Staffing Profile"
     .Location 1, "PivotChart" 'xlLocationAsNewSheet = 1
   End With
   Set oWorksheet = oWorkbook.Sheets("PivotChart_Source")
@@ -917,7 +890,7 @@ next_task:
   End If
   
   'PivotTable Worksheet active by default
-  oWorkbook.Sheets("ResourceDemand").Activate
+  oWorkbook.Sheets("StaffingProfile").Activate
   
   'provide user feedback
   Application.StatusBar = "Saving the Workbook..."
@@ -930,7 +903,7 @@ next_task:
 '    If MsgBox("A file named '" & strFileName & "' already exists in this location. Replace?", vbYesNo + vbExclamation, "Overwrite?") = vbYes Then '<issue49>
 '      Kill strFileName '<issue49>
 '      oWorkbook.SaveAs strFileName, 51 '<issue49>
-'      MsgBox "Saved to your Desktop:" & vbCrLf & vbCrLf & Dir(strFileName), vbInformation + vbOKOnly, "Resource Demand Exported" '<issue49>
+'      MsgBox "Saved to your Desktop:" & vbCrLf & vbCrLf & Dir(strFileName), vbInformation + vbOKOnly, "Staffing Profile Exported" '<issue49>
 '    End If '<issue49>
 '  Else '<issue49>
 '    oWorkbook.SaveAs strFileName, 51  '<issue49>
@@ -943,7 +916,7 @@ next_task:
     strMsg = strMsg & "- for recurring exceptions, be sure to select 'detailed';" & vbCrLf
     strMsg = strMsg & "- expand recurring exceptions to show full list of Start dates;" & vbCrLf
     strMsg = strMsg & "- copy list of 'Start' dates and paste into Exceptions List on FiscalPeriods sheet;" & vbCrLf
-    strMsg = strMsg & "- activate ResourceDemand or PivotChart sheet and Refresh Pivot data" & vbCrLf & vbCrLf
+    strMsg = strMsg & "- activate StaffingProfile or PivotChart sheet and Refresh Pivot data" & vbCrLf & vbCrLf
     strMsg = strMsg & "(Take a screen shot of these instructions, if needed.)"
     MsgBox strMsg, vbInformation + vbOKOnly, "Next Actions:"
     oWorkbook.Sheets("Calendar").Activate
@@ -1002,11 +975,12 @@ End Sub
 
 Sub cptShowExportResourceDemand_frm()
   'objects
+  Dim oPrograms As Scripting.Dictionary
   Dim myResourceDemand_frm As cptResourceDemand_frm
   Dim rst As ADODB.Recordset
-  Dim rstResources As Object 'ADODB.Recordset
+  Dim rstResources As ADODB.Recordset
   Dim objProject As Object
-  Dim rstFields As Object 'ADODB.Recordset
+  Dim rstFields As ADODB.Recordset
   'strings
   Dim strDir As String
   Dim strNonLabor As String
@@ -1019,6 +993,9 @@ Sub cptShowExportResourceDemand_frm()
   Dim strMissing As String
   Dim strFieldName As String
   Dim strFileName As String
+  Dim strMsg As String
+  Dim strCustomFieldName As String
+  Dim strProgramAcronym As String
   'longs
   Dim lngFile As Long
   Dim lngResourceCount As Long
@@ -1038,16 +1015,19 @@ Sub cptShowExportResourceDemand_frm()
 
   'prevent spawning
   If Not cptGetUserForm("cptResourceDemand_frm") Is Nothing Then Exit Sub
-
+  
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+  
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
 
   'requires ms excel
   If Not cptCheckReference("Excel") Then
-    MsgBox "This feature requires MS Excel.", vbCritical + vbOKOnly, "Resource Demand"
+    MsgBox "This feature requires MS Excel.", vbCritical + vbOKOnly, "Staffing Profile"
     GoTo exit_here
   End If
+  
   If ActiveProject.Subprojects.Count = 0 And ActiveProject.ResourceCount = 0 Then
     MsgBox "This project has no resources to export.", vbExclamation + vbOKOnly, "No Resources"
     GoTo exit_here
@@ -1077,7 +1057,9 @@ Sub cptShowExportResourceDemand_frm()
     Application.StatusBar = ""
     cptSpeed False
   End If
-
+  
+  strProgramAcronym = cptGetProgramAcronym(True)
+  
   'instantiate the form
   Set myResourceDemand_frm = New cptResourceDemand_frm
   myResourceDemand_frm.lboFields.Clear
@@ -1174,44 +1156,108 @@ next_field1:
       .cboMonths.Locked = True
     End If
   End With
-
+  
   'import saved fields if exists
   strFileName = strDir & "\settings\cpt-export-resource-userfields.adtg"
   If Dir(strFileName) <> vbNullString Then
     Set rst = CreateObject("ADODB.Recordset")
+    'first update the source
+    rst.Open strFileName, , adOpenKeyset, adLockOptimistic
+    If rst.RecordCount = 0 Then
+      rst.Close
+      GoTo skip_custom_fields
+    End If
+    If rst.Fields(0) = "settings" Then 'delete vestigial settings method
+      rst.Delete adAffectCurrent
+      rst.MoveFirst
+    End If
+    If rst.Fields.Count = 2 Then
+      strMsg = "Would you like to migrate your saved export fields to this project?" & vbCrLf & vbCrLf
+      rst.MoveFirst
+      Do While Not rst.EOF
+        strFieldName = FieldConstantToFieldName(rst.Fields(0))
+        strCustomFieldName = CustomFieldGetName(rst.Fields(0))
+        If Len(strCustomFieldName) > 0 Then
+          strMsg = strMsg & "- " & strCustomFieldName & " (" & strFieldName & ")" & vbCrLf
+        Else
+          strMsg = strMsg & "- " & strFieldName & vbCrLf
+        End If
+        rst.MoveNext
+      Loop
+      strMsg = strMsg & vbCrLf & "(If you click no, you will need to add export fields from scratch.)"
+      If MsgBox(strMsg, vbQuestion + vbYesNo, "Migrate settings?") = vbYes Then
+        'prompt user to import saved fields to *this* project?
+        rst.Close
+        cptAppendColumn strFileName, "PROGRAM", adVarChar, 50, strProgramAcronym
+        Set rst = CreateObject("ADODB.Recordset")
+        rst.Open strFileName, , adOpenKeyset, adLockReadOnly
+      Else
+        rst.Save strFileName, adPersistADTG
+        rst.Close
+        cptAppendColumn strFileName, "PROGRAM", adVarChar, 50, "legacy"
+        GoTo skip_custom_fields
+      End If
+    End If
+    
+    'add selections to cboPrograms
+    rst.Filter = 0
+    rst.MoveFirst
+    Set oPrograms = CreateObject("Scripting.Dictionary")
+    Do While Not rst.EOF
+      If Not oPrograms.Exists(rst.Fields(2)) And rst.Fields(2) <> strProgramAcronym Then
+        oPrograms.Add rst.Fields(2), rst.Fields(2)
+        myResourceDemand_frm.cboPrograms.AddItem rst.Fields(2)
+      End If
+      rst.MoveNext
+    Loop
+    With myResourceDemand_frm.cboPrograms
+      If .ListCount = 0 Then .Enabled = False
+    End With
+    
     With rst
-      .Open strFileName, , adOpenKeyset, adLockReadOnly
+      .Filter = "PROGRAM='" & strProgramAcronym & "'"
+      If .EOF Then
+        .Close
+        GoTo skip_custom_fields
+      End If
       .MoveFirst
       lngItem = 0
       Do While Not .EOF
-        If .Fields(0) = "settings" Then
-          'don't use it - obsolete
-        Else
-          If .Fields(0) >= 188776000 Then 'check enterprise field
-            If FieldConstantToFieldName(.Fields(0)) <> Replace(.Fields(1), cptRegEx(.Fields(1), " \([A-z0-9]*\)$"), "") Then
+        If .Fields(0) >= 188776000 Then 'check enterprise field
+          If FieldConstantToFieldName(.Fields(0)) <> Replace(.Fields(1), cptRegEx(.Fields(1), " \([A-z0-9]*\)$"), "") Then
+            strMissing = strMissing & "- " & .Fields(1) & vbCrLf
+            GoTo next_saved_field
+          End If
+        Else 'check local field
+          If CustomFieldGetName(.Fields(0)) <> Trim(Replace(.Fields(1), cptRegEx(.Fields(1), "\([^\(].*\)$"), "")) Then
+            'limit this check to Custom Fields
+            If IsNumeric(Right(FieldConstantToFieldName(.Fields(0)), 1)) Then
               strMissing = strMissing & "- " & .Fields(1) & vbCrLf
               GoTo next_saved_field
             End If
-          Else 'check local field
-            If CustomFieldGetName(.Fields(0)) <> Trim(Replace(.Fields(1), cptRegEx(.Fields(1), "\([^\(].*\)$"), "")) Then
-              'limit this check to Custom Fields
-              If IsNumeric(Right(FieldConstantToFieldName(.Fields(0)), 1)) Then
-                strMissing = strMissing & "- " & .Fields(1) & vbCrLf
-                GoTo next_saved_field
-              End If
-            End If
           End If
-          myResourceDemand_frm.lboExport.AddItem
-          myResourceDemand_frm.lboExport.List(lngItem, 0) = .Fields(0) 'Field Constant
-          myResourceDemand_frm.lboExport.List(lngItem, 1) = .Fields(1) 'Custom Field Name
-          lngItem = lngItem + 1
         End If
+        myResourceDemand_frm.lboExport.AddItem
+        myResourceDemand_frm.lboExport.List(lngItem, 0) = .Fields(0) 'Field Constant
+        myResourceDemand_frm.lboExport.List(lngItem, 1) = .Fields(1) 'Custom Field Name
+        lngItem = lngItem + 1
 next_saved_field:
         .MoveNext
       Loop
       .Close
     End With
+  Else
+    'create it
+    Set rst = CreateObject("ADODB.Recordset")
+    rst.Fields.Append "Field Constant", adVarChar, 255 'should have been "FC" adInteger
+    rst.Fields.Append "Custom Field Name", adVarChar, 255 'should have been "CFN"
+    rst.Fields.Append "PROGRAM", adVarChar, adVarChar, 50
+    rst.Open
+    rst.Save strFileName, adPersistADTG
+    rst.Close
   End If
+  
+skip_custom_fields:
 
   'import saved settings
   With myResourceDemand_frm
@@ -1268,11 +1314,11 @@ next_saved_field:
       'non-labor
       cptDeleteSetting "ResourceDemand", "chkNonLabor" 'obsolete setting
     End If
-    .Caption = "Export Resource Demand (" & cptGetVersion(THIS_MODULE) & ")"
+    .Caption = "Export Staffing Profile (" & cptGetVersion(THIS_MODULE) & ")"
     If Len(strMissing) > 0 Then
       If UBound(Split(strMissing, vbCrLf)) > 10 Then
         lngFile = FreeFile
-        strFileName = Environ("tmp") & "\cpt-resourcedemand-missing-fields.txt"
+        strFileName = Environ("tmp") & "\cpt-staffing_profile-missing-fields.txt"
         Open strFileName For Output As #lngFile
         Print #lngFile, "The following saved fields do not exist in this project:"
         Print #lngFile, strMissing
@@ -1288,6 +1334,7 @@ next_saved_field:
 
 exit_here:
   On Error Resume Next
+  Set oPrograms = Nothing
   Unload myResourceDemand_frm
   Set myResourceDemand_frm = Nothing
   Set rst = Nothing

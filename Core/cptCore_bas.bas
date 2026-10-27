@@ -1458,7 +1458,7 @@ Sub cptSetReferences()
   Dim oOfficeApp As Object
   'strings
   Dim strRefName As String
-  Dim strGuid As String
+  Dim strGUID As String
   Dim strVersion As String
   Dim strPath As String
   'longs
@@ -1511,19 +1511,20 @@ Sub cptSetReferences()
     strRefName = Split(vRef, "|")(0)
     Application.StatusBar = "Confirming VBA Reference: " & strRefName & "..."
     If Not oExisting.Exists(strRefName) Then
-      strGuid = Split(vRef, "|")(1)
+      strGUID = Split(vRef, "|")(1)
       Application.StatusBar = "Adding VBA Reference: " & strRefName & "..."
-      If GetHighestTypeLibVersion(strGuid, lngMaj, lngMin) Then
-        If strGuid = "{91493440-5A91-11CF-8700-00AA0060263B}" Then 'powerpoint is weird
+      If GetHighestTypeLibVersion(strGUID, lngMaj, lngMin) Then
+        If strGUID = "{91493440-5A91-11CF-8700-00AA0060263B}" Then 'powerpoint is weird
           strVersion = CStr(lngMaj) & "." & LCase$(Hex$(lngMin))
         Else
           strVersion = CStr(lngMaj) & "." & CStr(lngMin)
         End If
-        lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win64", "", strPath)
+        lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGUID & "\" & strVersion & "\0\win64", "", strPath)
         If lngReg <> 0 Or Len(strPath) = 0 Then
-          lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGuid & "\" & strVersion & "\0\win32", "", strPath)
+          lngReg = oReg.GetStringValue(HKCR, "TypeLib\" & strGUID & "\" & strVersion & "\0\win32", "", strPath)
         End If
         On Error Resume Next
+        'If Len(strPath) = 0 Then Stop 'debug
         ThisProject.VBProject.References.AddFromFile strPath
         Application.StatusBar = "Adding VBA Reference: " & strRefName & "...done."
       Else
@@ -1547,65 +1548,34 @@ err_here:
   Resume exit_here
 End Sub
 
-Function GetHighestTypeLibVersion( _
-    ByVal strGuid As String, _
-    ByRef lngMajor As Long, _
-    ByRef lngMinor As Long) As Boolean
+Function GetHighestTypeLibVersion(ByVal strGUID As String, ByRef lngMajor As Long, ByRef lngMinor As Long) As Boolean
+  Const HKCR As Long = &H80000000
+  Dim reg As Object
+  Dim arrVersions As Variant
+  Dim i As Long
+  Dim arrParts() As String
+  Dim lngMaj As Long
+  Dim lngMin As Long
+  Dim lngBestMaj As Long
+  Dim lngBestMin As Long
 
-    Const HKCR As Long = &H80000000
-
-    Dim reg As Object
-    Dim arrVersions As Variant
-    Dim i As Long
-
-    Dim strVersion As String
-    Dim arrParts() As String
-
-    Dim lngMaj As Long
-    Dim lngMin As Long
-
-    Dim lngBestMaj As Long
-    Dim lngBestMin As Long
-
-    Set reg = GetObject("winmgmts:\\.\root\default:StdRegProv")
-
-    reg.EnumKey HKCR, "TypeLib\" & strGuid, arrVersions
-
-    If Not IsArray(arrVersions) Then Exit Function
-
-    For i = LBound(arrVersions) To UBound(arrVersions)
-
-        strVersion = arrVersions(i)
-
-        arrParts = Split(strVersion, ".")
-
-        If UBound(arrParts) = 1 Then
-
-            lngMaj = CLng(arrParts(0))
-
-            If IsNumeric(arrParts(1)) Then
-                lngMin = CLng(arrParts(1))
-            Else
-                lngMin = CLng("&H" & arrParts(1))
-            End If
-
-            If lngMaj > lngBestMaj _
-               Or (lngMaj = lngBestMaj And lngMin > lngBestMin) Then
-
-                lngBestMaj = lngMaj
-                lngBestMin = lngMin
-
-            End If
-
-        End If
-
-    Next i
-
-    lngMajor = lngBestMaj
-    lngMinor = lngBestMin
-
-    GetHighestTypeLibVersion = (lngBestMaj > 0 Or lngBestMin > 0)
-
+  Set reg = GetObject("winmgmts:\\.\root\default:StdRegProv")
+  reg.EnumKey HKCR, "TypeLib\" & strGUID, arrVersions
+  If Not IsArray(arrVersions) Then Exit Function
+  For i = LBound(arrVersions) To UBound(arrVersions)
+    arrParts = Split(arrVersions(i), ".")
+    If UBound(arrParts) = 1 Then
+      lngMaj = CLng(arrParts(0))
+      lngMin = CLng("&H" & arrParts(1))
+      If lngMaj > lngBestMaj Or (lngMaj = lngBestMaj And lngMin > lngBestMin) Then
+        lngBestMaj = lngMaj
+        lngBestMin = lngMin
+      End If
+    End If
+  Next i
+  lngMajor = lngBestMaj
+  lngMinor = lngBestMin
+  GetHighestTypeLibVersion = (lngBestMaj > 0 Or lngBestMin > 0)
 End Function
 
 Sub cptSubmitIssue()
@@ -1978,9 +1948,34 @@ Sub cptGroupReapply()
   If lngUID > 0 Then Find "Unique ID", "equals", lngUID
 End Sub
 
+Function cptGetSettingsFile(strFeature As String) As String
+  Dim strPA As String
+  Dim strSettingsFile As String
+  'need to copy from cpt-settings.ini to cpt-settings-user.ini
+  If cptGetPosition(Split("BulkLogic,Count,DynamicFilter,ETCAdjustment,FilterByClipboard,Fiscal,General,NetworkBrowser,ResetAll,SaveMarked,SmartDuration", ","), strFeature) >= 0 Then
+    strSettingsFile = "cpt-settings-user.ini"
+  ElseIf cptGetPosition(Split("AgeDates,CalendarDetails,Driving Paths,Driving Path Group,CostRateTables,Integration,Metrics,QBD,ResourceDemand,SaveLocal,StatusSheet,StatusSheetImport,SubPath Group", ","), strFeature) >= 0 Then
+    'todo: convert to DrivingPath; restructure settings
+    strPA = cptGetProgramAcronym(False)
+    If Len(strPA) > 0 Then
+      strSettingsFile = "cpt-settings-" & strPA & ".ini"
+      'todo: indicate on the Settings form which are user settings and which are program settings
+    Else
+      strSettingsFile = ""
+    End If
+  Else
+    'default to cpt-settings.ini
+    MsgBox "Feature '" & strFeature & "' is not handled.", vbExclamation + vbOKOnly, "CPT Settings"
+    strSettingsFile = "cpt-settings.ini"
+  End If
+  cptGetSettingsFile = strSettingsFile
+End Function
+
 Function cptSaveSetting(strFeature As String, strKey As String, strValue As Variant) As Boolean
+  Dim strDir As String, strPA As String
   Dim strSettingsFile As String, lngWorked As Long
-  strSettingsFile = cptDir & "\settings\cpt-settings.ini"
+  strDir = cptDir
+  strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CStr(strValue), strSettingsFile)
   If lngWorked Then
     cptSaveSetting = True
@@ -1989,16 +1984,35 @@ Function cptSaveSetting(strFeature As String, strKey As String, strValue As Vari
   End If
 End Function
 
-Function cptGetSetting(strFeature As String, strKey As String) As String
-  Dim strSettingsFile As String, strReturned As String, lngSize As Long, lngWorked As Long
-  strSettingsFile = cptDir & "\settings\cpt-settings.ini"
+Function cptGetSetting(strFeature As String, strKey As String, Optional strDefault As String) As String
+  'user can turn on config-switching or not
+  Dim strDir As String, strSettingsFile As String, strReturned As String, lngSize As Long, lngWorked As Long
+  strDir = cptDir
+  strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
   strReturned = Space(255) 'this determines the length of the returned value, not the length of the stored value
   lngSize = Len(strReturned)
   lngWorked = cptGetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
   If lngWorked Then
     cptGetSetting = Left$(strReturned, lngWorked)
   Else
-    cptGetSetting = ""
+    'try legacy
+    strSettingsFile = strDir & "\settings\cpt-settings.ini"
+    strReturned = Space(255) 'this determines the length of the returned value, not the length of the stored value
+    lngSize = Len(strReturned)
+    lngWorked = cptGetPrivateProfileString(strFeature, strKey, "", strReturned, lngSize, strSettingsFile)
+    If lngWorked Then
+      'move to new format
+      cptSaveSetting strFeature, strKey, Left$(strReturned, lngWorked)
+      'delete from old (one by one, as accessed, no rush)
+      cptDeleteSetting strFeature, strKey, True
+      cptGetSetting = Left$(strReturned, lngWorked)
+    Else
+      If Len(strDefault) > 0 Then
+        cptGetSetting = strDefault
+      Else
+        cptGetSetting = ""
+      End If
+    End If
   End If
 End Function
 
@@ -2014,14 +2028,36 @@ Function cptRenameSetting(strFeature As String, strOldKey As String, strNewKey A
   End If
 End Function
 
-Function cptDeleteSetting(strFeature As String, strKey As String) As Boolean
-  Dim strSettingsFile As String, lngWorked As Long
-  strSettingsFile = cptDir & "\settings\cpt-settings.ini"
+Function cptDeleteSetting(strFeature As String, strKey As String, Optional blnLegacySettingsFile As Boolean = False) As Boolean
+  Dim strDir As String, strSettingsFile As String, lngWorked As Long
+  strDir = cptDir
+  If blnLegacySettingsFile Then
+    strSettingsFile = strDir & "\settings\cpt-settings.ini"
+  Else
+    strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
+  End If
   lngWorked = cptSetPrivateProfileString(strFeature, strKey, CLng(0), strSettingsFile)
   If lngWorked Then
     cptDeleteSetting = True
   Else
     cptDeleteSetting = False
+  End If
+End Function
+
+Function cptDeleteSettingSection(strFeature As String, Optional blnLegacySettingsFile As Boolean = False) As Boolean
+  Dim strDir As String, strSettingsFile As String, lngWorked As Long
+  strDir = cptDir
+  If blnLegacySettingsFile Then
+    strSettingsFile = strDir & "\settings\cpt-settings.ini"
+  Else
+    strSettingsFile = strDir & "\settings\" & cptGetSettingsFile(strFeature)
+  End If
+  'passing a null value to lpKey tells the Win32 API to delete entire section
+  lngWorked = cptSetPrivateProfileString(strFeature, vbNullString, vbNullString, strSettingsFile)
+  If lngWorked Then
+    cptDeleteSettingSection = True
+  Else
+    cptDeleteSettingSection = False
   End If
 End Function
 
@@ -2178,7 +2214,7 @@ Sub cptCreateFilter(strFilter As String)
 
   Select Case strFilter
     Case "Marked"
-      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
+      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
       
   End Select
   
@@ -2198,20 +2234,26 @@ Sub cptShowSettings_frm()
   Dim oStream As Scripting.TextStream
   Dim oFSO As Scripting.FileSystemObject
   'strings
+  Dim strLegacySettingsFile As String
   Dim strDir As String
   Dim strErrorTrapping As String
   Dim strSettingsFileNew As String
-  Dim strSettingsFile As String
+  Dim strUserSettingsFile As String
+  Dim strProgramSettingsFile As String
   Dim strProgramAcronym As String
   Dim strSetting As String
   Dim strFeature As String
   Dim strLine As String
+  Dim strFileCategory As String
+  Dim strFeatureCategory As String
   'longs
   Dim lngFile As Long
   'integers
   'doubles
   'booleans
   'variants
+  Dim vSettingsFile As Variant
+  Dim vFrequency As Variant
   'dates
   
   'prevent spawning
@@ -2219,68 +2261,97 @@ Sub cptShowSettings_frm()
   
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
-  Set mySettings_frm = New cptSettings_frm
-  mySettings_frm.Caption = "ClearPlan Toolbar Settings (" & cptGetVersion("cptSettings_frm") & ")"
+  'ensure source files exist
+  'if not, copy legacy cpt-settings.ini to both places and keep it around
+  strLegacySettingsFile = strDir & "\settings\cpt-settings.ini"
+  strUserSettingsFile = strDir & "\settings\cpt-settings-user.ini"
+  If Dir(strUserSettingsFile) = vbNullString And Dir(strLegacySettingsFile) <> vbNullString Then
+    VBA.FileCopy strLegacySettingsFile, strUserSettingsFile
+  End If
+  strProgramSettingsFile = strDir & "\settings\cpt-settings-" & strProgramAcronym & ".ini"
+  If Dir(strProgramSettingsFile) = vbNullString And Dir(strLegacySettingsFile) <> vbNullString Then
+    VBA.FileCopy strLegacySettingsFile, strProgramSettingsFile
+  End If
+  If Dir(strUserSettingsFile) = vbNullString And Dir(strProgramSettingsFile) = vbNullString And Dir(strLegacySettingsFile) = vbNullString Then
+    MsgBox "No settings files could be located. Exiting.", vbCritical + vbOKOnly, "CPT Settings"
+    GoTo exit_here
+  End If
   
+  'ensure program acronym exists
+  strProgramAcronym = cptGetProgramAcronym(True)
+  If Len(strProgramAcronym) = 0 Then GoTo exit_here
+  
+  Set mySettings_frm = New cptSettings_frm
+  
+  If Dir(strDir & "\settings\cpt-settings.adtg") <> vbNullString Then Kill strDir & "\settings\cpt-settings.adtg"
   Set oRecordset = CreateObject("ADODB.Recordset")
   With oRecordset
     .Fields.Append "Feature", adVarChar, 100
     .Fields.Append "Setting", adVarChar, 255
+    .Fields.Append "Category", adVarChar, 1
     .Open
   End With
   
-  strSettingsFile = strDir & "\settings\cpt-settings.ini"
-  strSettingsFileNew = strDir & "\settings\cpt-settings-temp.ini"
-  lngFile = FreeFile
-  Open strSettingsFileNew For Output As #lngFile
-  
   With mySettings_frm
+    .Caption = "ClearPlan Toolbar Settings (" & cptGetVersion("cptSettings_frm") & ")"
     .lboFeatures.Clear
     .lboSettings.Clear
-    Set oFSO = CreateObject("Scripting.FileSystemObject")
-    Set oStream = oFSO.OpenTextFile(strDir & "\settings\cpt-settings.ini")
-    Do While Not oStream.AtEndOfStream
-      strLine = oStream.ReadLine
-      If Left(strLine, 1) = "[" Then
-        strFeature = Replace(Replace(strLine, "[", ""), "]", "")
-        'todo: If [Driving Path Group] OR [Driving Path] Then skip
-        'todo: If Count Then StatusBar: StatusBar.blnSummarizeSelection; StatusBar.blnShowStatusBarTaskCount
-        oRecordset.AddNew Array(0), Array(strFeature)
-      Else
-        'todo: If [Metrics] Then remove cboLOEField > Integration.EVT
-        'todo: If [Metrics] Then remove txtLOE > Integration.LOE
-        'todo: If [Driving Path Group] OR [Driving Path] Then skip
-        If strFeature = "Integration" Then
-          If Left(strLine, 5) = "CWBS=" Then
-            strLine = Replace(strLine, "CWBS=", "WBS=")
-          ElseIf Left(strLine, 5) = "WPCN=" Then
-            strLine = Replace(strLine, "WPCN=", "WP=")
+    
+    For Each vSettingsFile In Array(strUserSettingsFile, strProgramSettingsFile)
+      strFileCategory = IIf(InStr(vSettingsFile, "user"), "U", "P")
+      strSettingsFileNew = strDir & "\settings\cpt-settings-temp.ini"
+      lngFile = FreeFile
+      Open strSettingsFileNew For Output As #lngFile
+    
+      Set oFSO = CreateObject("Scripting.FileSystemObject")
+      Set oStream = oFSO.OpenTextFile(vSettingsFile)
+      Do While Not oStream.AtEndOfStream
+        strLine = oStream.ReadLine
+        If Left(strLine, 1) = "[" Then
+          strFeature = Replace(Replace(strLine, "[", ""), "]", "")
+          strFeatureCategory = IIf(InStr(cptGetSettingsFile(strFeature), "user"), "U", "P")
+          If strFileCategory = strFeatureCategory Then
+            oRecordset.AddNew Array(0, 2), Array(strFeature, strFileCategory)
+          End If
+        Else
+          If strFeature = "Integration" Then
+            If Left(strLine, 5) = "CWBS=" Then
+              strLine = Replace(strLine, "CWBS=", "WBS=")
+            ElseIf Left(strLine, 5) = "WPCN=" Then
+              strLine = Replace(strLine, "WPCN=", "WP=")
+            End If
+          End If
+          If strFileCategory = strFeatureCategory Then
+            oRecordset.AddNew Array(0, 1, 2), Array(strFeature, strLine, strFileCategory)
           End If
         End If
-        oRecordset.AddNew Array(0, 1), Array(strFeature, strLine)
-      End If
-    Loop
-    oStream.Close
-    oRecordset.Sort = "Feature,Setting"
-    oRecordset.MoveFirst
-    Do While Not oRecordset.EOF
-      If oRecordset(1) = "" Then
-        .lboFeatures.AddItem oRecordset(0)
-        Print #lngFile, "[" & oRecordset(0) & "]"
-      Else
-        Print #lngFile, oRecordset(1)
-      End If
-      oRecordset.MoveNext
-    Loop
-    Close #lngFile
-    If Dir(strSettingsFile) <> vbNullString Then Kill strSettingsFile
-    Name strSettingsFileNew As strSettingsFile
-    If Dir(strSettingsFileNew) <> vbNullString Then Kill strSettingsFileNew
+      Loop
+      oStream.Close
+    
+      oRecordset.Sort = "Feature,Setting"
+      oRecordset.MoveFirst
+  
+      Do While Not oRecordset.EOF
+        If oRecordset(1) = "" And oRecordset(2) = strFileCategory Then 'add feature
+          .lboFeatures.AddItem oRecordset(0) & " (" & strFileCategory & ")"
+          '.lboFeatures.List(.lboFeatures.ListCount - 1, 0) = oRecordset(0) & " (" & strFileCategory & ")"
+          '.lboFeatures.List(.lboFeatures.ListCount - 1, 1) = strFileCategory
+          Print #lngFile, "[" & oRecordset(0) & "]"
+        ElseIf oRecordset(1) <> "" And oRecordset(2) = strFileCategory Then
+          Print #lngFile, oRecordset(1)
+        End If
+        oRecordset.MoveNext
+      Loop
+      Close #lngFile
+      If Dir(vSettingsFile) <> vbNullString Then Kill vSettingsFile
+      Name strSettingsFileNew As vSettingsFile
+      If Dir(strSettingsFileNew) <> vbNullString Then Kill strSettingsFileNew
+    Next vSettingsFile
     If Dir(strDir & "\settings\cpt-settings.adtg") <> vbNullString Then Kill strDir & "\settings\cpt-settings.adtg"
-    oRecordset.Save strDir & "\settings\cpt-settings.adtg", adPersistADTG
+    oRecordset.Save strDir & "\settings\cpt-settings.adtg", adPersistADTG 'do not delete, used in the form
     oRecordset.Close
+    'todo: enable type-to-find
     '.lblDir = strSettingsFile
-    strProgramAcronym = cptGetProgramAcronym
     .txtProgramAcronym = strProgramAcronym
     If .lboFeatures.ListCount > 0 Then
       .lboFeatures.Value = .lboFeatures.List(0, 0)
@@ -2292,6 +2363,21 @@ Sub cptShowSettings_frm()
     Else
       .tglErrorTrapping = False
     End If
+    'add options for checking for updates
+    For Each vFrequency In Split("0:Never,1:Daily,7:Weekly,14:Biweekly,30:Monthly", ",")
+      .cboCheckForUpdates.AddItem
+      .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 0) = Split(vFrequency, ":")(0)
+      .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 1) = Split(vFrequency, ":")(1)
+    Next vFrequency
+    strSetting = cptGetSetting("General", "cboCheckForUpdates")
+    If Len(strSetting) > 0 Then
+      .cboCheckForUpdates.Value = CLng(strSetting)
+    Else
+      .cboCheckForUpdates.Value = "30"
+    End If
+    .Frame1.Height = .lboSettings.Height - (.Frame1.Top - .lboSettings.Top)
+    strSetting = cptGetSetting("General", "chkUpdateIndicator", 1)
+    .chkUpdateIndicator = CBool(strSetting)
     .Show
   End With
   
@@ -2309,6 +2395,7 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "cptShowSettings_frm", Err, Erl)
   Resume exit_here
 End Sub
+
 Function cptGetProgramAcronym(Optional blnPrompt As Boolean = True) As String
   'objects
   Dim oCustomDocumentProperty As DocumentProperty
@@ -2591,7 +2678,9 @@ Sub cptAppendColumn(strFileName As String, strColumn As String, lngType As Long,
     For lngField = 0 To oRecordset.Fields.Count - 1
       oRecordsetNew.Fields(lngField) = oRecordset.Fields(lngField)
     Next lngField
-    oRecordsetNew.Fields(strColumn) = vDefault
+    If Not IsMissing(vDefault) > 0 Then
+      oRecordsetNew.Fields(strColumn) = vDefault
+    End If
     oRecordset.MoveNext
   Loop
   oRecordset.Close
@@ -3014,7 +3103,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
   'dates
   
   blnModuleExists = cptModuleExists("cptIntegration_frm")
-
+  
   'prevent spawning
   If Not cptGetUserForm("cptIntegration_frm") Is Nothing Then Exit Function
   
@@ -3090,6 +3179,7 @@ Function cptValidMap(Optional strRequiredFields As String, Optional blnFiscalReq
       cptDeleteSetting "Integration", "WPCN"
     End If
     cptDeleteSetting "Integration", "EOC" 'no longer required
+    cptDeleteSetting "Integration", "EOC", True 'no longer required
     
     For Each vControl In Split(strDefaultFields, ",")
       strSetting = cptGetSetting("Integration", CStr(vControl))
