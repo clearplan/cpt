@@ -2236,7 +2236,6 @@ Sub cptShowSettings_frm()
   'strings
   Dim strLegacySettingsFile As String
   Dim strDir As String
-  Dim strErrorTrapping As String
   Dim strSettingsFileNew As String
   Dim strUserSettingsFile As String
   Dim strProgramSettingsFile As String
@@ -2251,6 +2250,7 @@ Sub cptShowSettings_frm()
   'integers
   'doubles
   'booleans
+  Dim blnErrorTrapping As Boolean
   'variants
   Dim vSettingsFile As Variant
   Dim vFrequency As Variant
@@ -2259,7 +2259,8 @@ Sub cptShowSettings_frm()
   'prevent spawning
   If Not cptGetUserForm("cptSettings_frm") Is Nothing Then Exit Sub
   
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   strDir = cptDir
   'ensure source files exist
   'if not, copy legacy cpt-settings.ini to both places and keep it around
@@ -2334,8 +2335,6 @@ Sub cptShowSettings_frm()
       Do While Not oRecordset.EOF
         If oRecordset(1) = "" And oRecordset(2) = strFileCategory Then 'add feature
           .lboFeatures.AddItem oRecordset(0) & " (" & strFileCategory & ")"
-          '.lboFeatures.List(.lboFeatures.ListCount - 1, 0) = oRecordset(0) & " (" & strFileCategory & ")"
-          '.lboFeatures.List(.lboFeatures.ListCount - 1, 1) = strFileCategory
           Print #lngFile, "[" & oRecordset(0) & "]"
         ElseIf oRecordset(1) <> "" And oRecordset(2) = strFileCategory Then
           Print #lngFile, oRecordset(1)
@@ -2350,34 +2349,32 @@ Sub cptShowSettings_frm()
     If Dir(strDir & "\settings\cpt-settings.adtg") <> vbNullString Then Kill strDir & "\settings\cpt-settings.adtg"
     oRecordset.Save strDir & "\settings\cpt-settings.adtg", adPersistADTG 'do not delete, used in the form
     oRecordset.Close
-    'todo: enable type-to-find
-    '.lblDir = strSettingsFile
     .txtProgramAcronym = strProgramAcronym
     If .lboFeatures.ListCount > 0 Then
       .lboFeatures.Value = .lboFeatures.List(0, 0)
     End If
     'get error-trapping on/off and set toggle button
-    strErrorTrapping = cptGetSetting("General", "ErrorTrapping")
-    If Len(strErrorTrapping) > 0 Then
-      .tglErrorTrapping = strErrorTrapping = 0
-    Else
-      .tglErrorTrapping = False
-    End If
+    .tglErrorTrapping = blnErrorTrapping
     'add options for checking for updates
     For Each vFrequency In Split("0:Never,1:Daily,7:Weekly,14:Biweekly,30:Monthly", ",")
       .cboCheckForUpdates.AddItem
       .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 0) = Split(vFrequency, ":")(0)
       .cboCheckForUpdates.List(.cboCheckForUpdates.ListCount - 1, 1) = Split(vFrequency, ":")(1)
     Next vFrequency
-    strSetting = cptGetSetting("General", "cboCheckForUpdates")
-    If Len(strSetting) > 0 Then
-      .cboCheckForUpdates.Value = CLng(strSetting)
-    Else
-      .cboCheckForUpdates.Value = "30"
-    End If
-    .Frame1.Height = .lboSettings.Height - (.Frame1.Top - .lboSettings.Top)
+    strSetting = cptGetSetting("General", "cboCheckForUpdates", "30")
+    .cboCheckForUpdates.Value = CLng(strSetting)
     strSetting = cptGetSetting("General", "chkUpdateIndicator", 1)
-    .chkUpdateIndicator = CBool(strSetting)
+    .chkUpdateIndicator.Value = CBool(strSetting)
+    strSetting = cptGetSetting("General", "chkProgramHistory", 0)
+    .chkProgramHistory.Value = CBool(strSetting)
+    If CBool(strSetting) = False Then
+      .chkCreateZip.Enabled = False
+    Else
+      strSetting = cptGetSetting("General", "chkCreateZip", 0)
+      .chkCreateZip.Value = CBool(strSetting)
+    End If
+    'tweak UI
+    .Frame1.Height = .lboSettings.Height - (.Frame1.Top - .lboSettings.Top)
     .Show
   End With
   
@@ -4279,6 +4276,7 @@ Sub cptProgramBackup()
   Dim strOutputFile As String
   Dim strProgramAcronym As String
   Dim strHeader As String
+  Dim strMsg As String
   'longs
   Dim lngItem As Long
   Dim lngField As Long
@@ -4286,6 +4284,7 @@ Sub cptProgramBackup()
   'integers
   'doubles
   'booleans
+  Dim blnCreateZip As Boolean
   Dim blnErrorTrapping As Boolean
   'variants
   'dates
@@ -4358,9 +4357,34 @@ Sub cptProgramBackup()
       oRecordset.Close
     End If
   Next lngItem
-
+  
+  'optionally, create a *zip
+  blnCreateZip = CBool(cptGetSetting("General", "chkCreateZip", 0))
+  If blnCreateZip Then
+    Dim oFSO As Scripting.FileSystemObject
+    Dim strCmd As String
+    Dim lngExitCode As Long
+    Set oFSO = CreateObject("Scripting.FileSystemObject")
+    Dim strSourceDirectory As String
+    Dim strParentDirectory As String
+    strSourceDirectory = oFSO.GetAbsolutePathName(strOutputDir)
+    strParentDirectory = oFSO.GetParentFolderName(strSourceDirectory)
+    'todo: revise to include the parent directory in the zip
+    'todo: so that it can be unzipped into a matching, time-stamped directory
+    strCmd = "tar.exe -a -c -f """ & strOutputDir & ".zip" & """ -C """ & strParentDirectory & """ """ & oFSO.GetFileName(strSourceDirectory) & """"
+    lngExitCode = CreateObject("WScript.Shell").Run(strCmd, 0, True)
+    If lngExitCode <> 0 Then
+      MsgBox "Error creating *.zip archive." & vbCrLf & vbCrLf & "Please execute manually.", vbCritical + vbOKOnly, "cptProgramBackup"
+    End If
+    strMsg = "Backup complete for '" & strProgramAcronym & "'." & vbCrLf & vbCrLf & "Open *.zip location now?"
+    strOutputDir = cptDir
+  Else
+    strMsg = "Backup complete for '" & strProgramAcronym & "'." & vbCrLf & vbCrLf & "Open backup directory now?"
+  End If
+  
   Application.StatusBar = "...backup complete for '" & strProgramAcronym & "'"
-  If MsgBox("Backup complete for '" & strProgramAcronym & "'." & vbCrLf & vbCrLf & "Open backup directory now?", vbQuestion + vbYesNo, "cptProgramBackup") = vbYes Then
+  
+  If MsgBox(strMsg, vbQuestion + vbYesNo, "cptProgramBackup") = vbYes Then
     Shell "explorer.exe " & strOutputDir, vbMaximizedFocus
   End If
   
@@ -4374,12 +4398,34 @@ exit_here:
   End If
   Set oRecordset = Nothing
   Set oSettingsFiles = Nothing
-
+  Set oFSO = Nothing
   Exit Sub
 err_here:
   Call cptHandleErr(THIS_MODULE, "cptProgramBackup", Err, Erl)
   Resume exit_here
 
+End Sub
+
+Sub cptProgramRestore()
+  'todo: cptGetFiles (txt,csv,zip)
+  Dim strCmd As String
+  Dim lngExitCode As Long
+  strCmd = "tar.exe -x -f """ & SourceZipFile & """ -C """ & DestinationFolder & """"
+  lngExitCode = CreateObject("WScript.Shell").Run(strCmd, 0, True)
+  If lngExitCode <> 0 Then
+    MsgBox "Error unzipping *.zip archive." & vbCrLf & vbCrLf & "Please execute manually.", vbCritical + vbOKOnly, "cptProgramRestore"
+  End If
+  'todo: enable dry run e.g., "what would be changed? what would be imported?"
+  'todo ini: read txt -> write ini; prompt to overwrite? show a diff?
+    'todo ini: do not import LastCheck settings
+  'todo ini: what if LCF mismatches?
+  'todo csv: what if program name doesn't match?
+  'todo csv: cpt-cei: what if history exists? e.g., "Data exists for PROGRAM STATUS_DATE"
+  'todo csv: data-dictionary: what if LCF mismatches?
+  'todo csv: export-resource: what if LCF mismatches?
+  'todo csv: metrics: what if data exists? "CEI for STATUS_DATE exists!"
+  'todo csv: status-sheet: what if LCF mismatches?
+  'what if users' files haven't been upgraded? cptAddColumnToRecordset
 End Sub
 
 

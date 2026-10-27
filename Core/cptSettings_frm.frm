@@ -24,6 +24,19 @@ Private Sub cboCheckForUpdates_Change()
   End If
 End Sub
 
+Private Sub chkCreateZip_Click()
+  If Not Me.Visible Then Exit Sub
+  cptSaveSetting "General", "chkCreateZip", IIf(Me.chkCreateZip, 1, 0)
+  cptUpdateSetting "General", "chkCreateZip", IIf(Me.chkCreateZip, 1, 0)
+End Sub
+
+Private Sub chkProgramHistory_Click()
+  If Not Me.Visible Then Exit Sub
+  Me.chkCreateZip.Enabled = Me.chkProgramHistory
+  cptSaveSetting "General", "chkProgramHistory", IIf(Me.chkProgramHistory, 1, 0)
+  cptUpdateSetting "General", "chkProgramHistory", IIf(Me.chkProgramHistory, 1, 0)
+End Sub
+
 Private Sub chkUpdateIndicator_Click()
   If Not Me.Visible Then Exit Sub
   cptSaveSetting "General", "chkUpdateIndicator", IIf(Me.chkUpdateIndicator, 1, 0)
@@ -41,6 +54,10 @@ Private Sub chkUpdateIndicator_Click()
   cptSpeed False
 End Sub
 
+Private Sub cmdBackup_Click()
+  cptProgramBackup
+End Sub
+
 Private Sub cmdDone_Click()
   Me.Hide
 End Sub
@@ -56,6 +73,10 @@ Private Sub cmdEdit_Click()
     strFileName = Replace(Me.lblDir.Caption, "%USERPROFILE%", Environ("USERPROFILE")) 'cptDir & "\settings\cpt-settings.ini"
     cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
   End If
+End Sub
+
+Private Sub cmdRestore_Click()
+  cptProgramRestore
 End Sub
 
 Private Sub cmdSetProgramAcronym_Click()
@@ -295,11 +316,15 @@ Sub cptUpdateSetting(strFeature As String, strKey As String, strVal As String)
       For lngItem = 0 To Me.lboFeatures.ListCount - 1
         strFeatures = strFeatures & Me.lboFeatures.List(lngItem) & ","
       Next lngItem
-      strFeatures = strFeatures & "General"
+      If InStr(strFeatures, "General (U)") = 0 Then
+        strFeatures = strFeatures & "General (U)"
+      Else
+        strFeatures = Left(strFeatures, Len(strFeatures) - 1) 'hack off trailing ,
+      End If
       vFeatures = Split(strFeatures, ",")
       cptQuickSort vFeatures, 0, UBound(vFeatures)
       Me.lboFeatures.List = vFeatures
-      Me.lboFeatures.Value = "General"
+      Me.lboFeatures.Value = "General (U)"
     End If
     .Save strFileName, adPersistADTG
     .Close
