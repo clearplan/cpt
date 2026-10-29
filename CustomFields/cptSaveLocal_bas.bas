@@ -502,6 +502,149 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   Application.StatusBar = "ECF > LCF | " & Format(Now - tmr, "hh:nn:ss")
   MsgBox "Enteprise Custom Fields saved locally." & vbCrLf & vbCrLf & "Time: " & Format(Now - tmr, "hh:nn:ss"), vbInformation + vbOKOnly, "Complete"
   'todo: run a validator using mapedit
+  If MsgBox("Validate now?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
+    Dim oExcel As Excel.Application
+    Dim oWorkbook As Excel.Workbook
+    Dim oWorksheet As Excel.Worksheet
+    Dim lngLastRow As Long
+    Dim blnIgnoreMismatch As Boolean
+    Dim oComment As Excel.Comment
+    Application.ScreenUpdating = True
+    Set oExcel = CreateObject("Excel.Application")
+    oExcel.Visible = True
+    Set oWorkbook = oExcel.Workbooks.Add
+    Set oWorksheet = oWorkbook.Sheets(1)
+    oWorksheet.[A1:D1] = Split("ECF,ECF NAME,LCF,LCF NAME", ",")
+    For lngItem = 0 To mySaveLocal_frm.lboECF.ListCount - 1
+      If mySaveLocal_frm.lboECF.List(lngItem, 3) <> "" Then 'capture it
+        lngLastRow = oWorksheet.[A1048576].End(xlUp).Row + 1
+        lngECF = CLng(mySaveLocal_frm.lboECF.List(lngItem, 0))
+        strECF = mySaveLocal_frm.lboECF.List(lngItem, 1)
+        lngLCF = mySaveLocal_frm.lboECF.List(lngItem, 3)
+        strLCF = mySaveLocal_frm.lboECF.List(lngItem, 4)
+        oWorksheet.Cells(lngLastRow, 1) = lngECF
+        oWorksheet.Cells(lngLastRow, 2) = strECF
+        oWorksheet.Cells(lngLastRow, 3) = lngLCF
+        oWorksheet.Cells(lngLastRow, 4) = strLCF
+      End If
+    Next lngItem
+    oExcel.ActiveWindow.Zoom = 85
+    oWorksheet.Columns.AutoFit
+    blnIgnoreMismatch = False
+    For Each oSubproject In oMaster.Subprojects
+      oWorksheet.Cells(1, 4 + oSubproject.Index) = oSubproject.InsertedProjectSummary.Name
+      Set oProject = oSubproject.SourceProject
+      oProject.Activate
+      FilterClear
+      GroupClear
+      OptionsViewEx DisplaySummaryTasks:=True
+      OutlineShowAllTasks
+      Application.DisplayAlerts = False
+      For lngItem = 2 To lngLastRow
+        lngECF = oWorksheet.Cells(lngItem, 1)
+        strECF = oWorksheet.Cells(lngItem, 2)
+        lngLCF = oWorksheet.Cells(lngItem, 3)
+        strLCF = oWorksheet.Cells(lngItem, 4)
+        If CustomFieldGetName(lngLCF) <> strLCF Then
+          If blnIgnoreMismatch = False Then
+            strMsg = "Heads up: naming convention mismatch!" & vbCrLf & vbCrLf
+            strMsg = strMsg & "MASTER: " & oMaster.Name & vbCrLf
+            strMsg = strMsg & "CUSTOM FIELD: " & FieldConstantToFieldName(lngLCF) & vbCrLf
+            strMsg = strMsg & "CUSTOM FIELD NAME: " & vbCrLf & strLCF & vbCrLf & vbCrLf
+            strMsg = strMsg & "SUBPROJECT: " & oSubproject.InsertedProjectSummary.Name & vbCrLf
+            strMsg = strMsg & "CUSTOM FIELD: " & FieldConstantToFieldName(lngLCF) & vbCrLf
+            strMsg = strMsg & "CUSTOM FIELD NAME: " & vbCrLf & CustomFieldGetName(lngLCF) & vbCrLf & vbCrLf
+            strMsg = strMsg & "This may cause inaccuracies. Do you care? (Click No to ignore these messages.)"
+            If MsgBox(strMsg, vbExclamation + vbYesNo, "ECF > LCF") = vbNo Then blnIgnoreMismatch = True
+          End If
+          'add a comment
+          Set oComment = Nothing
+          oWorksheet.Cells(lngItem, 4 + oSubproject.Index).AddComment FieldConstantToFieldName(lngLCF) & " is wrongly named '" & CustomFieldGetName(lngLCF) & "'"
+          Set oComment = oWorksheet.Cells(lngItem, 4 + oSubproject.Index).Comment
+          oComment.Shape.TextFrame.AutoSize = True
+          oComment.Shape.TextFrame.Characters(1, 100).Font.Bold = False
+        End If
+        On Error Resume Next
+        If Not FilterEdit(Name:="cpt-validate", TaskFilter:=True, Create:=True, FieldName:=FieldConstantToFieldName(lngLCF), Test:="does not equal", Value:="[" & CustomFieldGetName(lngECF) & " (Enterprise)]", ShowSummaryTasks:=False) Then
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+          oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = "X"
+          Set oComment = Nothing
+          On Error Resume Next
+          Set oComment = oWorksheet.Cells(lngItem, 4 + oSubproject.Index).Comment
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+          strMsg = "Unable to apply filter."
+          If oComment Is Nothing Then
+            oWorksheet.Cells(lngItem, 4 + oSubproject.Index).AddComment strMsg
+            Set oComment = oWorksheet.Cells(lngItem, 4 + oSubproject.Index).Comment
+          Else
+            oComment.Text oComment.Text & vbCrLf & strMsg
+          End If
+          oComment.Shape.TextFrame.AutoSize = True
+          oComment.Shape.TextFrame.Characters(1, 100).Font.Bold = False
+        Else
+          Set oTasks = Nothing
+          FilterApply "cpt-validate"
+          SelectAll
+          On Error Resume Next
+          Set oTasks = ActiveSelection.Tasks
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+          If Not oTasks Is Nothing Then
+            Application.ActiveWindow.WindowState = pjMaximized
+            oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = oTasks.Count
+          Else
+            oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = 0
+          End If
+        End If
+      Next lngItem
+      Application.ActiveWindow.WindowState = pjNormal
+    Next oSubproject
+    Application.DisplayAlerts = True
+    'make it nice
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
+    oWorksheet.Range(oWorksheet.[E1], oWorksheet.[E1].End(xlToRight)).Orientation = 90
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).VerticalAlignment = xlCenter
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).HorizontalAlignment = xlCenter
+    oWorksheet.Range(oWorksheet.[A1].End(xlDown), oWorksheet.[A1].End(xlToRight)).Columns.AutoFit
+    oWorksheet.Range(oWorksheet.[E2].End(xlDown), oWorksheet.[E2].End(xlToRight)).HorizontalAlignment = xlCenter
+    cptAddBorders oWorksheet.Range(oWorksheet.[A1].End(xlDown), oWorksheet.[A1].End(xlToRight))
+    cptAddBorders oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
+    cptAddShading oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight))
+    oExcel.ActiveWindow.DisplayGridlines = False
+    oExcel.ActiveWindow.SplitRow = 1
+    oExcel.ActiveWindow.SplitColumn = 0
+    oExcel.ActiveWindow.FreezePanes = True
+    'conditional formatting
+    With oWorksheet.Range(oWorksheet.[E2].End(xlDown), oWorksheet.[E2].End(xlToRight))
+      .FormatConditions.Add Type:=xlCellValue, Operator:=xlGreater, Formula1:="=0"
+      .FormatConditions(.FormatConditions.Count).SetFirstPriority
+      With .FormatConditions(1).Font
+        .Color = -16383844
+        .TintAndShade = 0
+      End With
+      With .FormatConditions(1).Interior
+        .PatternColorIndex = xlAutomatic
+        .Color = 13551615
+        .TintAndShade = 0
+      End With
+      .FormatConditions(1).StopIfTrue = False
+      .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=0"
+      .FormatConditions(.FormatConditions.Count).SetFirstPriority
+      With .FormatConditions(1).Font
+        .Color = -16752384
+        .TintAndShade = 0
+      End With
+      With .FormatConditions(1).Interior
+        .PatternColorIndex = xlAutomatic
+        .Color = 13561798
+        .TintAndShade = 0
+      End With
+      .FormatConditions(1).StopIfTrue = False
+    End With
+    Set oComment = Nothing
+    Set oWorksheet = Nothing
+    Set oWorkbook = Nothing
+    Set oExcel = Nothing
+  End If
   mySaveLocal_frm.lblStatus.Caption = "Ready..."
 
 exit_here:
@@ -851,6 +994,9 @@ End Sub
 
 Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, lngLCF As Long)
   'objects
+  Dim oMaster As MSProject.Project
+  Dim oSubproject As MSProject.SubProject
+  Dim oProject As MSProject.Project
   Dim rstSavedMap As ADODB.Recordset
   Dim oLookupTableEntry As LookupTableEntry
   Dim oOutlineCodeLocal As OutlineCode
@@ -867,6 +1013,7 @@ Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, ln
   Dim strECF As String
   Dim strFN As String
   Dim strCFN As String
+  Dim strMsg As String
   'longs
   Dim lngSourceField As Long
   Dim lngItem As Long
@@ -875,8 +1022,10 @@ Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, ln
   'integers
   'doubles
   'booleans
+  Dim blnRename As Boolean
   Dim blnErrorTrapping As Boolean
   Dim blnProceed As Boolean
+  Dim blnRenameOnly As Boolean
   'variants
   Dim vField As Variant
   'dates
@@ -893,7 +1042,6 @@ Sub cptMapECFtoLCF(ByRef mySaveLocal_frm As cptSaveLocal_frm, lngECF As Long, ln
       If .lboECF.List(lngItem, 3) = lngLCF Then
         If .lboECF.List(lngItem, 0) = lngECF Then
           'just rename
-          Dim blnRenameOnly As Boolean
           blnRenameOnly = True
           GoTo rename_it 'already mapped
         End If
@@ -924,34 +1072,59 @@ next_ecf:
 rename_it:
     
     'capture rename
+    Set oMaster = ActiveProject
     strRenamingConvention = Replace(.txtRenamingConvention, "[ECF]", CustomFieldGetName(lngECF)) 'todo: this might need FieldConstantToFieldName() instead - test it
     strRenamingConvention = Replace(strRenamingConvention, "[LCF]", FieldConstantToFieldName(lngLCF))
-    If CustomFieldGetName(lngLCF) = strRenamingConvention Then GoTo skip_rename
     strFN = FieldConstantToFieldName(lngLCF)
     strCFN = CustomFieldGetName(lngLCF)
-    If Len(strCFN) > 0 Then 'CFN exists confirm overwrite
-      If MsgBox("Rename " & strCFN & " (" & strFN & ") to " & strRenamingConvention & "?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
-        'rename it
-        CustomFieldRename CLng(lngLCF), strRenamingConvention 'CustomFieldGetName(lngECF) & " (" & FieldConstantToFieldName(lngLCF) & ")"
-        'rename in lboLCF
-        If Not .tglAutoMap Then
-          .lboLCF.List(.lboLCF.ListIndex, 1) = FieldConstantToFieldName(lngLCF) & " (" & CustomFieldGetName(lngLCF) & ")"
-          .lboECF.List(.lboECF.ListIndex, 4) = CustomFieldGetName(lngLCF)
-        End If
-      Else
-        GoTo exit_here
+    blnRename = True
+    If Len(strCFN) > 0 And strCFN <> strRenamingConvention Then 'CFN exists confirm overwrite
+      strMsg = "In " & oMaster.Name & ":" & vbCrLf
+      strMsg = strMsg & "Rename " & strFN & vbCrLf
+      strMsg = strMsg & "FROM:" & vbCrLf
+      strMsg = strMsg & strCFN & vbCrLf
+      strMsg = strMsg & "TO:" & vbCrLf
+      strMsg = strMsg & strRenamingConvention & vbCrLf & vbCrLf
+      strMsg = strMsg & "Are you sure?"
+      If MsgBox(strMsg, vbQuestion + vbYesNo, "ECF > LCF") = vbNo Then
+        blnRename = False
       End If
-    Else
+    End If
+    If blnRename Then
       ActiveWindow.TopPane.Activate
-      'rename it in msp
-      CustomFieldRename lngLCF, strRenamingConvention 'CustomFieldGetName(lngECF) & " (" & FieldConstantToFieldName(lngLCF) & ")"
+      'rename it in master
+      CustomFieldRename lngLCF, strRenamingConvention
       'rename it in lboLCF
       If Not .tglAutoMap Then
         .lboLCF.List(.lboLCF.ListIndex, 1) = FieldConstantToFieldName(.lboLCF) & " (" & CustomFieldGetName(.lboLCF) & ")"
         .lboECF.Value = lngECF
         .lboECF.List(.lboECF.ListIndex, 4) = CustomFieldGetName(lngLCF)
       End If
+      'also rename in subprojects
+      For Each oSubproject In oMaster.Subprojects
+        Set oProject = oSubproject.SourceProject
+        oProject.Activate
+        strFN = FieldConstantToFieldName(lngLCF)
+        strCFN = CustomFieldGetName(lngLCF)
+        blnRename = True
+        If Len(strCFN) > 0 And strCFN <> strRenamingConvention Then
+          strMsg = "In " & oProject.Name & ":" & vbCrLf
+          strMsg = strMsg & "Rename " & strFN & vbCrLf
+          strMsg = strMsg & "FROM:" & vbCrLf
+          strMsg = strMsg & strCFN & vbCrLf
+          strMsg = strMsg & "TO:" & vbCrLf
+          strMsg = strMsg & strRenamingConvention & vbCrLf & vbCrLf
+          strMsg = strMsg & "Are you sure?"
+          If MsgBox(strMsg, vbQuestion + vbYesNo, "ECF > LCF") = vbNo Then
+            MsgBox "Different LCF names in subprojects may cause inconsistencies.", vbInformation + vbOKOnly, "ECF > LCF"
+            blnRename = False
+          End If
+        End If
+        If blnRename Then CustomFieldRename lngLCF, strRenamingConvention
+      Next oSubproject
+      oMaster.Activate
     End If
+
     If blnRenameOnly Then GoTo update_table
     
 skip_rename:
@@ -1099,7 +1272,9 @@ exit_here:
   Set rstSavedMap = Nothing
   Set oLookupTableEntry = Nothing
   Set oOutlineCodeLocal = Nothing
-
+  Set oProject = Nothing
+  Set oSubproject = Nothing
+  Set oMaster = Nothing
   Exit Sub
 err_here:
   Call cptHandleErr(THIS_MODULE, "cptMapECFtoLCF", Err, Erl)
