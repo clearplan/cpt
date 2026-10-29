@@ -29,6 +29,7 @@ Sub cptShowSaveLocal_frm()
   Dim lngFile As Long
   Dim lngECF As Long
   Dim lngLCF As Long
+  Dim lngSubproject As Long
   Dim lngSubprojectCount As Long
   Dim lngField As Long
   Dim lngType As Long
@@ -66,7 +67,7 @@ Sub cptShowSaveLocal_frm()
   End If
   
   cptSpeed True
-  
+    
   'check for saved map
   strDir = cptDir
   strSavedMap = strDir & "\settings\cpt-save-local.adtg"
@@ -108,8 +109,28 @@ Sub cptShowSaveLocal_frm()
   'if master/sub then ensure LCFs match
   lngSubprojectCount = ActiveProject.Subprojects.Count
   If lngSubprojectCount > 0 Then
-    If MsgBox(lngSubprojectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "Master/Sub Detected") = vbYes Then
+    If MsgBox(lngSubprojectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "ECF > LCF") = vbYes Then
       cptAlignLCF ActiveProject
+    ElseIf MsgBox("...LCF Analysis skipped." & vbCrLf & vbCrLf & "Open all subprojects now (required)?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
+      Dim tmr As Date
+      Dim oMaster As MSProject.Project
+      Set oMaster = ActiveProject
+      Dim oSubproject As MSProject.SubProject
+      tmr = Now
+      lngSubproject = 0
+      For Each oSubproject In oMaster.Subprojects
+        lngSubproject = lngSubproject + 1
+        Application.StatusBar = oSubproject.InsertedProjectSummary.Name & ": opening...(" & lngSubproject & "/" & lngSubprojectCount & ") | " & Format(Now - tmr, "hh:nn:ss")
+        FileOpenEx Name:=oSubproject.SourceProject.FullName, ReadOnly:=CBool(oMaster.ReadOnly)
+        On Error Resume Next
+        ActiveWindow.BottomPane.Close
+        If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+        Application.StatusBar = oSubproject.InsertedProjectSummary.Name & ": opening...(" & lngSubproject & "/" & lngSubprojectCount & ") | " & Format(Now - tmr, "hh:nn:ss")
+      Next oSubproject
+      oMaster.Activate
+      Application.WindowArrangeAll
+    Else
+      GoTo exit_here
     End If
   End If
   
@@ -119,7 +140,7 @@ Sub cptShowSaveLocal_frm()
   strStartTable = ActiveProject.CurrentTable
   strStartFilter = ActiveProject.CurrentFilter
   strStartGroup = ActiveProject.CurrentGroup
-    
+  
   'prepare to capture all ECFs
   Set rstECF = CreateObject("ADODB.Recordset")
   rstECF.Fields.Append "URL", adVarChar, 255
@@ -133,7 +154,9 @@ Sub cptShowSaveLocal_frm()
   
   'create a dummy task to interrogate the ECFs
   Set oTask = ActiveProject.Tasks.Add("<dummy for cpt-save-local>")
+  Application.StatusBar = "Calculating project... | " & Format(Now - tmr, "hh:nn:ss")
   Application.CalculateProject
+  Application.StatusBar = "Calculating project...done. | " & Format(Now - tmr, "hh:nn:ss")
   
   'setup array of types/counts
   Set dTypes = CreateObject("Scripting.Dictionary")
@@ -155,6 +178,7 @@ Sub cptShowSaveLocal_frm()
     .cboLCF.Clear
     .cboECF.Clear
     .cboECF.AddItem "All Types"
+    Application.StatusBar = "Capturing LCFs... | " & Format(Now - tmr, "hh:nn:ss")
     For lngType = 0 To dTypes.Count - 1
       If dTypes.Keys(lngType) = "Start" Or dTypes.Keys(lngType) = "Finish" Then GoTo next_type
       .cboLCF.AddItem
@@ -165,6 +189,7 @@ Sub cptShowSaveLocal_frm()
       .cboECF.List(.cboECF.ListCount - 1, 1) = dTypes.Items(lngType)
 next_type:
     Next lngType
+    Application.StatusBar = "Capturing LCFs...done. | " & Format(Now - tmr, "hh:nn:ss")
     .cboECF.AddItem "undetermined"
     .cmdAutoMap.Enabled = False
     .tglAutoMap = False
@@ -178,22 +203,21 @@ next_type:
       .txtRenamingConvention = "[ECF] ([LCF])" 'default
     End If
     
-    'cptUpdateECF mySaveLocal_frm
-    'cptUpdateLCF mySaveLocal_frm
-    'cptUpdateSaveLocalView mySaveLocal_frm
-    
     'get enterprise custom task fields
+    Application.StatusBar = "Capturing ECFs... | " & Format(Now - tmr, "hh:nn:ss")
     For lngField = 188776000 To 188778000 '2000 should do it for now
       If FieldConstantToFieldName(lngField) <> "<Unavailable>" Then
         strECF = FieldConstantToFieldName(lngField)
+        Application.StatusBar = "Analysing ECF '" & strECF & "'... | " & Format(Now - tmr, "hh:nn:ss")
         strDataType = cptInterrogateECF(oTask, lngField)
+        Application.StatusBar = "Analysing ECF '" & strECF & "'...done. | " & Format(Now - tmr, "hh:nn:ss")
         rstECF.AddNew Array("URL", "PROGRAM_ACRONYM", "DATA_TYPE", "ECF", "ECF_Name"), Array(strServerURL, strProgramAcronym, strDataType, lngField, FieldConstantToFieldName(lngField))
         lngECFCount = lngECFCount + 1
       End If
-      .lblStatus.Caption = "Analyzing Task ECFs...(" & Format(((lngField - 188776000) / (188778000 - 188776000)), "0%") & ")"
-      .lblProgress.Width = ((lngField - 188776000) / (188778000 - 188776000)) * .lblStatus.Width
+      Application.StatusBar = "Capturing ECFs...(" & Format(((lngField - 188776000) / (188778000 - 188776000)), "0%") & ") | " & Format(Now - tmr, "hh:nn:ss")
       DoEvents
     Next lngField
+    Application.StatusBar = "Capturing ECFs...done. | " & Format(Now - tmr, "hh:nn:ss")
   
     oTask.Delete
   
@@ -211,8 +235,9 @@ next_type:
     cptUpdateSaveLocalView mySaveLocal_frm
     
     DoEvents
-    
+    'Debug.Print "Turning off cptSpeed... | " & Format(Now - tmr, "hh:nn:ss")
     cptSpeed False
+    'Debug.Print "Turning off cptSpeed...done. | " & Format(Now - tmr, "hh:nn:ss")
     .Show 'modal to control changes to custom fields
   End With
 
@@ -229,7 +254,8 @@ exit_here:
   Set rstECF = Nothing
   If oSavedMap.State Then oSavedMap.Close
   Set oSavedMap = Nothing
-
+  Set oSubproject = Nothing
+  Set oMaster = Nothing
   Exit Sub
 err_here:
   Call cptHandleErr(THIS_MODULE, "cptShowSaveLocal_frm", Err, Erl)
@@ -238,11 +264,14 @@ End Sub
 
 Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   'objects
+  Dim oMaster As MSProject.Project
+  Dim oSubproject As MSProject.SubProject
+  Dim oProject As MSProject.Project
   Dim oSavedMap As ADODB.Recordset
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
-  Dim oSkipped As Scripting.Dictionary
   'strings
+  Dim strSetting As String
   Dim strExportMapName As String
   Dim strImportMapName As String
   Dim strErrors As String
@@ -269,6 +298,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   Dim blnMaster As Boolean
   Dim blnErrorTrapping As Boolean
   Dim blnClearExisting As Boolean
+  Dim blnShowStatusBarTaskCount As Boolean
+  Dim blnShowStatusBarFiscalPeriodCount As Boolean
   'variants
   Dim vMap As Variant
   'dates
@@ -280,6 +311,25 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   blnMaster = ActiveProject.Subprojects.Count > 0
+  If blnMaster Then Set oMaster = ActiveProject
+  
+  'capture cpt-related settings
+  strSetting = cptGetSetting("Count", "blnShowStatusBarTaskCount")
+  If Len(strSetting) > 0 Then
+    blnShowStatusBarTaskCount = CBool(strSetting)
+  Else
+    blnShowStatusBarTaskCount = False
+  End If
+  
+  strSetting = cptGetSetting("Fiscal", "chkShowStatusBarFiscalPeriodCount")
+  If Len(strSetting) > 0 Then
+    blnShowStatusBarFiscalPeriodCount = CBool(strSetting)
+  Else
+    blnShowStatusBarFiscalPeriodCount = False
+  End If
+  'turn them off temporarily
+  cptSaveSetting "Count", "blnShowStatusBarTaskCount", 0
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", 0
   
   strServerURL = Application.Profiles.ActiveProfile.Server
   strProgramAcronym = cptGetProgramAcronym
@@ -297,8 +347,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   End If
   'get total task count
   ActiveWindow.TopPane.Activate
-  If ActiveProject.CurrentView <> ".cptSaveLocal View" Then
-    ViewApply ".cptSaveLocal View"
+  If ActiveProject.CurrentView <> VIEW_NAME Then
+    ViewApply VIEW_NAME
   End If
   FilterClear
   GroupClear
@@ -320,10 +370,41 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     GoTo exit_here
   End If
   
+  'create map for export
+  strExportMapName = "cpt-ecf-to-lcf-export-map"
+  Application.MapEdit Name:=strExportMapName, Create:=True, OverwriteExisting:=True, _
+                      DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
+                      FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
+                      ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, _
+                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, _
+                      UseHtmlTemplate:=False, IncludeImage:=False
+  
+  'create map for import
+  strImportMapName = "cpt-ecf-to-lcf-import-map"
+  Application.MapEdit Name:=strImportMapName, Create:=True, OverwriteExisting:=True, _
+                      DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
+                      FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
+                      ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, _
+                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, _
+                      UseHtmlTemplate:=False, IncludeImage:=False
+  
+  'loop through map and add
+  oSavedMap.Filter = 0
+  oSavedMap.Filter = "PROGRAM_ACRONYM='" & strProgramAcronym & "'"
+  If oSavedMap.EOF Then GoTo exit_here
+  oSavedMap.MoveFirst
+  Do While Not oSavedMap.EOF
+    strECF = FieldConstantToFieldName(oSavedMap(2))
+    strLCF = FieldConstantToFieldName(oSavedMap(3))
+    Application.MapEdit Name:=strExportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strECF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
+    Application.MapEdit Name:=strImportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strLCF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
+    oSavedMap.MoveNext
+  Loop
+  
   cptSpeed True 'speed it up
   
   OptionsViewEx ProjectSummary:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False, DisplayExternalSuccessors:=False, DisplayExternalPredecessors:=False
-  
+  blnClearExisting = MsgBox("Clear existing LCF data first? (recommended)", vbQuestion + vbYesNo, "ECF > LCF") = vbYes
   With mySaveLocal_frm
     'get count of mapped
     lngItems = .lboECF.ListCount - 1
@@ -333,91 +414,49 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
       End If
     Next lngItem
     If blnMaster Then
-      Set oSkipped = CreateObject("Scripting.Dictionary")
-      For lngItem = 0 To lngItems
-        If .lboECF.List(lngItem, 3) > 0 Then
-          lngECF = .lboECF.List(lngItem, 0)
-          lngLCF = .lboECF.List(lngItem, 3)
-          'if ECF is formula, then skip it - already built it with cmdMap
-          If Len(CustomFieldGetFormula(lngECF)) > 0 Then GoTo next_mapped_master
-          FilterClear
-          SelectAll
-          SetField FieldConstantToFieldName(lngLCF), vbNullString
-          'todo: filter out external?
-          SetAutoFilter FieldConstantToFieldName(lngECF), pjAutoFilterCustom, "does not equal", ""
-          SelectAll
-          On Error Resume Next
-          Set oTasks = ActiveSelection.Tasks
-          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          If oTasks Is Nothing Then
-            'error - ECF had no values?
-            GoTo next_mapped_master
+      For Each oSubproject In oMaster.Subprojects
+        Application.StatusBar = "Opening " & oSubproject.InsertedProjectSummary.Name & " | " & Format(Now - tmr, "hh:nn:ss")
+        FileOpenEx Name:=oSubproject.SourceProject.FullName, ReadOnly:=CBool(oMaster.ReadOnly)
+        cptUpdateSaveLocalView mySaveLocal_frm, blnReset:=True
+        OptionsViewEx ProjectSummary:=False, DisplayNameIndent:=False, DisplaySummaryTasks:=False, DisplayExternalSuccessors:=False, DisplayExternalPredecessors:=False
+        oSavedMap.MoveFirst
+        Do While Not oSavedMap.EOF
+          strECF = FieldConstantToFieldName(oSavedMap(2))
+          strLCF = FieldConstantToFieldName(oSavedMap(3))
+          If blnClearExisting Then
+            Application.StatusBar = oSubproject.InsertedProjectSummary.Name & ": clearing LCF '" & strLCF & "' | " & Format(Now - tmr, "hh:nn:ss")
+            SelectTaskColumn strLCF
+            SetTaskField strLCF, "", True
           End If
-          lngTask = 0
-          On Error Resume Next
-          lngTaskCount = oTasks.Count
-          For Each oTask In oTasks
-            If oTask Is Nothing Then GoTo next_task_master
-            If oTask.ExternalTask Then GoTo next_task_master
-            If oSkipped.Exists(oTask.SubProject & "|" & lngLCF) Then GoTo next_task_master
-            strECF = CStr(oTask.GetField(lngECF))
-            On Error Resume Next
-            oTask.SetField lngLCF, strECF
-            If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-            strLCF = CStr(oTask.GetField(lngLCF))
-            If strLCF <> strECF Then
-              Find "Unique ID", "equals", oTask.UniqueID
-              strErrors = strErrors & oTask.Project & "," & oTask.UniqueID & "," & CustomFieldGetName(lngECF) & "," & CustomFieldGetName(lngLCF) & "," & FieldConstantToFieldName(lngLCF) & vbCrLf
-              strMsg = "PROJECT: " & oTask.Project & vbCrLf
-              strMsg = strMsg & "TASK: " & oTask.UniqueID & vbCrLf & vbCrLf
-              strMsg = strMsg & "Error copying from ECF '" & CustomFieldGetName(lngECF) & "' to LCF '" & CustomFieldGetName(lngLCF) & "' (" & FieldConstantToFieldName(lngLCF) & ")" & vbCrLf & vbCrLf
-              strMsg = strMsg & "- ensure data type (e.g., 'Text' cannot be copied into 'Number')" & vbCrLf
-              strMsg = strMsg & "- ensure pick-lists match" & vbCrLf
-              strMsg = strMsg & "- ensure no formula in LC" & vbCrLf & vbCrLf
-              strMsg = strMsg & "Proceed anyway?" & vbCrLf & vbCrLf
-              If oSkipped.Count > 0 Then
-                strMsg = strMsg & "(You have " & oSkipped.Count & " SUBPROJECT-LCF pairs so far.)" & vbCrLf & vbCrLf
-              End If
-              strMsg = strMsg & "YES: Skip this SUBPROJECT-LCF pairing and keep going" & vbCrLf
-              strMsg = strMsg & "NO: Exit this process"
-              If MsgBox(strMsg, vbExclamation + vbYesNo, "Failed!") = vbYes Then
-                oSkipped.Add oTask.SubProject & "|" & lngLCF, FieldConstantToFieldName(lngLCF) & "," & CustomFieldGetName(lngLCF)
-              Else
-                GoTo exit_here
-              End If
-            End If
-next_task_master:
-            lngTask = lngTask + 1
-            Application.StatusBar = "Processing '" & CustomFieldGetName(lngECF) & "'... " & Format(lngMapped, "#,##0") & " / " & Format(lngMappedCount, "#,##0") & " (" & Format(lngMapped / lngMappedCount, "0%") & ") | Task " & Format(lngTask, "#,##0") & " / " & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(Now - tmr, "hh:nn:ss")
-            DoEvents
-          Next oTask
-          lngMapped = lngMapped + 1
+          oSavedMap.MoveNext
+        Loop
+        'export to csv
+        Application.StatusBar = oSubproject.InsertedProjectSummary.Name & ": exporting ECFs " & oSubproject.InsertedProjectSummary.Name & " | " & Format(Now - tmr, "hh:nn:ss")
+        strFileName = Environ("TMP") & "\cpt-ecf-to-lcf.csv"
+        If Dir(strFileName) <> vbNullString Then Kill strFileName
+        ActiveProject.SaveAs strFileName, Format:=pjCSV, FormatID:="MSProject.csv", Map:=strExportMapName
+        
+        'import the csv
+        Application.StatusBar = oSubproject.InsertedProjectSummary.Name & ": importing LCFs " & oSubproject.InsertedProjectSummary.Name & " | " & Format(Now - tmr, "hh:nn:ss")
+        FileOpenEx Name:=strFileName, ReadOnly:=False, Merge:=pjMerge, Map:=strImportMapName
+        
+        'delete the csv
+        Kill strFileName
+        
+        'todo: capture starting view
+        'todo: restore starting view
+        'todo: delete view and table from subproject
+      Next oSubproject
+      Application.StatusBar = "ECF > LCF | " & Format(Now - tmr, "hh:nn:ss")
+      oMaster.Activate
+      'delete the maps
+      For Each vMap In Array(strExportMapName, strImportMapName)
+        If Not OrganizerDeleteItem(Type:=pjMaps, FileName:=ThisProject.Name, Name:=CStr(vMap)) Then
+          MsgBox "Could not delete the map '" & vMap & "' - please delete manually using the Organizer.", vbExclamation + vbOKOnly, "ECF to LCF"
         End If
-next_mapped_master:
-        Application.StatusBar = "Processing... " & Format(lngMapped, "#,##0") & " / " & Format(lngMappedCount, "#,##0") & " (" & Format(lngMapped / lngMappedCount, "0%") & ") | " & Format(Now - tmr, "hh:nn:ss")
-        DoEvents
-      Next lngItem
-      FilterClear
+      Next vMap
+      
     Else
-      blnClearExisting = MsgBox("Clear existing LCF data first?", vbQuestion + vbYesNo, "Please confirm:") = vbYes
-      'create map for export
-      strExportMapName = "cpt-ecf-to-lcf-export-map"
-      Application.MapEdit Name:=strExportMapName, Create:=True, OverwriteExisting:=True, _
-                          DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
-                          FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
-                          ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, _
-                          HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, _
-                          UseHtmlTemplate:=False, IncludeImage:=False
-      
-      'create map for import
-      strImportMapName = "cpt-ecf-to-lcf-import-map"
-      Application.MapEdit Name:=strImportMapName, Create:=True, OverwriteExisting:=True, _
-                          DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
-                          FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
-                          ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, _
-                          HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, _
-                          UseHtmlTemplate:=False, IncludeImage:=False
-      
       'loop through map and add
       oSavedMap.Filter = 0
       oSavedMap.Filter = "PROGRAM_ACRONYM='" & strProgramAcronym & "'"
@@ -427,11 +466,10 @@ next_mapped_master:
         strECF = FieldConstantToFieldName(oSavedMap(2))
         strLCF = FieldConstantToFieldName(oSavedMap(3))
         If blnClearExisting Then
+          Application.StatusBar = "Clearing LCF '" & strLCF & "' | " & Format(Now - tmr, "hh:nn:ss")
           SelectTaskColumn strLCF
           SetTaskField strLCF, "", True
         End If
-        Application.MapEdit Name:=strExportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strECF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
-        Application.MapEdit Name:=strImportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strLCF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
         oSavedMap.MoveNext
       Loop
       'export to csv
@@ -444,7 +482,7 @@ next_mapped_master:
       
       'delete the maps
       For Each vMap In Array(strExportMapName, strImportMapName)
-        If Not OrganizerDeleteItem(Type:=pjMaps, FileName:="Global (+ non-cached Enterprise)", Name:=CStr(vMap)) Then
+        If Not OrganizerDeleteItem(Type:=pjMaps, FileName:=ThisProject.Name, Name:=CStr(vMap)) Then
           MsgBox "Could not delete the map '" & vMap & "' - please delete manually using the Organizer.", vbExclamation + vbOKOnly, "ECF to LCF"
         End If
       Next vMap
@@ -461,24 +499,18 @@ next_mapped_master:
 
   oSavedMap.Filter = 0
   oSavedMap.Save strSavedMap, adPersistADTG
-
+  Application.StatusBar = "ECF > LCF | " & Format(Now - tmr, "hh:nn:ss")
   MsgBox "Enteprise Custom Fields saved locally." & vbCrLf & vbCrLf & "Time: " & Format(Now - tmr, "hh:nn:ss"), vbInformation + vbOKOnly, "Complete"
+  'todo: run a validator using mapedit
   mySaveLocal_frm.lblStatus.Caption = "Ready..."
 
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
+  'restore cpt-related settings
+  cptSaveSetting "Count", "blnShowStatusBarTaskCount", IIf(blnShowStatusBarTaskCount, 1, 0)
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", IIf(blnShowStatusBarFiscalPeriodCount, 1, 0)
   cptSpeed False
-  If oSkipped.Count > 0 Then
-    lngFile = FreeFile
-    strFileName = Environ("TMP") & "\cpt-ecf-to-lcf-skipped.txt"
-    Print #lngFile, "SUBPROJECT,FIELD_CONSTANT,FIELD_NAME,CUSTOM_FIELD_NAME"
-    For lngItem = 0 To oSkipped.Count - 1
-      Print #lngFile, Replace(oSkipped.Keys(lngItem), "|", ",") & "," & oSkipped.Items(lngItem)
-    Next lngItem
-    Close #lngFile
-    cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
-  End If
-  Set oSkipped = Nothing
   If Len(strErrors) > 0 Then
     lngFile = FreeFile
     strFileName = Environ("TMP") & "\cpt-ecf-to-lcf-errors.txt"
@@ -493,6 +525,9 @@ exit_here:
   Set oSavedMap = Nothing
   Set oTask = Nothing
   Set oTasks = Nothing
+  Set oSubproject = Nothing
+  Set oProject = Nothing
+  Set oMaster = Nothing
 
   Exit Sub
 err_here:
@@ -895,7 +930,7 @@ rename_it:
     strFN = FieldConstantToFieldName(lngLCF)
     strCFN = CustomFieldGetName(lngLCF)
     If Len(strCFN) > 0 Then 'CFN exists confirm overwrite
-      If MsgBox("Rename " & strCFN & " (" & strFN & ") to " & strRenamingConvention & "?", vbQuestion + vbYesNo, "Please confirm") = vbYes Then
+      If MsgBox("Rename " & strCFN & " (" & strFN & ") to " & strRenamingConvention & "?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
         'rename it
         CustomFieldRename CLng(lngLCF), strRenamingConvention 'CustomFieldGetName(lngECF) & " (" & FieldConstantToFieldName(lngLCF) & ")"
         'rename in lboLCF
@@ -1177,7 +1212,7 @@ Sub cptDeleteLCFAndTaskData(ByRef mySaveLocal_frm As cptSaveLocal_frm)
         Else
           strFieldName = FieldConstantToFieldName(lngLCF)
         End If
-        blnDeleteTaskData = MsgBox("Delete Task Data for LCF '" & strFieldName & "'?", vbQuestion + vbYesNo, "Please Confirm") = vbYes
+        blnDeleteTaskData = MsgBox("Delete Task Data for LCF '" & strFieldName & "'?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes
         If CustomFieldDelete(lngLCF) Then
           .lboLCF.List(lngItem, 1) = FieldConstantToFieldName(lngLCF)
           If blnDeleteTaskData Then
@@ -1501,7 +1536,7 @@ next_field:
       rstECF.MoveNext
     Loop
 no_records:
-    .lblStatus.Caption = Format(.lboECF.ListCount, "#,##0") & " enterprise custom field(s)."
+    .lblStatus.Caption = Format(.lboECF.ListCount, "#,##0") & " enterprise custom field" & IIf(.lboECF.ListCount = 1, "", "s") & "."
 
   End With
 
@@ -1624,7 +1659,7 @@ Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional s
         ElseIf strAction = "unmap" Then
           'count down and remove
           For lngCol = lngCols To 1 Step -1
-            Stop 'todo: remove
+            If lngCol = 1 Then Exit For 'shouldn't happen, but failsafe
             If ActiveProject.TaskTables(TABLE_NAME).TableFields(lngCol).Field = lngLCF Then
               ActiveProject.TaskTables(TABLE_NAME).TableFields(lngCol).Delete
             ElseIf ActiveProject.TaskTables(TABLE_NAME).TableFields(lngCol).Field = lngECF Then
@@ -1633,14 +1668,11 @@ Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional s
           Next lngCol
         End If
       End If
+      
     Else
-      'ensure view is applied
-      Stop 'todo: remove
-      ActiveWindow.TopPane.Activate
-      If ActiveProject.CurrentView <> VIEW_NAME Then
-        ViewApply VIEW_NAME
-      End If
-      'add existing mapping
+      blnReset = True
+    End If
+    If blnReset Then
       For lngField = 0 To .lboECF.ListCount - 1
         If Not IsNull(.lboECF.List(lngField, 3)) Then
           lngECF = .lboECF.List(lngField, 0)
@@ -1662,10 +1694,10 @@ Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional s
           End If
         End If
       Next lngField
-      TableApply TABLE_NAME
+      ViewApply VIEW_NAME
+      If ActiveProject.CurrentTable <> TABLE_NAME Then TableApply TABLE_NAME
     End If
   End With
-
 exit_here:
   On Error Resume Next
 
@@ -1681,7 +1713,7 @@ Function cptLocalCustomFieldsMatch() As Boolean
   Dim oListObject As Excel.ListObject
   Dim dTypes As Scripting.Dictionary
   Dim oMasterProject As MSProject.Project
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim rstProjects As ADODB.Recordset
   Dim oWorksheet As Excel.Worksheet
   Dim oWorkbook As Excel.Workbook
@@ -1746,10 +1778,10 @@ Function cptLocalCustomFieldsMatch() As Boolean
   rstProjects.Fields.Append "PROJECT", adVarChar, 200
   rstProjects.Open
   rstProjects.AddNew Array(0), Array(oMasterProject.Name)
-  For Each oSubProject In oMasterProject.Subprojects
-    FileOpenEx oSubProject.SourceProject.FullName, True
+  For Each oSubproject In oMasterProject.Subprojects
+    FileOpenEx oSubproject.SourceProject.FullName, True
     rstProjects.AddNew Array(0), Array(ActiveProject.Name)
-  Next oSubProject
+  Next oSubproject
   rstProjects.MoveFirst
   Do While Not rstProjects.EOF
     Application.StatusBar = "Analyzing " & rstProjects(0) & "..."
@@ -1901,7 +1933,7 @@ exit_here:
   Set oListObject = Nothing
   Set dTypes = Nothing
   Set oMasterProject = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   If rstProjects.State Then rstProjects.Close
   Set rstProjects = Nothing
   Set oWorksheet = Nothing
@@ -1913,3 +1945,5 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "cptLocalCustomFieldsMatch", Err, Erl)
   Resume exit_here
 End Function
+
+
