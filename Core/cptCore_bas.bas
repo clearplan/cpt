@@ -2214,7 +2214,7 @@ Sub cptCreateFilter(strFilter As String)
 
   Select Case strFilter
     Case "Marked"
-      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
+      FilterEdit Name:="Marked", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Marked", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=False
       
   End Select
   
@@ -4284,6 +4284,7 @@ Sub cptProgramBackup()
   'integers
   'doubles
   'booleans
+  Dim blnIncludeUserSettings As Boolean
   Dim blnCreateZip As Boolean
   Dim blnErrorTrapping As Boolean
   'variants
@@ -4303,7 +4304,16 @@ Sub cptProgramBackup()
   strOutputDir = strInputDir & "\" & strProgramAcronym & "-backup-" & Format(Now, "yyyy-mm-dd-hh-nn-ss")
   MkDir strOutputDir
   
-  'capture ini
+  '(optionally) capture cpt-settings-user.ini
+  blnIncludeUserSettings = MsgBox("Include user settings (as well as program settings)?", vbQuestion + vbYesNo, "Please confirm:") = vbYes
+  If blnIncludeUserSettings Then
+    strInputFile = "\settings\cpt-settings-user.ini"
+    strOutputFile = Replace(strInputFile, ".ini", "-backup.txt")
+    strOutputFile = Replace(strOutputFile, "\settings", "")
+    FileCopy strInputDir & strInputFile, strOutputDir & strOutputFile
+  End If
+  
+  'capture cpt-settings-[program].ini
   strInputFile = "\settings\" & cptGetSettingsFile("StatusSheet")
   strOutputFile = Replace(strInputFile, ".ini", "-backup.txt")
   strOutputFile = Replace(strOutputFile, "\settings", "")
@@ -4364,14 +4374,12 @@ Sub cptProgramBackup()
     Dim oFSO As Scripting.FileSystemObject
     Dim strCmd As String
     Dim lngExitCode As Long
-    Set oFSO = CreateObject("Scripting.FileSystemObject")
     Dim strSourceDirectory As String
     Dim strParentDirectory As String
+    Set oFSO = CreateObject("Scripting.FileSystemObject")
     strSourceDirectory = oFSO.GetAbsolutePathName(strOutputDir)
     strParentDirectory = oFSO.GetParentFolderName(strSourceDirectory)
-    'todo: revise to include the parent directory in the zip
-    'todo: so that it can be unzipped into a matching, time-stamped directory
-    strCmd = "tar.exe -a -c -f """ & strOutputDir & ".zip" & """ -C """ & strParentDirectory & """ """ & oFSO.GetFileName(strSourceDirectory) & """"
+    strCmd = "tar -a -c -f """ & strOutputDir & ".zip" & """ -C """ & strParentDirectory & """ """ & oFSO.GetFileName(strSourceDirectory) & """"
     lngExitCode = CreateObject("WScript.Shell").Run(strCmd, 0, True)
     If lngExitCode <> 0 Then
       MsgBox "Error creating *.zip archive." & vbCrLf & vbCrLf & "Please execute manually.", vbCritical + vbOKOnly, "cptProgramBackup"
