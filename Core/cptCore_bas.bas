@@ -4414,15 +4414,48 @@ err_here:
 
 End Sub
 
-Sub cptProgramRestore()
-  'todo: cptGetFiles (txt,csv,zip)
+Sub cptProgramRestore(mySettings_frm As cptSettings_frm, Optional blnDryRun As Boolean = False)
+  'objects
+  Dim oSettings As Scripting.Dictionary
+  Dim oRecordset As ADODB.Recordset
+  Dim oDataFields As Scripting.Dictionary
+  Dim oFiles As Collection
+  Dim oFile As Scripting.File
+  'strings
+  Dim strMsg As String
+  Dim strValue As String
+  Dim strKey As String
+  Dim strFeature As String
+  Dim strLine As String
+  Dim strProgramAcronym As String
+  Dim strProgramFieldName As String
+  Dim strImportFromFile As String
+  Dim strImportToFile As String
+  Dim strDir As String
+  Dim strExtension As String
+  Dim strFilter As String
+  Dim strInitialDir As String
+  Dim strTitle As String
   Dim strCmd As String
+  Dim strRestoreProgram As String
+  Dim strCurrentSettingsUser As String
+  'longs
+  Dim lngFile As Long
+  Dim lngItem As Long
+  Dim lngResponse As Long
+  Dim lngSetting As Long
   Dim lngExitCode As Long
-  strCmd = "tar.exe -x -f """ & SourceZipFile & """ -C """ & DestinationFolder & """"
-  lngExitCode = CreateObject("WScript.Shell").Run(strCmd, 0, True)
-  If lngExitCode <> 0 Then
-    MsgBox "Error unzipping *.zip archive." & vbCrLf & vbCrLf & "Please execute manually.", vbCritical + vbOKOnly, "cptProgramRestore"
-  End If
+  'integers
+  'doubles
+  'booleans
+  Dim blnOverwrite As Boolean
+  Dim blnErrorTrapping As Boolean
+  'variants
+  'dates
+  
+  'if zip then unzip and pass restoredir
+  'for each file in *txt -> ini
+  'for each file in *.csv -> do I need a Schema.ini? yes, probably, build from local adtg (unless it doesn't exist...hm)
   'todo: enable dry run e.g., "what would be changed? what would be imported?"
   'todo ini: read txt -> write ini; prompt to overwrite? show a diff?
     'todo ini: do not import LastCheck settings
@@ -4434,6 +4467,231 @@ Sub cptProgramRestore()
   'todo csv: metrics: what if data exists? "CEI for STATUS_DATE exists!"
   'todo csv: status-sheet: what if LCF mismatches?
   'what if users' files haven't been upgraded? cptAddColumnToRecordset
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+
+  strProgramAcronym = cptGetProgramAcronym(True)
+  If Len(strProgramAcronym) = 0 Then
+    MsgBox "Program Acronym is required. Exiting.", vbExclamation + vbOKOnly, "cptProgramRestore"
+    GoTo exit_here
+  End If
+
+  strTitle = "Select backup files to restore:"
+  strInitialDir = Environ$("USERPROFILE") & "\Downloads"
+  'filter is basically either zip or file(s)
+  strFilter = "Settings Archive (*.zip)" & vbNullChar & _
+              "*.zip" & vbNullChar & _
+              "Settings Files (*.csv;*.txt)" & vbNullChar & _
+              "*.csv;*.txt" & vbNullChar & _
+              vbNullChar
+  Set oFiles = cptGetFiles("Select backup file(s):", strInitialDir, strFilter, True)
+  
+  Set oDataFields = CreateObject("Scripting.Dictionary")
+  oDataFields.Add "\settings\cpt-cei.adtg", "PROJECT" 'todo: append fields to determine uniqueness (e.g., TASK_UID|STATUS_DATE)
+  oDataFields.Add "\settings\cpt-data-dictionary.adtg", "PROJECT_NAME"
+  oDataFields.Add "\settings\cpt-export-resource-userfields.adtg", "PROGRAM"
+  cptMigrateSaveMarked 'just in case
+  oDataFields.Add "\settings\cpt-marked.adtg", "PROJECT_ID"
+  oDataFields.Add "\settings\cpt-metrics.adtg", "PROGRAM"
+  'oDataFields.Add "\settings\cpt-qbd.adtg", "PROGRAM"
+  'oDataFields.Add "\settings\cpt-sanitize.adtg", "PROGRAM"
+  oDataFields.Add "\settings\cpt-save-local.adtg", "PROGRAM_ACRONYM"
+  oDataFields.Add "\settings\cpt-status-sheet-userfields.adtg", "PROGRAM"
+  
+  'todo: catch invalid files [leverage existing dictionary, plus cpt-settings-user.txt; cpt-settings-.*.txt
+  
+  If oFiles.Count = 1 Then 'unzip, reset oFiles
+    strImportFromFile = oFiles(1)
+    strExtension = cptRxMatch(strImportFromFile, "\.([^.\\]+)$")
+    If strExtension = ".zip" Then
+      strDir = cptDir
+      strCmd = "tar -x -f """ & strImportFromFile & """ -C """ & strDir & """"
+      lngExitCode = CreateObject("WScript.Shell").Run(strCmd, 0, True)
+      If lngExitCode <> 0 Then
+        MsgBox "Error unzipping *.zip archive." & vbCrLf & vbCrLf & "Please execute manually.", vbCritical + vbOKOnly, "cptProgramRestore"
+        GoTo exit_here
+      End If
+      oFiles.Remove 1
+      strDir = strDir & "\" & Replace(Dir(strImportFromFile), ".zip", "")
+      For Each oFile In CreateObject("Scripting.FileSystemObject").GetFolder(strDir).Files
+        oFiles.Add oFile.Path
+      Next oFile
+    End If
+  End If
+  
+  If oFiles.Count > 0 Then
+    For lngItem = 1 To oFiles.Count
+      strImportFromFile = oFiles(lngItem)
+      strExtension = cptRxMatch(strImportFromFile, "\.([^.\\]+)$")
+      Select Case strExtension
+        Case ".csv" 'data
+          'replace csv with adtg
+          strImportToFile = Replace(Dir(strImportFromFile), "-backup.csv", ".adtg")
+          strImportToFile = cptDir & "\settings\" & strImportToFile
+          Debug.Print "Importing [" & Dir(strImportFromFile) & "] > [" & Dir(strImportToFile) & "]..."
+          If Dir(strImportToFile) <> vbNullString Then
+            Set oRecordset = CreateObject("ADODB.Recordset")
+            oRecordset.Open strImportToFile, , adOpenKeyset, adLockOptimistic
+            'prompt: in case of conflicts in [file]: overwrite? Yes = keep theirs; No = keep ours; Cancel = show diff
+            'todo: what if new (or old) hasn't been migrated yet?
+            If Not oRecordset.EOF Then
+              oRecordset.MoveFirst
+              strProgramFieldName = oDataFields("\settings\" & Dir(strImportToFile))
+              oRecordset.Filter = strProgramFieldName & "='" & strProgramAcronym & "'" 'need to prevent duplication
+              Debug.Print Format(oRecordset.RecordCount, "#,##0") & " records found."
+              'todo: need to ensure PROJECT->PROJECT; prompt user to map?
+              'Debug.Print oRecordset.Fields("PROJECT")
+              'todo: ensure unique data
+              'need dictionary to map from file to field name
+              'todo: open it
+              'todo: filter it
+              'todo: update it
+              'todo: notify user
+              'todo: unfilter it
+              'todo: save and close it
+              oRecordset.Filter = 0
+              'oRecordset.Save strImportToFile, adPersistADTG
+            Else
+              'here is the real magic
+              'todo: maybe send the actual (filtered) adtg files instead?
+            End If
+            oRecordset.Close
+          Else
+            'todo: create it
+          End If
+        Case ".txt" 'user|program settings
+          strImportToFile = Replace(Dir(strImportFromFile), "-backup.txt", ".ini")
+          'confirm cpt-settings-user.ini overwrite
+          blnOverwrite = False 'failsafe
+          blnDryRun = False 'failsafe
+          If strImportToFile = "cpt-settings-user.ini" Then
+            strMsg = "Are you sure you want to overwrite your USER settings?" & vbCrLf & vbCrLf
+            strMsg = strMsg & "Yes = yes, definitely" & vbCrLf
+            strMsg = strMsg & "No = not sure, show me a diff (dry-run) first" & vbCrLf 'todo: and let me choose
+            strMsg = strMsg & "Cancel = shut it down, do NOT overwrite!"
+            lngResponse = MsgBox(strMsg, vbCritical + vbYesNoCancel, "Caution:")
+            Select Case lngResponse
+              Case vbYes
+                blnOverwrite = True
+              Case vbNo
+                blnDryRun = True
+              Case vbCancel
+                GoTo next_file
+            End Select
+          Else
+            'confirm cpt-settings-[program].ini
+            strRestoreProgram = Replace(Replace(strImportToFile, "cpt-settings-", ""), ".ini", "")
+            strMsg = "Restoring from program: " & strRestoreProgram & vbCrLf
+            strMsg = strMsg & "This program is: " & strProgramAcronym & vbCrLf & vbCrLf
+            strMsg = strMsg & "Are you sure you want to ovewrite your PROGRAM settings?" & vbCrLf & vbCrLf
+            strMsg = strMsg & "Yes = yes, definitely" & vbCrLf
+            strMsg = strMsg & "No = not sure, show me a diff (dry-run) first" & vbCrLf 'todo: and let me choose
+            strMsg = strMsg & "Cancel = shut it down, don't touch my stuff"
+            lngResponse = MsgBox(strMsg, vbCritical + vbYesNoCancel, "Caution:")
+            Select Case lngResponse
+              Case vbYes
+                blnOverwrite = True
+              Case vbNo
+                blnDryRun = True
+              Case vbCancel
+                GoTo next_file
+            End Select
+          End If
+          'get new settings
+          Set oSettings = CreateObject("Scripting.Dictionary")
+          strImportToFile = cptDir & "\settings\" & strImportToFile
+          lngFile = FreeFile
+          Open strImportFromFile For Input As #lngFile
+          Do Until EOF(lngFile)
+            Line Input #lngFile, strLine
+            If Left(strLine, 1) = "[" Then
+              strFeature = Replace(Replace(strLine, "[", ""), "]", "")
+            Else
+              strKey = Left$(strLine, InStr(strLine, "=") - 1)
+              strValue = Mid$(strLine, InStr(strLine, "=") + 1)
+              If Not oSettings.Exists(strFeature & "." & strKey) Then
+                oSettings.Add strFeature & "." & strKey, strValue
+              End If
+            End If
+          Loop
+          Close #lngFile
+          If blnDryRun Then
+            'get current
+            'strCurrentSettingsUser = cptDir & "\settings\cpt-settings-user.ini"
+            lngFile = FreeFile
+            Open strImportToFile For Input As #lngFile
+            Do Until EOF(lngFile)
+              Line Input #lngFile, strLine
+              If Left(strLine, 1) = "[" Then
+                strFeature = Replace(Replace(strLine, "[", ""), "]", "")
+              Else
+                strKey = Left$(strLine, InStr(strLine, "=") - 1)
+                strValue = Mid$(strLine, InStr(strLine, "=") + 1)
+                If Not oSettings.Exists(strFeature & "." & strKey) Then
+                  oSettings.Add strFeature & "." & strKey, "<>" & strValue
+                Else
+                  oSettings(strFeature & "." & strKey) = oSettings(strFeature & "." & strKey) & "<>" & strValue
+                End If
+              End If
+            Loop
+            Close #lngFile
+            'show diff
+            'todo: make cmdBackup tglBackup; 'backup mode' lboSettings has all ini, adtg
+            'todo: disable lboFeatures? make cmdRestore tglRestore 'restore mode'?
+            'todo: restore lboSettings.ColumnCount
+            'todo: clear lboSettings on cmdProgramRestore
+            With mySettings_frm.lboSettings
+              If .ColumnCount = 1 Then
+                .Clear
+                .ColumnCount = 3
+                .AddItem
+                .List(0, 0) = "FEATURE.SETTING"
+                .List(0, 1) = "CURRENT"
+                .List(0, 2) = "NEW"
+              End If
+              strFeature = Split(oSettings.Keys(0), ".")(0)
+              .AddItem
+              .List(.ListCount - 1, 0) = "[" & strFeature & "]"
+              For lngSetting = 0 To oSettings.Count - 1
+                If strFeature <> Split(oSettings.Keys(lngSetting), ".")(0) Then
+                  strFeature = Split(oSettings.Keys(lngSetting), ".")(0)
+                  .AddItem
+                  .List(.ListCount - 1, 0) = "[" & strFeature & "]"
+                End If
+                .AddItem
+                .List(.ListCount - 1, 0) = Split(oSettings.Keys(lngSetting), ".")(1) 'setting
+                .List(.ListCount - 1, 1) = Split(oSettings.Items(lngSetting), "<>")(0) 'old
+                .List(.ListCount - 1, 2) = Split(oSettings.Items(lngSetting), "<>")(1) 'new
+              Next lngSetting
+            End With
+            'todo: enable accept/reject
+          ElseIf blnOverwrite = True Then
+            'todo: overwrite, put in lbosettings; prompt to output log
+          End If
+        Case ".zip"
+          MsgBox "Please only restore 1 *zip file at a time.", vbExclamation + vbOKOnly, "Easy, tiger!"
+          Exit For
+      End Select
+next_file:
+    Next lngItem
+  Else
+    GoTo exit_here
+  End If
+
+exit_here:
+  On Error Resume Next
+  Set oSettings = Nothing
+  Set oFiles = Nothing
+  Set oFile = Nothing
+  If oRecordset.State Then oRecordset.Close
+  Set oRecordset = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptProgramRestore", Err, Erl)
+  Resume exit_here
+
 End Sub
 
 

@@ -76,7 +76,7 @@ Private Sub cmdEdit_Click()
 End Sub
 
 Private Sub cmdRestore_Click()
-  cptProgramRestore
+  cptProgramRestore Me
 End Sub
 
 Private Sub cmdSetProgramAcronym_Click()
@@ -222,6 +222,7 @@ Sub lboFeatures_AfterUpdate()
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   Me.lboSettings.Clear
+  Me.lboSettings.ColumnCount = 1
   If IsNull(Me.lboFeatures.Value) Then GoTo exit_here
   If Len(Me.lboFeatures.Value) = 0 Then GoTo exit_here
   strFeature = Me.lboFeatures.Value
