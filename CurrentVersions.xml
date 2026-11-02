@@ -451,14 +451,14 @@
 	<Module>
 		<Name>cptText_bas</Name>
 		<FileName>cptText_bas.bas</FileName>
-		<Version>v1.7.1</Version>
+		<Version>v1.8.0</Version>
 		<Type>1</Type>
 		<Directory>Text</Directory>
 	</Module>
 	<Module>
 		<Name>cptText_frm</Name>
 		<FileName>cptText_frm.frm</FileName>
-		<Version>v1.7.1</Version>
+		<Version>v1.8.0</Version>
 		<Type>3</Type>
 		<Directory>Text</Directory>
 	</Module>

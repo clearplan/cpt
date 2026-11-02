@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptText_bas"
-'<cpt_version>v1.7.1</cpt_version>
+'<cpt_version>v1.8.0</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptText_bas"
 
@@ -247,7 +247,7 @@ Sub cptFindDuplicateTaskNames()
   'objects
   Dim oTask As MSProject.Task
   Dim oDict As Scripting.Dictionary
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oShell As Object
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
@@ -290,15 +290,15 @@ Sub cptFindDuplicateTaskNames()
   If blnMaster Then
     If MsgBox("Load and expand all subprojects?", vbQuestion + vbYesNo, "Please confirm:") = vbNo Then GoTo exit_here
     lngItems = ActiveProject.Subprojects.Count
-    For Each oSubProject In ActiveProject.Subprojects
+    For Each oSubproject In ActiveProject.Subprojects
       lngItem = lngItem + 1
-      Application.StatusBar = "Loading " & oSubProject.InsertedProjectSummary.Name & "..."
-      EditGoTo oSubProject.InsertedProjectSummary.ID
+      Application.StatusBar = "Loading " & oSubproject.InsertedProjectSummary.Name & "..."
+      EditGoTo oSubproject.InsertedProjectSummary.ID
       Application.OutlineShowSubTasks
-      Application.StatusBar = "Loading " & oSubProject.InsertedProjectSummary.Name & "...(" & Format(lngItem / lngItems, "0%") & ")"
-    Next oSubProject
+      Application.StatusBar = "Loading " & oSubproject.InsertedProjectSummary.Name & "...(" & Format(lngItem / lngItems, "0%") & ")"
+    Next oSubproject
     Application.StatusBar = "Loading subprojects...done."
-    Set oSubProject = Nothing
+    Set oSubproject = Nothing
   End If
   
   blnIgnoreSummaryTasks = MsgBox("Ignore Summary Tasks?", vbQuestion + vbYesNo, "Please Confrim") = vbYes
@@ -448,7 +448,7 @@ exit_here:
   Application.StatusBar = ""
   Set oDict = Nothing
   Set oTask = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oShell = Nothing
   Set oWorkbook = Nothing
   Set oWorksheet = Nothing
@@ -759,6 +759,7 @@ Sub cptCheckAnnoyances()
   Dim oDict As Scripting.Dictionary
   Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
+  Dim oResource As MSProject.Resource
   'strings
   Dim strInactive As String
   Dim strInactiveList As String
@@ -773,6 +774,17 @@ Sub cptCheckAnnoyances()
   Dim strSplitList As String
   Dim strFixedCosts As String
   Dim strFixedCostList As String
+  Dim strProjectBaseCalendar As String
+  Dim strManual As String
+  Dim strManualList As String
+  Dim strSpacesList As String
+  Dim strSpaces As String
+  Dim strCommasList As String
+  Dim strCommas As String
+  Dim strQuotesList As String
+  Dim strQuotes As String
+  Dim strResourceBaseCalendar As String
+  Dim strResourceCalendarsList As String
   Dim strFilter As String
   'longs
   Dim lngItem As Long
@@ -785,6 +797,7 @@ Sub cptCheckAnnoyances()
   'doubles
   'booleans
   Dim blnProjectStandard As Boolean
+  Dim blnResources As Boolean
   Dim blnErrorTrapping As Boolean
   'variants
   'dates
@@ -793,6 +806,7 @@ Sub cptCheckAnnoyances()
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
   
   blnProjectStandard = Application.Edition = pjEditionStandard
+  blnResources = ActiveProject.ResourceCount > 0
   Set oDict = CreateObject("Scripting.Dictionary")
   If ActiveProject.Subprojects.Count > 0 Then
     ActiveWindow.TopPane.Activate
@@ -856,18 +870,51 @@ Sub cptCheckAnnoyances()
       strFixedCosts = strFixedCosts & oTask.UniqueID & ",FIXED COST: " & oTask.FixedCost & vbCrLf
       If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
+    If oTask.Manual = True Then
+      strManualList = strManualList & oTask.UniqueID & vbTab
+      strManual = strManual & oTask.UniqueID & ",MANUALLY SCHEDULED" & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+    End If
+    If cptRxTest(oTask.Name, "^ ") Or cptRxTest(oTask.Name, " $") Or cptRxTest(oTask.Name, " {2,}") Then
+      strSpacesList = strSpacesList & oTask.UniqueID & vbTab
+      strSpaces = strSpaces & oTask.UniqueID & "," & oTask.Name & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+    End If
+    If cptRxTest(oTask.Name, ",") Then
+      strCommasList = strCommasList & oTask.UniqueID & vbTab
+      strCommas = strCommas & oTask.UniqueID & "," & oTask.Name & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+    End If
+    If cptRxTest(oTask.Name, """") Then
+      strQuotesList = strQuotesList & oTask.UniqueID & vbTab
+      strQuotes = strQuotes & oTask.UniqueID & "," & oTask.Name & vbCrLf
+      If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
+    End If
     
 next_task:
     lngTask = lngTask + 1
-    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")"
+    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")" & IIf(oDict.Count > 0, " | " & Format(oDict.Count, "#,##0") & " found!", "")
   Next oTask
   
-  strFilter = strTimesList & strDurationsList & strElapsedList & strFixedCostList & strInactiveList
+  If blnResources Then
+    strProjectBaseCalendar = ActiveProject.Calendar.Name
+    For Each oResource In ActiveProject.Resources
+      If oResource.Type = pjResourceTypeWork Then
+        strResourceBaseCalendar = oResource.BaseCalendar
+        If strResourceBaseCalendar <> strProjectBaseCalendar Then
+          strResourceCalendarsList = strResourceCalendarsList & oResource.Name & " - " & strResourceBaseCalendar & vbCrLf
+        End If
+      End If
+    Next oResource
+  End If
+  
+  strFilter = strTimesList & strDurationsList & strElapsedList & strFixedCostList & strInactiveList & strManualList & strSpacesList & strCommasList & strQuotesList
   If Len(strFilter) = 0 Then
     MsgBox "No annoyances!", vbInformation + vbOKOnly, "Well Done"
   Else
     strFilter = Left(strFilter, Len(strFilter) - 1) 'hack off last tab
     ActiveWindow.TopPane.Activate
+    If ActiveWindow.TopPane.View.Type <> pjTaskItem Then ViewApply "Gantt Chart"
     GroupClear
     FilterClear
     OptionsViewEx DisplaySummaryTasks:=True
@@ -881,12 +928,9 @@ next_task:
     If oTasks.Count = 0 Then
       MsgBox "No annoyances.", vbInformation + vbOKOnly, "Well Done"
     Else
-      For Each oTask In oTasks
-        If Not oTask.Summary Then lngCount = lngCount + 1
-      Next oTask
+      lngCount = oDict.Count
     End If
-    MsgBox Format(lngCount, "#,##0") & " annoyance" & IIf(lngCount > 1, "s", "") & " found!", vbInformation + vbOKOnly, "Annoyances"
-    If MsgBox("View report?", vbQuestion + vbYesNo, "Annoyances") = vbYes Then
+    If MsgBox(Format(lngCount, "#,##0") & " annoyance" & IIf(lngCount > 1, "s", "") & " found!" & vbCrLf & vbCrLf & "View report?", vbInformation + vbYesNo, "Annoyances") = vbYes Then
       lngFile = FreeFile
       strFileName = Environ("tmp") & "\annoyances.txt"
       Open strFileName For Output As lngFile
@@ -945,15 +989,66 @@ next_task:
         Else
           Print #lngFile, "...but not on your watch! Well done."
         End If
+        Print #lngFile, vbCrLf
+      End If
+      Print #lngFile, "===== MANUALLY SCHEDULED TASKS ARE ANNOYING ====="
+      If Len(strManual) > 0 Then
+        Print #lngFile, "UID,MANUALLY SCHEDULED"
+        Print #lngFile, strManual
+        Print #lngFile, "UID LIST: " & Replace(strManualList, vbTab, ",")
+      Else
+        Print #lngFile, "...nicely done: Automatic = copacetic."
       End If
       Print #lngFile, vbCrLf
+      Print #lngFile, "===== SUPERFLUOUS SPACES ARE ANNOYING ====="
+      If Len(strSpaces) > 0 Then
+        Print #lngFile, "UID,TASK NAME"
+        Print #lngFile, strSpaces
+        Print #lngFile, "UID LIST: " & Replace(strSpacesList, vbTab, ",")
+      Else
+        Print #lngFile, "...but you don't have any--good copy."
+      End If
+      Print #lngFile, vbCrLf
+      Print #lngFile, "===== COMMAS IN TASK NAMES CAN BREAK THINGS ====="
+      If Len(strCommas) > 0 Then
+        Print #lngFile, "UID,TASK NAME"
+        Print #lngFile, strCommas
+        Print #lngFile, "UID LIST: " & Replace(strCommasList, vbTab, ",")
+      Else
+        Print #lngFile, "...but you already know this: zero found."
+      End If
+      Print #lngFile, vbCrLf
+      Print #lngFile, "===== QUOTES IN TASK NAMES CAN BREAK THINGS ====="
+      If Len(strQuotes) > 0 Then
+        Print #lngFile, "UID,TASK NAME"
+        Print #lngFile, strQuotes
+        Print #lngFile, "UID LIST: " & Replace(strQuotesList, vbTab, ",")
+      Else
+        Print #lngFile, "...but you've already learned this lesson, I see."
+      End If
+      Print #lngFile, vbCrLf
+      
       strFilter = ""
       For lngItem = 0 To oDict.Count - 1
         strFilter = strFilter & oDict.Keys(lngItem) & ","
       Next lngItem
-      Print #lngFile, "COMBINED UID LIST: " & Replace(strFilter, vbTab, ",")
+      Print #lngFile, String(80, "=")
+      Print #lngFile, "COMBINED TASK UID LIST: " & Replace(strFilter, vbTab, ",")
       Print #lngFile, vbCrLf
       Print #lngFile, "HINT: Copy list(s) of UIDs, then paste into FilterByClipboard to review and fix."
+      Print #lngFile, vbCrLf
+      If blnResources Then
+        Print #lngFile, "===== MISMATCHED RESOURCE CALENDARS ARE ANNOYING ====="
+        Print #lngFile, "=====    AND WILL PROBABLY LEAD TO CONFUSION    ======"
+        Print #lngFile, "PROJECT CALENDAR: " & strProjectBaseCalendar
+        If Len(strResourceCalendarsList) > 0 Then
+          Print #lngFile, strResourceCalendarsList
+        Else
+          Print #lngFile, "...ALL MATCH!"
+        End If
+      End If
+      Print #lngFile, vbCrLf
+      
       Close #lngFile
       cptShellExecute 0, "open", strFileName, vbNullString, vbNullString, 1
     End If
@@ -961,9 +1056,11 @@ next_task:
   
 exit_here:
   On Error Resume Next
+  Application.StatusBar = ""
   Set oDict = Nothing
   Set oTasks = Nothing
   Set oTask = Nothing
+  Set oResource = Nothing
 
   Exit Sub
 err_here:
