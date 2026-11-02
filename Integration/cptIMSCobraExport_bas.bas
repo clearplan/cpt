@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptIMSCobraExport_bas"
-'<cpt_version>v3.5.4</cpt_version>
+'<cpt_version>v3.5.5</cpt_version>
 Option Explicit
 Private destFolder As String
 Private BCWSxport As Boolean
@@ -261,7 +261,7 @@ Sub Export_IMS()
 
     End Select
 
-    If BCR_Error = False Then
+    If BCR_Error = False And noFolderSelected = False Then
         MsgBox "IMS Export saved to " & destFolder
         Shell "explorer.exe" & " " & destFolder, vbNormalFocus
     End If
@@ -1241,6 +1241,7 @@ Private Sub MPP_Export(ByVal curProj As Project)
   Dim strFileName As String
 
   destFolder = SetDirectory(curProj.ProjectSummaryTask.Project)
+  If Len(destFolder) = 0 Then Exit Sub
   strPathSeparator = cptRxMatch(destFolder, "\\|\/")
 
   If curProj.Subprojects.Count > 0 Then
@@ -2583,14 +2584,16 @@ Private Function SetDirectory(ByVal ProjName As String) As String
 
     pathDesktop = BrowseForFolder 'CreateObject("WScript.Shell").SpecialFolders("Desktop")) 'v3.4.2
     
-    newDir = pathDesktop & "\" & RemoveIllegalCharacters(ProjName) & "_" & Format(Now, "YYYYMMDD HHMMSS")
-
-    If Len(newDir) > 220 Then 'v3.4.1
-        newDir = "\\?\" & newDir
+    If Not noFolderSelected Then
+      newDir = pathDesktop & "\" & RemoveIllegalCharacters(ProjName) & "_" & Format(Now, "YYYYMMDD HHMMSS")
+  
+      If Len(newDir) > 220 Then 'v3.4.1
+          newDir = "\\?\" & newDir
+      End If
+  
+      MkDir newDir
+      SetDirectory = CreateObject("Scripting.FileSystemObject").GetFolder(newDir).ShortPath 'v3.4.1
     End If
-
-    MkDir newDir
-    SetDirectory = CreateObject("Scripting.FileSystemObject").GetFolder(newDir).ShortPath 'v3.4.1
     Exit Function
 
 End Function
@@ -3698,16 +3701,16 @@ Private Function BrowseForFolder(Optional OpenAt As Variant) As Variant 'v3.4.2
     On Error Resume Next
     BrowseForFolder = ShellApp.Self.Path
     On Error GoTo 0
-    
     Set ShellApp = Nothing
-        Select Case Mid(BrowseForFolder, 2, 1)
-            Case Is = ":"
-                If Left(BrowseForFolder, 1) = ":" Then GoTo Invalid
-            Case Is = "\"
-                If Not Left(BrowseForFolder, 1) = "\" Then GoTo Invalid
-            Case Else
-                GoTo Invalid
-        End Select
+    If IsEmpty(BrowseForFolder) Then GoTo Invalid
+    Select Case Mid(BrowseForFolder, 2, 1)
+        Case Is = ":"
+            If Left(BrowseForFolder, 1) = ":" Then GoTo Invalid
+        Case Is = "\"
+            If Not Left(BrowseForFolder, 1) = "\" Then GoTo Invalid
+        Case Else
+            GoTo Invalid
+    End Select
     Exit Function
     
 Invalid:
