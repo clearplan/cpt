@@ -163,7 +163,7 @@ End Sub
 Sub cptShowPreds(Optional myNetworkBrowser_frm As cptNetworkBrowser_frm)
   'objects
   Dim oTaskDependencies As TaskDependencies
-  Dim oSubProject As SubProject
+  Dim oSubproject As SubProject
   Dim oLink As TaskDependency, oTask As MSProject.Task
   'strings
   Dim arrCols() As String
@@ -497,7 +497,7 @@ exit_here:
   cptSpeed False
   'Set myNetworkBrowser_frm = Nothing 'do not do this
   Set oTaskDependencies = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oLink = Nothing
   Set oTask = Nothing
   Exit Sub
@@ -594,7 +594,7 @@ next_task:
     cptSpeed True
     If Edition = pjEditionProfessional Then
       If Not cptFilterExists("Active Tasks") Then
-        FilterEdit Name:="Active Tasks", TaskFilter:=True, Create:=True, OverwriteExisting:=False, FieldName:="Active", test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=True
+        FilterEdit Name:="Active Tasks", TaskFilter:=True, Create:=True, OverwriteExisting:=False, FieldName:="Active", Test:="equals", Value:="Yes", ShowInMenu:=True, ShowSummaryTasks:=True
       End If
       FilterApply "Active Tasks"
     ElseIf Edition = pjEditionStandard Then
@@ -785,7 +785,8 @@ Sub cptExportCrossProjectLinks()
   Dim oExcel As Excel.Application
   Dim oWorkbook As Excel.Workbook
   Dim oWorksheet As Excel.Worksheet
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
+  Dim oTasks As MSProject.Tasks
   Dim oTask As MSProject.Task
   Dim oFrom As MSProject.Task
   Dim oTo As MSProject.Task
@@ -826,8 +827,10 @@ Sub cptExportCrossProjectLinks()
   
   blnMaster = ActiveProject.Subprojects.Count > 0
   If Not blnMaster Then
-    MsgBox "This project has no subprojects.", vbExclamation + vbOKOnly, "Export CPLs"
-    GoTo exit_here
+    'todo: should run from standalone...just warn that
+    'todo: links to/from unopened projects may show incorrectly as 'ghost tasks'
+    'todo: maybe should change those to '<project closed / unknown / something>'
+    If MsgBox("This project has no subprojects. External links to projects that are not currently open may show as ghost tasks." & vbCrLf & vbCrLf & "Proceed anyway?", vbExclamation + vbYesNo, "Export CPLs") = vbNo Then GoTo exit_here
   End If
   
   ActiveWindow.TopPane.Activate
@@ -838,8 +841,12 @@ Sub cptExportCrossProjectLinks()
   blnShowExternalPredecessors = ActiveProject.ShowExternalPredecessors
   blnShowExternalSuccessors = ActiveProject.ShowExternalSuccessors
   
-  strProjectUID = cptGetListBoxData(cptGetCustomFields("t", "Text", "cfn,fc", True), fmListStylePlain, fmMultiSelectSingle, "Identify Project-Unique ID:", ";0 pt", True, False)
-  If Len(strProjectUID) = 0 Then Exit Sub
+  If blnMaster Then 'need unique ID
+    strProjectUID = cptGetListBoxData(cptGetCustomFields("t", "Text", "cfn,fc", True), fmListStylePlain, fmMultiSelectSingle, "Identify Project-Unique ID:", ";0 pt", True, False)
+    If Len(strProjectUID) = 0 Then Exit Sub
+  Else
+    strProjectUID = "Unique ID"
+  End If
   lngPUID = FieldNameToFieldConstant(strProjectUID)
   
   blnErrorTrapping = cptErrorTrapping
@@ -853,7 +860,6 @@ Sub cptExportCrossProjectLinks()
   
   cptSpeed True
   
-  'todo: add to Master Toolset on Ribbon
   ActiveWindow.TopPane.Activate
   
   'create a CPL Table
@@ -867,10 +873,10 @@ Sub cptExportCrossProjectLinks()
   strViewName = "cptCPL View"
   'create a CPL Filter
   strFilterName = "cptCPL Filter"
-  FilterEdit Name:=strFilterName, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Unique ID Predecessors", test:="contains", Value:=":", ShowInMenu:=True, ShowSummaryTasks:=False 'c:\ and https://
-  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Predecessors", test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
-  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", test:="contains", Value:=":", Operation:="Or", ShowSummaryTasks:=False 'c:\ and https://
-  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
+  FilterEdit Name:=strFilterName, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:="Unique ID Predecessors", Test:="contains", Value:=":", ShowInMenu:=True, ShowSummaryTasks:=False 'c:\ and https://
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Predecessors", Test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", Test:="contains", Value:=":", Operation:="Or", ShowSummaryTasks:=False 'c:\ and https://
+  FilterEdit Name:=strFilterName, TaskFilter:=True, FieldName:="", NewFieldName:="Unique ID Successors", Test:="contains", Value:="<>", Operation:="Or", ShowSummaryTasks:=False 'pwa
   'create/apply a CPL View
   If ActiveProject.CurrentView = strViewName Then ViewApply "Gantt Chart"
   If cptViewExists(strViewName) Then ActiveProject.Views(strViewName).Delete
@@ -886,10 +892,22 @@ Sub cptExportCrossProjectLinks()
   OptionsViewEx DisplayNameIndent:=False, DisplaySummaryTasks:=False, DisplayExternalSuccessors:=True, DisplayExternalPredecessors:=True
   SelectAll
   
+  On Error Resume Next
+  Set oTasks = ActiveSelection.Tasks
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  If oTasks Is Nothing Then
+    MsgBox "No cross-project links found in this file.", vbInformation + vbOKOnly, "cptExportCrossProjectLinks"
+    GoTo skip_all_that 'this will reapply the starting view/table/filter/group
+  End If
+  If oTasks.Count = 0 Then
+    MsgBox "No cross-project links found in this file.", vbInformation + vbOKOnly, "cptExportCrossProjectLinks"
+    GoTo skip_all_that 'this will reapply the starting view/table/filter/group
+  End If
+  
   'build taskindex
   Application.StatusBar = "Building TaskMap..."
   Set oTaskMap = CreateObject("Scripting.Dictionary")
-  For Each oTask In ActiveProject.Tasks
+  For Each oTask In oTasks
     If Not oTask Is Nothing Then
       oTaskMap.Add oTask.UniqueID, oTask
     End If
@@ -900,9 +918,9 @@ Sub cptExportCrossProjectLinks()
   lngCount = 0
   lngPUID = FieldNameToFieldConstant(strProjectUID, pjTask)
   lngTask = 0
-  lngTaskCount = ActiveSelection.Tasks.Count
+  lngTaskCount = oTasks.Count
   Application.StatusBar = "EXPORTING CPLs: Tasks " & Format(lngTask, "#,##0") & "/" & Format(lngTaskCount, "#,##0") & " (" & Format(lngTask / lngTaskCount, "0%") & ") | " & Format(lngCount, "#,##0") & " CPLs found"
-  For Each oTask In ActiveSelection.Tasks
+  For Each oTask In oTasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.ExternalTask = True Then GoTo next_task
     If Not oTask.Active Then GoTo next_task
@@ -1147,8 +1165,10 @@ next_task:
   strCode = strCode & "End Sub" & vbCrLf
   oWorkbook.VBProject.VBComponents("Sheet1").CodeModule.AddFromString strCode
   
+skip_all_that:
+  
   'prompt to keep current view
-  If MsgBox(Format(lngCount, "#,##0") & " cross-project links exported." & vbCrLf & vbCrLf & "Keep current view?", vbInformation + vbYesNo, "CPLs") = vbNo Then
+  If MsgBox(Format(lngCount, "#,##0") & " cross-project links exported." & vbCrLf & vbCrLf & "Keep current view?" & vbCrLf & "(Click no to restore previous view.)", vbInformation + vbYesNo, "CPLs") = vbNo Then
     ActiveWindow.TopPane.Activate
     ViewApply strStartingView
     TableApply strStartingTable
@@ -1169,12 +1189,13 @@ exit_here:
   Set oSubMap = Nothing
   Set oLink = Nothing
   Set oTask = Nothing
+  Set oTasks = Nothing
   Set oFrom = Nothing
   Set oTo = Nothing
   Set oPred = Nothing
   oTaskMap.RemoveAll
   Set oTaskMap = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Exit Sub
 err_here:
   cptHandleErr THIS_MODULE, "cptExportCrossProjectLinks", Err, Erl
@@ -1183,7 +1204,7 @@ End Sub
 
 Sub cptGetSubMap()
   'objects
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
   'strings
   'longs
@@ -1203,13 +1224,13 @@ Sub cptGetSubMap()
     oSubMap.RemoveAll
   End If
   Application.Calculation = pjManual
-  For Each oSubProject In ActiveProject.Subprojects
-    If Left(oSubProject.Path, 2) = "<>" Then 'PWA
-      oSubMap.Add Replace(oSubProject.Path, "<>\", ""), 0
+  For Each oSubproject In ActiveProject.Subprojects
+    If Left(oSubproject.Path, 2) = "<>" Then 'PWA
+      oSubMap.Add Replace(oSubproject.Path, "<>\", ""), 0
     Else 'mpp (local or remote)
-      oSubMap.Add Replace(cptRegEx(oSubProject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
+      oSubMap.Add Replace(cptRegEx(oSubproject.Path, "[^\\/]*.mpp$"), ".mpp", ""), 0
     End If
-    If oSubProject.IsLoaded = False Then
+    If oSubproject.IsLoaded = False Then
       Application.OpenUndoTransaction "cpt - load subproject"
       FilterClear
       GroupClear
@@ -1222,7 +1243,7 @@ Sub cptGetSubMap()
         End If
       End If
     End If
-  Next oSubProject
+  Next oSubproject
   Application.CalculateProject
   For Each oTask In ActiveProject.Tasks
     If oSubMap.Exists(oTask.Project) Then
@@ -1236,7 +1257,7 @@ exit_here:
   On Error Resume Next
   Application.Calculation = pjAutomatic
   Set oTask = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
 
   Exit Sub
 err_here:
@@ -1248,7 +1269,7 @@ End Sub
 Function cptGetExternalUID(ByRef oTask As MSProject.Task, Optional strType As String) As Long
   'objects
   Dim oMaster As MSProject.Project 'masterProj
-  Dim oSubProject As MSProject.SubProject 'sproj
+  Dim oSubproject As MSProject.SubProject 'sproj
   Dim oExternalProject As MSProject.Project 'subProj
   Dim oFrom As MSProject.Task 'tPred
   Dim oTo As MSProject.Task 'tSucc
@@ -1278,12 +1299,12 @@ Function cptGetExternalUID(ByRef oTask As MSProject.Task, Optional strType As St
     If oTargetTaskDependency.From = oTask.UniqueID Mod 4194304 Then
       Set oTo = oTargetTaskDependency.To
       If oTo.GetField(185073906) <> "" Then
-        For Each oSubProject In oMaster.Subprojects
-          If oSubProject.Path = oTo.Project Then
-            Set oExternalProject = oSubProject.SourceProject
+        For Each oSubproject In oMaster.Subprojects
+          If oSubproject.Path = oTo.Project Then
+            Set oExternalProject = oSubproject.SourceProject
             Exit For
           End If 'If oSubproject.Path = oTo.Project
-        Next oSubProject
+        Next oSubproject
         Set oExternalTask = oExternalProject.Tasks.UniqueID(oTo.GetField(185073906) Mod 4194304)
         Set oExternalTaskDependencies = oExternalTask.TaskDependencies
         For Each oExternalTaskDependency In oExternalTaskDependencies
@@ -1311,12 +1332,12 @@ Function cptGetExternalUID(ByRef oTask As MSProject.Task, Optional strType As St
     ElseIf oTargetTaskDependency.To = oTask.UniqueID Mod 4194304 Then
       Set oFrom = oTargetTaskDependency.From 'move this
       If oFrom.GetField(185073906) <> "" Then
-        For Each oSubProject In oMaster.Subprojects
-          If oSubProject.Path = oFrom.Project Then
-            Set oExternalProject = oSubProject.SourceProject
+        For Each oSubproject In oMaster.Subprojects
+          If oSubproject.Path = oFrom.Project Then
+            Set oExternalProject = oSubproject.SourceProject
             Exit For
           End If 'If oSubproject.Path = oTo.Project
-        Next oSubProject
+        Next oSubproject
         Set oExternalTask = oExternalProject.Tasks.UniqueID(oFrom.GetField(185073906) Mod 4194304)
         Set oExternalTaskDependencies = oExternalTask.TaskDependencies
         For Each oExternalTaskDependency In oExternalTaskDependencies
@@ -1343,7 +1364,7 @@ Function cptGetExternalUID(ByRef oTask As MSProject.Task, Optional strType As St
 exit_here:
   On Error Resume Next
   Set oMaster = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oExternalProject = Nothing
   Set oFrom = Nothing
   Set oTo = Nothing
@@ -1386,9 +1407,9 @@ Sub cptFindCircularLogic()
     strFileName = Environ("TMP") & "\cpt-circular-logic.txt"
     lngFile = FreeFile
     Open strFileName For Output As #lngFile
-    Print #lngFile, "SOURCE PROJECT,UNIQUE ID"
+    Print #lngFile, "SOURCE PROJECT,UNIQUE ID,TASK NAME"
     For lngCount = 1 To oTasks.Count
-      Print #lngFile, oTasks(lngCount).Project & "," & oTasks(lngCount).UniqueID
+      Print #lngFile, oTasks(lngCount).Project & "," & oTasks(lngCount).UniqueID & "," & oTasks(lngCount).Name
     Next lngCount
     Close #lngFile
     cptShellExecute 0, "open", "notepad.exe", strFileName, vbNullString, 1
