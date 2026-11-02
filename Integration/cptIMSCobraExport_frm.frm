@@ -17,7 +17,7 @@ Attribute VB_Exposed = False
 Option Explicit
 Private Const THIS_MODULE As String = "cptIMSCobraExport_frm"
 
-Private Sub AsgnPcntBox_Change() 'v3.3.1
+Private Sub AsgnPcntBox_AfterUpdate() 'v3.3.1
     
     If isIMSfield(AsgnPcntBox.Value) = False And AsgnPcntBox.Value <> "" And AsgnPcntBox.Value <> "<None>" Then
         MsgBox "Please select a valid IMS Field."
@@ -50,7 +50,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub bcrBox_Change()
+Private Sub bcrBox_AfterUpdate()
 
     If checkDuplicate(bcrBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -188,8 +188,7 @@ Private Sub BCWS_Checkbox_Change()
 
 End Sub
 
-
-Private Sub caID1Box_Change()
+Private Sub caID1Box_AfterUpdate()
 
     If checkDuplicate(caID1Box) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -283,7 +282,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub caID2Box_Change()
+Private Sub caID2Box_AfterUpdate()
 
     If checkDuplicate(caID2Box) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -385,7 +384,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub caID3Box_Change()
+Private Sub caID3Box_AfterUpdate()
 
     If checkDuplicate(caID3Box) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -486,7 +485,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub camBox_Change()
+Private Sub camBox_AfterUpdate()
 
     If checkDuplicate(camBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -606,7 +605,7 @@ Private Sub CSVBtn_Change()
 
 End Sub
 
-Private Sub DateFormat_Combobox_Change() 'v3.3.5
+Private Sub DateFormat_Combobox_AfterUpdate() 'v3.3.5
 
     Dim docProps As DocumentProperties
     Dim curProj As Project
@@ -644,7 +643,7 @@ Private Sub ETC_Checkbox_Click()
     End If
 End Sub
 
-Private Sub evtBox_Change()
+Private Sub evtBox_AfterUpdate()
 
     If checkDuplicate(evtBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -730,7 +729,7 @@ Private Sub exportTPhaseCheckBox_Click() 'v3.3.6
     End If
 End Sub
 
-Private Sub msidBox_Change()
+Private Sub msidBox_AfterUpdate()
 
     If checkDuplicate(msidBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -769,7 +768,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub mswBox_Change()
+Private Sub mswBox_AfterUpdate()
 
     If checkDuplicate(mswBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -808,7 +807,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub PercentBox_Change()
+Private Sub PercentBox_AfterUpdate()
 
     If checkDuplicate(PercentBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -847,7 +846,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub projBox_Change()
+Private Sub projBox_AfterUpdate()
 
     If checkDuplicate(projBox) = True Then
         MsgBox "Please select a unique IMS Field."
@@ -887,7 +886,7 @@ PropMissing:
 
 End Sub
 
-Private Sub resBox_Change()
+Private Sub resBox_AfterUpdate()
     
     Dim docProps As DocumentProperties
     Dim curProj As Project
@@ -1325,7 +1324,7 @@ Private Sub WhatIf_CheckBox_Click() 'v3.2
     End If
 End Sub
 
-Private Sub whatifBox_Change() 'v3.2
+Private Sub whatifBox_AfterUpdate() 'v3.2
     If checkDuplicate(whatifBox) = True Then
         MsgBox "Please select a unique IMS Field."
         whatifBox.Value = ""
@@ -1363,7 +1362,7 @@ PropMissing:
     Resume PropFound
 End Sub
 
-Private Sub wpBox_Change()
+Private Sub wpBox_AfterUpdate()
 
     If checkDuplicate(wpBox) = True Then
         MsgBox "Please select a unique IMS Field."
