@@ -522,33 +522,18 @@ Public Function cptBuildRibbonTab()
         ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExport"" label="">> PowerPoint"" imageMso=""SlideNew"" onAction=""cptExportCriticalPathSelected"" visible=""true"" size=""large"" />"
       End If
     End If
-    If blnMaster Then
-      ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-      If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCPL"" label=""Export CPLs"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptExportCrossProjectLinks"" visible=""true"" supertip=""Export Cross-Project Links to Excel; identify 'ghost tasks.'"" />"
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" size=""large"" supertip=""Find circular logic in your IMS instantly."" />"
-      End If
-      If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
-        ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" >"
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
-        ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
-      End If
-    Else
-      If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
-        ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" size=""large"" supertip=""Find circular logic in your IMS instantly."" />"
-      End If
-      If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
-        ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" size=""large"" >"
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
-        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
-        ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
-      End If
+    ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
+    If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" supertip=""Find circular logic in your IMS instantly."" />"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCPL"" label=""Export CPLs"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptExportCrossProjectLinks"" visible=""true"" supertip=""Export Cross-Project Links to Excel; identify 'ghost tasks.'"" />"
+    End If
+    If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mBulkLogic"" label=""Bulk Logic"" imageMso=""ViewPredecessorsSuccessorsShow"" visible=""true"" >"
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicPreds"" label=""Add Common Predecessor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonPredecessor"" visible=""true"" supertip=""Add a common predecessor to selected tasks."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicSucc"" label=""Add Common Successor"" imageMso=""TasksLink"" onAction=""cptBulkLogicAddCommonSuccessor"" visible=""true"" supertip=""Add a common successor to selected tasks."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBulkLogicCommon"" label=""Remove Common Links"" imageMso=""TasksUnlink"" onAction=""cptBulkLogicRemoveCommon"" visible=""true"" supertip=""Remove common dependencies from selected tasks."" />" 'size=""large""
+      ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
     End If
     If cptModuleExists("cptSaveMarked_bas") And cptModuleExists("cptSaveMarked_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
@@ -684,22 +669,31 @@ Public Function cptBuildRibbonTab()
   If cptModuleExists("cptBackbone_frm") And cptModuleExists("cptBackbone_bas") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" size=""large"" supertip=""Quickly create or edit Outline Codes (WBS, OBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
   End If
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export Codes"" imageMso=""ExportTextFile"" onAction=""cptExportAllCodes"" visible=""true"" size=""large"" supertip=""Export Local Custom Fields with Outline Codes or Lookup Tables to *.csv"" />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   If cptModuleExists("cptIMSCobraExport_bas") And cptModuleExists("cptIMSCobraExport_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCOBRA"" label=""COBRA Export Tool"" imageMso=""Export"" onAction=""Export_IMS"" visible=""true"" size=""large"" supertip=""Validate that your IMS is ready for integration; create CSV transaction files for COBRA. Baseline, forecast, status, etc."" />"
   End If
-  If cptModuleExists("cptCheckAssignments_bas") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignments"" label=""Check Assignments"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
-  End If
-  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export Codes"" imageMso=""Export"" onAction=""cptExportAllCodes"" visible=""true"" supertip=""Export Local Custom Fields with Outline Codes or Lookup Tables to *.csv"" />"
   If cptModuleExists("cptAdjustment_bas") And cptModuleExists("cptAdjustment_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdjustment"" label=""ETC Adjustments"" imageMso=""SynchronizationStatus"" onAction=""cptShowAdjustment_frm"" visible=""true"" supertip=""Bulk adjust ETCs by resource, to given target, by percentage, or by a given amount."" />"
+  End If
+  If cptModuleExists("cptCheckAssignments_bas") Then
+    ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mAssignments"" label=""Check Assignments"" imageMso=""SynchronizationStatus"" visible=""true""  >"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignmentWork"" label=""Check Assignment Work"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignmentDates"" label=""Check Assignment Dates"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignmentDates"" visible=""true"" supertip=""Reconcile task vs assignment dates, etc."" />"
+    ribbonXML = ribbonXML & vbCrLf & "</mso:menu>"
+    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckRollups"" label=""Check Rollups"" imageMso=""SynchronizationStatus"" onAction=""cptCheckRollups"" visible=""true"" supertip=""Check if Summary BLS and BLF match subtask Min(BLS) and Max(BLF)."" />"
   End If
   
   If cptModuleExists("cptCostRateTables_bas") And cptModuleExists("cptCostRateTables_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCostRateTables"" label=""Cost Rate Tables"" imageMso=""DataTypeCurrency"" onAction=""cptShowCostRateTables_frm""  size=""large"" visible=""true"" supertip=""Easily Import and Export Cost Rate Tables."" />"
   End If
+
+
+
+
+
   
   'integration settings
   If cptModuleExists("cptIntegration_frm") Then
@@ -736,6 +730,12 @@ Public Function cptBuildRibbonTab()
     End If
     If cptModuleExists("cptFieldBuilder_bas") And cptModuleExists("cptFieldBuilder_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBuilder"" imageMso=""CustomFieldDialog"" label=""Field Builder"" onAction=""cptShowFieldBuilder_frm"" supertip=""A little help building common custom field pick lists, etc."" />" 'size=""large""
+    End If
+    If ActiveProject.Subprojects.Count > 0 Then
+      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnalyzeLCF"" imageMso=""CustomFieldDialog"" label=""Master/Sub LCF Alignment"" onAction=""cptAnalyzeLCF"" supertip=""Analyze Local Custom Field (LCF) usage between a Master project and its Subprojects."" />" 'size=""large""
+      If cptModuleExists("cptFlowDown_bas") And cptModuleExists("cptFlowDown_frm") Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFlowDown"" imageMso=""CustomFieldDialog"" label=""LCF FlowDown"" onAction=""cptShowFlowDown_frm"" supertip=""Flow Down Local Custom Field (LCF) settings from a Master project to its Subprojects."" />" 'size=""large""
+      End If
     End If
     If cptModuleExists("cptSaveLocal_bas") And cptModuleExists("cptSaveLocal_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bECFtoLCF"" imageMso=""CustomFieldDialog"" label=""ECF to LCF"" onAction=""cptShowSaveLocal_frm"" supertip=""Save Enterprise Custom Field (ECF) settings (and, optionally, task-level data) to Local Custom Fields (LCF). Settings are saved (by project) between sessions."" />" 'size=""large""
@@ -1276,6 +1276,7 @@ err_here:
   MsgBox Err.Number & ": " & Err.Description & vbCrLf & "Source: cptSetup_bas.cptHandleErr()", vbExclamation + vbOKOnly, "Error"
   Resume exit_here
 End Sub
+
 
 Function cptIncrement(ByRef lngCleanUp As Long) As Long
   lngCleanUp = lngCleanUp + 1
