@@ -513,6 +513,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   MsgBox "Enteprise Custom Fields saved locally." & vbCrLf & vbCrLf & "Time: " & Format(Now - tmr, "hh:nn:ss"), vbInformation + vbOKOnly, "Complete"
   'run a validator using mapedit
   If MsgBox("Validate now?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
+    tmr = Now
+    Application.StatusBar = "Getting Excel..."
     Dim oExcel As Excel.Application
     Dim oWorkbook As Excel.Workbook
     Dim oWorksheet As Excel.Worksheet
@@ -577,22 +579,30 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
         End If
         On Error Resume Next
         If Not FilterEdit(Name:="cpt-validate", TaskFilter:=True, Create:=True, FieldName:=FieldConstantToFieldName(lngLCF), Test:="does not equal", Value:="[" & CustomFieldGetName(lngECF) & " (Enterprise)]", ShowSummaryTasks:=False) Then
-          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = "X"
-          Set oComment = Nothing
-          On Error Resume Next
-          Set oComment = oWorksheet.Cells(lngItem, 4 + oSubproject.Index).Comment
-          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-          strMsg = "Unable to apply filter."
-          If oComment Is Nothing Then
-            oWorksheet.Cells(lngItem, 4 + oSubproject.Index).AddComment strMsg
-            Set oComment = oWorksheet.Cells(lngItem, 4 + oSubproject.Index).Comment
-          Else
-            oComment.Text oComment.Text & vbCrLf & strMsg
+          'work around msp's inability to compare pick-lists
+          If FilterEdit(Name:="cpt-validate", TaskFilter:=True, Create:=True, FieldName:=FieldConstantToFieldName(lngECF), Test:="does not equal", Value:="", ShowSummaryTasks:=False) Then
+            Set oTasks = Nothing
+            FilterClear
+            FilterApply "cpt-validate"
+            SelectAll
+            On Error Resume Next
+            Set oTasks = ActiveSelection.Tasks
+            If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+            If Not oTasks Is Nothing Then
+              Dim lngMismatch As Long
+              lngMismatch = 0
+              For Each oTask In oTasks
+                If oTask.GetField(lngLCF) <> oTask.GetField(lngECF) Then
+                  lngMismatch = lngMismatch + 1
+                End If
+              Next oTask
+              oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = lngMismatch
+            Else
+              oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = 0
+            End If
           End If
-          oComment.Shape.TextFrame.AutoSize = True
-          oComment.Shape.TextFrame.Characters(1, 100).Font.Bold = False
         Else
+          If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
           Set oTasks = Nothing
           FilterApply "cpt-validate"
           SelectAll
@@ -600,7 +610,6 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
           Set oTasks = ActiveSelection.Tasks
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
           If Not oTasks Is Nothing Then
-            Application.ActiveWindow.WindowState = pjMaximized
             'fix unicode weirdness and try again
             SelectTaskColumn FieldConstantToFieldName(lngLCF)
             If Application.FindEx(FieldConstantToFieldName(lngLCF), "contains", ChrW(45)) Then
@@ -624,8 +633,10 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
 
         End If
       Next lngItem
-      Application.ActiveWindow.WindowState = pjNormal
+      Application.StatusBar = "Validating " & oSubproject.InsertedProjectSummary.Name & " (" & oSubproject.Index & " / " & oMaster.Subprojects.Count & ") (" & Format(oSubproject.Index / oMaster.Subprojects.Count, "0%") & ")"
+      DoEvents
     Next oSubproject
+    Application.StatusBar = "Formatting validation report..."
     Application.DisplayAlerts = True
     'make it nice
     oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
@@ -672,6 +683,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     Set oWorksheet = Nothing
     Set oWorkbook = Nothing
     Set oExcel = Nothing
+    Application.StatusBar = "Validation complete."
   End If
   oMaster.Activate
   mySaveLocal_frm.lblStatus.Caption = "Ready..."
@@ -2145,5 +2157,7 @@ err_here:
   Call cptHandleErr(THIS_MODULE, "cptLocalCustomFieldsMatch", Err, Erl)
   Resume exit_here
 End Function
+
+
 
 
