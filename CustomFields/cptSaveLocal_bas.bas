@@ -11,6 +11,8 @@ Public strStartGroup As String
 
 Sub cptShowSaveLocal_frm()
   'objects
+  Dim oMaster As MSProject.Project
+  Dim oSubproject As MSProject.SubProject
   Dim oSavedMap As ADODB.Recordset
   Dim mySaveLocal_frm As cptSaveLocal_frm
   Dim oTask As MSProject.Task
@@ -41,6 +43,7 @@ Sub cptShowSaveLocal_frm()
   'variants
   Dim vType As Variant
   'dates
+  Dim tmr As Date
 
   'prevent spawning
   If Not cptGetUserForm("cptSaveLocal_frm") Is Nothing Then Exit Sub
@@ -112,10 +115,7 @@ Sub cptShowSaveLocal_frm()
     If MsgBox(lngSubprojectCount & " subproject(s) found." & vbCrLf & vbCrLf & "It is highly recommended that you analyze master/sub LCF matches." & vbCrLf & vbCrLf & "Do it now?", vbExclamation + vbYesNo, "ECF > LCF") = vbYes Then
       cptAlignLCF ActiveProject
     ElseIf MsgBox("...LCF Analysis skipped." & vbCrLf & vbCrLf & "Open all subprojects now (required)?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
-      Dim tmr As Date
-      Dim oMaster As MSProject.Project
       Set oMaster = ActiveProject
-      Dim oSubproject As MSProject.SubProject
       tmr = Now
       lngSubproject = 0
       For Each oSubproject In oMaster.Subprojects
@@ -371,12 +371,17 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   End If
   
   'create map for export
+  'pjTextOriginDOS      1 DOS character set (including OS/2).
+  'pjTextOriginMac      2 Macintosh character set.
+  'pjTextOriginUnicode  3 Unicode character set.
+  'pjTextOriginWin      0 Windows character set.
+  lngTextFileOrigin = 3 'doesn't seem to make a difference
   strExportMapName = "cpt-ecf-to-lcf-export-map"
   Application.MapEdit Name:=strExportMapName, Create:=True, OverwriteExisting:=True, _
                       DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
                       FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
-                      ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, _
-                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, _
+                      ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
+                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
                       UseHtmlTemplate:=False, IncludeImage:=False
   
   'create map for import
@@ -384,8 +389,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   Application.MapEdit Name:=strImportMapName, Create:=True, OverwriteExisting:=True, _
                       DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
                       FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
-                      ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, _
-                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, _
+                      ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
+                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
                       UseHtmlTemplate:=False, IncludeImage:=False
   
   'loop through map and add
@@ -396,8 +401,16 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   Do While Not oSavedMap.EOF
     strECF = FieldConstantToFieldName(oSavedMap(2))
     strLCF = FieldConstantToFieldName(oSavedMap(3))
-    Application.MapEdit Name:=strExportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strECF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", MergeKey:="Unique ID", ImportMethod:=pjImportMerge, HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
-    Application.MapEdit Name:=strImportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", FieldName:=strLCF, ExternalFieldName:=strLCF, ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=0, UseHtmlTemplate:=False, IncludeImage:=False
+    Application.MapEdit Name:=strExportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, _
+                        CategoryEnabled:=True, TableName:="Entry", FieldName:=strECF, ExternalFieldName:=strLCF, _
+                        ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
+                        HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
+                        UseHtmlTemplate:=False, IncludeImage:=False
+    Application.MapEdit Name:=strImportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, _
+                        CategoryEnabled:=True, TableName:="Entry", FieldName:=strLCF, ExternalFieldName:=strLCF, _
+                        ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
+                        HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
+                        UseHtmlTemplate:=False, IncludeImage:=False
     oSavedMap.MoveNext
   Loop
   
@@ -590,10 +603,27 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
           If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
           If Not oTasks Is Nothing Then
             Application.ActiveWindow.WindowState = pjMaximized
-            oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = oTasks.Count
+            'fix unicode weirdness and try again
+            SelectTaskColumn FieldConstantToFieldName(lngLCF)
+            If Application.FindEx(FieldConstantToFieldName(lngLCF), "contains", ChrW(45)) Then
+              Application.ReplaceEx FieldConstantToFieldName(lngLCF), "contains", ChrW(45), ChrW(8209), True
+              FilterClear
+              Set oTasks = Nothing
+              FilterApply "cpt-validate"
+              SelectAll
+              On Error Resume Next
+              Set oTasks = ActiveSelection.Tasks
+              If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+              If Not oTasks Is Nothing Then
+                oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = oTasks.Count
+              Else
+                oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = 0
+              End If
+            End If
           Else
             oWorksheet.Cells(lngItem, 4 + oSubproject.Index) = 0
           End If
+
         End If
       Next lngItem
       Application.ActiveWindow.WindowState = pjNormal
@@ -645,6 +675,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     Set oWorkbook = Nothing
     Set oExcel = Nothing
   End If
+  oMaster.Activate
   mySaveLocal_frm.lblStatus.Caption = "Ready..."
 
 exit_here:
