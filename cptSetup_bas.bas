@@ -367,6 +367,7 @@ Public Function cptBuildRibbonTab()
   Dim ribbonXML As String
   Dim lngCleanUp As Long
   Dim blnMaster As Boolean
+  Dim strSetting As String
   
   blnMaster = ActiveProject.Subprojects.Count > 0
 
@@ -422,8 +423,6 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "<mso:splitButton id=""sbWrapItUp"" >" 'size=""large""
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bWrapItUp"" label=""WrapItUp"" imageMso=""CollapseAll"" onAction=""cptWrapItUp"" supertip=""Collapse summary tasks starting from lowest level up to level 2. Defaults to your saved setting from Reset All or 2 if you don't have a saved setting yet."" />"   'in basCore_bas;visible=""true"" size=""large""
   ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mWrapItUp"">"
-  'ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator id=""cleanup_" & cptIncrement(lngCleanUp) & """ title=""WrapItUp to Level:"" />"
-  'ribbonXML = ribbonXML + vbCrLf & "<mso:control idQ=""mso:OutlineShowAllTasks"" visible=""true""/>"
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLevelAll"" label=""All Subtasks"" imageMso=""OutlineTasksShowAll"" onAction=""cptWrapItUpAll"" visible=""true"" screentip=""Show All Subtasks"" supertip=""Show All Subtasks""/>"  'in basCore_bas
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLevel1"" label=""Level 1"" imageMso=""_1"" onAction=""cptWrapItUp1"" visible=""true"" screentip=""WrapItUp to Level 1"" supertip=""WrapItUp to Level 1""/>"  'in basCore_bas
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bLevel2"" label=""Level 2"" imageMso=""_2"" onAction=""cptWrapItUp2"" visible=""true"" screentip=""WrapItUp to Level 2"" supertip=""WrapItUp to Level 2""/>"  'in basCore_bas
@@ -437,12 +436,8 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
   ribbonXML = ribbonXML + vbCrLf & "</mso:splitButton>"
   
-  'ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bGroupReapply""  label=""ReGroup"" imageMso=""RefreshWebView"" onAction=""cptGroupReapply"" visible=""true"" supertip=""Reapply Group"" />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFilterReapply"" label=""ReFilter"" imageMso=""RefreshWebView"" onAction=""cptFilterReapply"" visible=""true"" supertip=""Reapply Filter"" />"
-'  ribbonXML = ribbonXML + vbCrLf & "<mso:dialogBoxLauncher>"
-'  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""dbl-reset"" screentip=""Settings for Reset All"" onAction=""cptShowResetAll_frm"" />"
-'  ribbonXML = ribbonXML + vbCrLf & "</mso:dialogBoxLauncher>"
   ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
 
   'task counters
@@ -481,7 +476,6 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bEnumerate"" label=""Enumerate"" imageMso=""NumberingRestart"" onAction=""cptEnumerate"" visible=""true"" supertip=""Select a group of tasks, and then enumerate them."" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bTrimText"" label=""Trim Task Names"" imageMso=""TextEffectsClear"" onAction=""cptTrimTaskNames"" visible=""true"" supertip=""For the 'Type A' folks out there, this trims leading and trailing spaces (and multiple spaces) in your task names (e.g., after pasting them in from Excel--cool, right?). Note: this applies to all non-external tasks in the project."" />"
-      'ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bReplicateProcess"" label=""Replicate A Process (WIP)"" imageMso=""DuplicateSelectedSlides"" onAction=""cptReplicateProcess"" visible=""true"" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFindDuplicates"" label=""Find Duplicate Task Names"" imageMso=""RemoveDuplicates"" onAction=""cptFindDuplicateTaskNames"" visible=""true"" supertip=""Clearly worded tasks represent well-defined tasks and are important for estimating and providing status. Click to find duplicate task names and create a report in Excel. Remember: Noun and Verb!"" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bResetRowHeight"" label=""Reset Row Height"" imageMso=""RowHeight"" onAction=""cptResetRowHeight"" visible=""true"" supertip=""Another one for our fellow 'Type A' folks out there--reset all row heights after they get all jacked up. Give it a go; you'll like it."" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnnoyances"" label=""Annoyances"" imageMso=""SnapToRulerSubdivisions"" onAction=""cptCheckAnnoyances"" visible=""true"" supertip=""Yet another 'Type A' friendly utility--check for start times not equal to 8:00 AM or finish times not equal to 5:00 PM or fractional durations. Have another idea? Let us know help@ClearPlanConsulting.com."" />"
@@ -494,7 +488,6 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bMyReplace"" label=""MyReplace"" imageMso=""ReplaceDialog"" onAction=""cptMyReplace"" visible=""true""/>"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bEnumerate"" label=""Enumerate"" imageMso=""NumberingRestart"" onAction=""cptEnumerate"" visible=""true""/>"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bTrimText"" label=""Trim Task Names"" imageMso=""TextEffectsClear"" onAction=""cptTrimTaskNames"" visible=""true""/>"
-      'ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bReplicateProcess"" label=""Replicate A Process"" imageMso=""DuplicateSelectedSlides"" onAction=""cptReplicateProcess"" visible=""true"" />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFindDuplicates"" label=""Find Duplicate Task Names"" imageMso=""RemoveDuplicates"" onAction=""cptFindDuplicateTaskNames"" visible=""true""/>"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bResetRowHeight"" label=""Reset Row Height"" imageMso=""RowHeight"" onAction=""cptResetRowHeight"" visible=""true""/>"
       ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
@@ -525,7 +518,11 @@ Public Function cptBuildRibbonTab()
     ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
     If cptModuleExists("cptNetworkBrowser_bas") And cptModuleExists("cptNetworkBrowser_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bNetworkBrowser"" label=""Network Browser"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptShowNetworkBrowser_frm"" visible=""true"" size=""large"" supertip=""Jump to, and/or trace, predecessors and successors using the Network Diagram view in full screen or in the details pane."" />"
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" supertip=""Find circular logic in your IMS instantly."" />"
+      If ActiveProject.DetectCycle.Count > 0 Then
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" supertip=""Find circular logic in your IMS instantly. If this button is enabled then you should click it."" />"
+      Else
+        ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCircular"" label=""Circular Logic"" imageMso=""CancelAll"" onAction=""cptFindCircularLogic"" visible=""true"" enabled=""false"" supertip=""Find circular logic in your IMS instantly. If this button is disabled then you don't have any circular logic. Well done."" />"
+      End If
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCPL"" label=""Export CPLs"" imageMso=""ViewPredecessorsSuccessorsShow"" onAction=""cptExportCrossProjectLinks"" visible=""true"" supertip=""Export Cross-Project Links to Excel; identify 'ghost tasks.'"" />"
     End If
     If cptModuleExists("cptBulkLogic_bas") And cptModuleExists("cptBulkLogic_Frm") Then
@@ -549,10 +546,6 @@ Public Function cptBuildRibbonTab()
     ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
   End If
   
-'  ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gIntegration2"" visible=""true"" >"
-'  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bIntegrationSettings3"" label=""Field Mapping"" imageMso=""Settings"" screentip=""Integration Settings"" onAction=""cptGetValidMap"" size=""large"" />"
-'  ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
-  
   'schedule
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gStatus"" label=""Schedule"" visible=""true"" >"
   ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mHealth"" label=""Health"" imageMso=""CheckWorkflow"" visible=""true"" size=""large"" >"
@@ -560,8 +553,6 @@ Public Function cptBuildRibbonTab()
    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bDECM"" label=""DECM Dashboard (v8.1)"" imageMso=""CheckWorkflow"" onAction=""cptDECM_GET_DATA"" visible=""true"" supertip=""DECM Dashboard (v8.1)"" />"
    ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bIntegrationSettings1"" label=""Integration Settings"" imageMso=""Settings"" onAction=""cptGetValidMap"" visible=""true"" supertip=""Set, edit, and confirm Integration Settings"" />"
-'  ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""DCMA 14"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-'  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bDCMA14"" label=""DCMA 01"" imageMso=""CheckWorkflow"" onAction=""cptDCMA14_GET_DATA"" visible=""true"" supertip=""DCMA 14-pt Analysis"" />"
   ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
   ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mStatus"" label=""Status"" imageMso=""UpdateAsScheduled"" visible=""true"" size=""large"" >"
   ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""General"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
@@ -581,7 +572,7 @@ Public Function cptBuildRibbonTab()
   If cptModuleExists("cptStatusSheetImport_bas") And cptModuleExists("cptStatusSheetImport_frm") Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bStatusSheetImport"" label=""Import Status Sheet(s)"" imageMso=""ImportExcel"" onAction=""cptShowStatusSheetImport_frm"" visible=""true"" supertip=""Just what it sounds like. (Note: Assignment ETC is at the Assignment level, so use the Task Usage view to review after import.)"" />"
   End If
-  
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdjustment"" label=""ETC Adjustments"" imageMso=""SynchronizationStatus"" onAction=""cptShowAdjustment_frm"" visible=""true"" supertip=""Bulk adjust ETCs by resource, to given target, by percentage, or by a given amount."" />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mScheduleUtilities"" label=""Utilities"" imageMso=""CheckWorkflow"" visible=""true"" >"
   ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""Status Utilities"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   
@@ -603,13 +594,10 @@ Public Function cptBuildRibbonTab()
   ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""Analyze"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
   ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bFindCompleteThrough"" label=""Analyze CompleteThrough"" imageMso=""UpdateAsScheduled"" onAction=""cptFindCompleteThrough"" visible=""true"" supertip=""Analyze unexpected 'CompleteThrough' progress bar in Gantt Chart."" />"
   
-  'todo: account for EV Tool in cptValidateEVP
-  'ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bValidateEVT"" enabled=""false"" label=""Validate EVT"" imageMso=""RefreshWebView"" onAction=""cptAnalyzeEVT"" visible=""true"" supertip=""Validate EVT - e.g., ensure incomplete 50/50 tasks with Actual Start are marked as 50% EV % complete."" />"
   ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
   
   'metrics
   If cptModuleExists("cptMetrics_bas") Then
-'    ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gMetrics"" label=""Metrics"" visible=""true"" >"
     ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mSchedule"" label=""Metrics"" imageMso=""ChartTypeLineInsertGallery"" visible=""true"" size=""large"" >" 'UpdateAsScheduled
     ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""Schedule Metrics"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptSPI"" label=""Schedule Performance Index (SPI) in hours"" imageMso=""ApplyPercentageFormat"" onAction=""cptGetSPI"" visible=""true"" supertip=""SPI (in hours) relies on timephased baseline work and EV% stored in Physical % Complete."" />"
@@ -621,7 +609,6 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptCPLI"" enabled=""false"" label=""Critical Path Length Index (CPLI)"" imageMso=""ApplyPercentageFormat"" onAction=""cptGetCPLI"" visible=""true"" supertip=""Select a target task, click to get the CPLI. Raw calculation based on time now and total slack. (Feature not available in this version of MS Project)"" />"
     End If
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptCEI"" label=""Current Execution Index (CEI)"" imageMso=""ApplyPercentageFormat"" onAction=""cptGetCEI"" visible=""true"" supertip=""Tracks forecast accuracy between periods. Be sure to 'Capture Week' in previous period's file under Schedule > Status > Capture Week."" />"
-'    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptTFCI"" enabled=""false"" label=""Total Float Consumption Index (TFCI)"" imageMso=""ApplyPercentageFormat"" onAction=""cptGetCEI"" visible=""true"" supertip=""Measures forecast accuracy between reporting periods"" />"
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptES"" label=""Earned Schedule"" imageMso=""CalendarToolSelectDate"" onAction=""cptGetEarnedSchedule"" visible=""true"" supertip=""Just what it sounds like. See the NDIA Predictive Measures Guide for more information."" />"
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptCaptureAllMetrics"" label=""Capture All Metrics"" imageMso=""DataViewDetailsView"" onAction=""cptCaptureAllMetrics"" visible=""true"" supertip=""Capture all metrics above for this program for this period."" />"
     
@@ -634,7 +621,6 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptCPLItrend"" enabled=""false"" label=""CPLI Trend"" imageMso=""ChartTypeLineInsertGallery"" onAction=""cptGetTrend_CPLI"" visible=""true"" supertip=""Create a chart of CPLI Trend. (Feature not available in this version of MS Project)"" />"
     End If
     ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptCEItrend"" label=""CEI Trend"" imageMso=""ChartTypeLineInsertGallery"" onAction=""cptGetTrend_CEI"" visible=""true"" supertip=""Just what it sounds like..."" />"
-    'todo: TFCI Trend
     If cptModuleExists("cptResourceDemand_bas") And cptModuleExists("cptResourceDemand_frm") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:menuSeparator title=""Staffing Metrics"" id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptResourceDemandExcel"" label=""Staffing Profile"" imageMso=""Chart3DColumnChart"" onAction=""cptShowExportResourceDemand_frm"" visible=""true"" supertip=""Export timephased assignment remaining work, baseline work, costs (any or all rate sets), and your choice of extra fields. Settings are saved between sessions."" />" 'size=""large""
@@ -657,53 +643,24 @@ Public Function cptBuildRibbonTab()
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""cptMetricsSettings"" label=""Metrics Settings"" imageMso=""Settings"" onAction=""cptGetValidMap"" visible=""true"" supertip=""Settings required for some EV-ish metrics."" />"
     End If
     ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
-'    ribbonXML = ribbonXML + vbCrLf & "<mso:dialogBoxLauncher>"
-'    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""test"" screentip=""Concept of operations"" onAction=""cptShowSettings_frm"" />"
-'    ribbonXML = ribbonXML + vbCrLf & "</mso:dialogBoxLauncher>"
   End If
   ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
-    
+  
   'integration
   ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gIntegration"" label=""Integration"" visible=""true"" >"
-  'outline codes
-  If cptModuleExists("cptBackbone_frm") And cptModuleExists("cptBackbone_bas") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" size=""large"" supertip=""Quickly create or edit Outline Codes (WBS, OBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
-  End If
-  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export Codes"" imageMso=""ExportTextFile"" onAction=""cptExportAllCodes"" visible=""true"" size=""large"" supertip=""Export Local Custom Fields with Outline Codes or Lookup Tables to *.csv"" />"
-  ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-  If cptModuleExists("cptIMSCobraExport_bas") And cptModuleExists("cptIMSCobraExport_frm") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCOBRA"" label=""COBRA Export Tool"" imageMso=""Export"" onAction=""Export_IMS"" visible=""true"" size=""large"" supertip=""Validate that your IMS is ready for integration; create CSV transaction files for COBRA. Baseline, forecast, status, etc."" />"
-  End If
-  If cptModuleExists("cptAdjustment_bas") And cptModuleExists("cptAdjustment_frm") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAdjustment"" label=""ETC Adjustments"" imageMso=""SynchronizationStatus"" onAction=""cptShowAdjustment_frm"" visible=""true"" supertip=""Bulk adjust ETCs by resource, to given target, by percentage, or by a given amount."" />"
-  End If
-  If cptModuleExists("cptCheckAssignments_bas") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mAssignments"" label=""Check Assignments"" imageMso=""SynchronizationStatus"" visible=""true""  >"
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignmentWork"" label=""Check Assignment Work"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignmentDates"" label=""Check Assignment Dates"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignmentDates"" visible=""true"" supertip=""Reconcile task vs assignment dates, etc."" />"
-    ribbonXML = ribbonXML & vbCrLf & "</mso:menu>"
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckRollups"" label=""Check Rollups"" imageMso=""SynchronizationStatus"" onAction=""cptCheckRollups"" visible=""true"" supertip=""Check if Summary BLS and BLF match subtask Min(BLS) and Max(BLF)."" />"
-  End If
-  
-  If cptModuleExists("cptCostRateTables_bas") And cptModuleExists("cptCostRateTables_frm") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:separator id=""cleanup_" & cptIncrement(lngCleanUp) & """ />"
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCostRateTables"" label=""Cost Rate Tables"" imageMso=""DataTypeCurrency"" onAction=""cptShowCostRateTables_frm""  size=""large"" visible=""true"" supertip=""Easily Import and Export Cost Rate Tables."" />"
-  End If
-
-
-
-
-
-  
-  'integration settings
-  If cptModuleExists("cptIntegration_frm") Then
-    ribbonXML = ribbonXML + vbCrLf & "<mso:dialogBoxLauncher>"
-    ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bIntegrationSettings2"" screentip=""Integration Settings"" onAction=""cptGetValidMap"" />"
-    ribbonXML = ribbonXML + vbCrLf & "</mso:dialogBoxLauncher>"
-  End If
-  
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCOBRA"" label=""COBRA Export Tool"" imageMso=""Export"" onAction=""Export_IMS"" visible=""true"" supertip=""Validate that your IMS is ready for integration; create CSV transaction files for COBRA. Baseline, forecast, status, etc."" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bIntegrationSettings2"" label=""Integration Settings"" imageMso=""MailMergeMatchFields"" onAction=""cptGetValidMap"" visible=""true"" supertip=""Integration settings (e.g., field mapping)."" />"
+  'menu
+  ribbonXML = ribbonXML + vbCrLf & "<mso:menu id=""mIntegration"" label=""Integration Helps"" imageMso=""MailMergeMatchFields"" visible=""true"" >"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bExportCodes"" label=""Export Code Files"" imageMso=""ExportTextFile"" onAction=""cptExportAllCodes"" visible=""true"" supertip=""Export Local Custom Fields with Outline Codes or Lookup Tables to *.csv"" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBackbone"" label=""Outline Codes"" imageMso=""OrganizationChartLayoutRightHanging"" onAction=""cptShowBackbone_frm"" visible=""true"" supertip=""Quickly create or edit Outline Codes (WBS, OBS, IMP, etc.); import and/or export; create DI-MGMT-81334D, etc."" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignmentWork"" label=""Check Assignment Work"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignments"" visible=""true"" supertip=""Reconcile task vs assignment work, baselines, etc."" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckAssignmentDates"" label=""Check Assignment Dates"" imageMso=""SynchronizationStatus"" onAction=""cptCheckAssignmentDates"" visible=""true"" supertip=""Reconcile task vs assignment dates, etc."" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCheckRollups"" label=""Check Rollups"" imageMso=""SynchronizationStatus"" onAction=""cptCheckRollups"" visible=""true"" supertip=""Check if Summary BLS and BLF match subtask Min(BLS) and Max(BLF)."" />"
+  ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bCostRateTables"" label=""Cost Rate Tables"" imageMso=""DataTypeCurrency"" onAction=""cptShowCostRateTables_frm"" visible=""true"" supertip=""Easily Import and Export Cost Rate Tables."" />"
+  ribbonXML = ribbonXML + vbCrLf & "</mso:menu>"
   ribbonXML = ribbonXML + vbCrLf & "</mso:group>"
-  
+
   'calendars
   If (cptModuleExists("cptFiscal_frm") And cptModuleExists("cptFiscal_bas")) Or (cptModuleExists("cptCalendarExceptions_frm") And cptModuleExists("cptCalendarExceptions_bas")) Then
     ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gCalendars"" label=""Calendars"" visible=""true"" >"
@@ -727,9 +684,6 @@ Public Function cptBuildRibbonTab()
     ribbonXML = ribbonXML + vbCrLf & "<mso:group id=""gCustomFields"" label=""Custom Fields"" visible=""true"">"
     If cptModuleExists("cptDataDictionary_frm") And cptModuleExists("cptDataDictionary_bas") Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bDataDictionary"" imageMso=""ReadingMode"" label=""Data Dictionary"" onAction=""cptShowDataDictionary_frm"" supertip=""Provide a description of each custom field; create export in Excel for deliverables; share dictionary. Settings are saved between sessions."" />" 'size=""large""
-    End If
-    If cptModuleExists("cptFieldBuilder_bas") And cptModuleExists("cptFieldBuilder_frm") Then
-      ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bBuilder"" imageMso=""CustomFieldDialog"" label=""Field Builder"" onAction=""cptShowFieldBuilder_frm"" supertip=""A little help building common custom field pick lists, etc."" />" 'size=""large""
     End If
     If ActiveProject.Subprojects.Count > 0 Then
       ribbonXML = ribbonXML + vbCrLf & "<mso:button id=""bAnalyzeLCF"" imageMso=""CustomFieldDialog"" label=""Master/Sub LCF Alignment"" onAction=""cptAnalyzeLCF"" supertip=""Analyze Local Custom Field (LCF) usage between a Master project and its Subprojects."" />" 'size=""large""
@@ -767,7 +721,6 @@ Public Function cptBuildRibbonTab()
 
   ribbonXML = ribbonXML + vbCrLf & "</mso:tab>"
     
-  'Debug.Print "<mso:customUI ""xmlns:mso=""http://schemas.microsoft.com/office/2009/07/customui"" >" & ribbonXML
   cptBuildRibbonTab = ribbonXML
 
 End Function
@@ -916,7 +869,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   'objects
   Dim oLink As MSProject.TaskDependency
   Dim oTask As MSProject.Task
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oProfile As MSProject.Profile
   Dim oShell As Object
   'strings
@@ -1046,11 +999,11 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
     strMsg = strMsg & "Master Project: " & Format(ActiveProject.Tasks.Count, "#,##0") & " tasks; " & Format(ActiveProject.ResourceCount, "#,##0") & " resources" & vbCrLf
     lngTotalTasks = ActiveProject.Tasks.Count
     lngTotalResources = ActiveProject.ResourceCount
-    For Each oSubProject In ActiveProject.Subprojects
-      strMsg = strMsg & "- Subproject " & oSubProject.Index & ": " & Format(oSubProject.SourceProject.Tasks.Count, "#,##0") & " tasks; " & Format(oSubProject.SourceProject.ResourceCount, "#,##0") & " resources" & vbCrLf
-      lngTotalTasks = lngTotalTasks + oSubProject.SourceProject.Tasks.Count
-      lngTotalResources = lngTotalResources + oSubProject.SourceProject.ResourceCount
-    Next oSubProject
+    For Each oSubproject In ActiveProject.Subprojects
+      strMsg = strMsg & "- Subproject " & oSubproject.Index & ": " & Format(oSubproject.SourceProject.Tasks.Count, "#,##0") & " tasks; " & Format(oSubproject.SourceProject.ResourceCount, "#,##0") & " resources" & vbCrLf
+      lngTotalTasks = lngTotalTasks + oSubproject.SourceProject.Tasks.Count
+      lngTotalResources = lngTotalResources + oSubproject.SourceProject.ResourceCount
+    Next oSubproject
     strMsg = strMsg & "Total: " & Format(lngTotalTasks, "#,##0") & " tasks; " & Format(lngTotalResources, "#,##0") & " resources" & vbCrLf
   Else
     strMsg = strMsg & "Tasks: " & Format(ActiveProject.Tasks.Count, "#,##0") & vbCrLf
@@ -1060,8 +1013,8 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
   strMsg = strMsg & "Local Custom Fields: " & (cptGetCustomFieldInfo > 0) & " (" & cptGetCustomFieldInfo & " LCFs defined)" & vbCrLf
   blnResourceLoaded = False
   If blnMaster Then
-    For Each oSubProject In ActiveProject.Subprojects
-      For Each oTask In oSubProject.SourceProject.Tasks
+    For Each oSubproject In ActiveProject.Subprojects
+      For Each oTask In oSubproject.SourceProject.Tasks
         If oTask Is Nothing Then GoTo next_task_master
         If oTask.Assignments.Count > 0 Then
           blnResourceLoaded = True
@@ -1069,7 +1022,7 @@ Sub cptHandleErr(strModule As String, strProcedure As String, objErr As ErrObjec
         End If
 next_task_master:
       Next oTask
-    Next oSubProject
+    Next oSubproject
   Else
     If ActiveProject.ResourceCount > 0 Then
       For Each oTask In ActiveProject.Tasks
@@ -1085,8 +1038,8 @@ next_task_single:
   strMsg = strMsg & "Resource Loaded: " & blnResourceLoaded & vbCrLf
   blnCPL = False
   If blnMaster Then
-    For Each oSubProject In ActiveProject.Subprojects
-      For Each oTask In oSubProject.SourceProject.Tasks
+    For Each oSubproject In ActiveProject.Subprojects
+      For Each oTask In oSubproject.SourceProject.Tasks
         If Not oTask Is Nothing Then
           For Each oLink In oTask.TaskDependencies
             If oLink.To = oTask Then
@@ -1106,7 +1059,7 @@ next_task_single:
         End If
       Next oTask
       If blnCPL Then Exit For
-    Next oSubProject
+    Next oSubproject
   Else
     For Each oTask In ActiveProject.Tasks
       If Not oTask Is Nothing Then
@@ -1183,8 +1136,8 @@ next_task_single:
     End If
   ElseIf Application.Edition = pjEditionStandard Then 'check for inactive tasks
     If blnMaster Then
-      For Each oSubProject In ActiveProject.Subprojects
-        For Each oTask In oSubProject.SourceProject.Tasks
+      For Each oSubproject In ActiveProject.Subprojects
+        For Each oTask In oSubproject.SourceProject.Tasks
           If Not oTask Is Nothing Then
             If Not oTask.Active Then
               blnInactive = True
@@ -1192,7 +1145,7 @@ next_task_single:
             End If
           End If
         Next oTask
-      Next oSubProject
+      Next oSubproject
     Else
       If ActiveProject.ResourceCount > 0 Then
         For Each oTask In ActiveProject.Tasks
@@ -1266,7 +1219,7 @@ exit_here:
   Set oLink = Nothing
   Application.StatusBar = ""
   Set oTask = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oShell = Nothing
   Set oProfile = Nothing
 
@@ -1276,7 +1229,6 @@ err_here:
   MsgBox Err.Number & ": " & Err.Description & vbCrLf & "Source: cptSetup_bas.cptHandleErr()", vbExclamation + vbOKOnly, "Error"
   Resume exit_here
 End Sub
-
 
 Function cptIncrement(ByRef lngCleanUp As Long) As Long
   lngCleanUp = lngCleanUp + 1

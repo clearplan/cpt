@@ -3350,10 +3350,11 @@ Function cptValidPath(strFullName As String) As String
     GoTo exit_here
   End If
   'ensure folder is not read-only
-  If oFolder.Attributes And ReadOnly Then
-    strReason = "folder is read-only"
-    GoTo exit_here
-  End If
+  'todo: this returns false positive on some systems...(?)
+  'If oFolder.Attributes And ReadOnly Then
+  '  strReason = "folder is read-only"
+  '  GoTo exit_here
+  'End If
   'test for illegal characters in filename
   strFileName = Replace(strFullName, oFSO.GetParentFolderName(strFullName), "")
   For Each v In Split("<,>,?,[,],:,|,*", ",")
