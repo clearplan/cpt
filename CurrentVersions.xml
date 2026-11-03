@@ -94,14 +94,14 @@
 	<Module>
 		<Name>cptCalendarExceptions_bas</Name>
 		<FileName>cptCalendarExceptions_bas.bas</FileName>
-		<Version>v1.2.1</Version>
+		<Version>v1.2.2</Version>
 		<Type>1</Type>
 		<Directory>Calendar</Directory>
 	</Module>
 	<Module>
 		<Name>cptCalendarExceptions_frm</Name>
 		<FileName>cptCalendarExceptions_frm.frm</FileName>
-		<Version>v1.2.1</Version>
+		<Version>v1.2.2</Version>
 		<Type>3</Type>
 		<Directory>Calendar</Directory>
 	</Module>
