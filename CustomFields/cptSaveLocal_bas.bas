@@ -40,6 +40,8 @@ Sub cptShowSaveLocal_frm()
   'doubles
   'booleans
   Dim blnErrorTrapping As Boolean
+  Dim blnShowStatusBarTaskCount As Boolean
+  Dim blnShowStatusBarFiscalPeriodCount As Boolean
   'variants
   Dim vType As Variant
   'dates
@@ -69,6 +71,23 @@ Sub cptShowSaveLocal_frm()
     GoTo exit_here
   End If
   
+  'capture cpt-related settings
+  strSetting = cptGetSetting("Count", "blnShowStatusBarTaskCount")
+  If Len(strSetting) > 0 Then
+    blnShowStatusBarTaskCount = CBool(strSetting)
+  Else
+    blnShowStatusBarTaskCount = False
+  End If
+  strSetting = cptGetSetting("Fiscal", "chkShowStatusBarFiscalPeriodCount")
+  If Len(strSetting) > 0 Then
+    blnShowStatusBarFiscalPeriodCount = CBool(strSetting)
+  Else
+    blnShowStatusBarFiscalPeriodCount = False
+  End If
+  'turn them off temporarily
+  cptSaveSetting "Count", "blnShowStatusBarTaskCount", 0
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", 0
+    
   cptSpeed True
     
   'check for saved map
@@ -235,15 +254,18 @@ next_type:
     cptUpdateSaveLocalView mySaveLocal_frm
     
     DoEvents
-    'Debug.Print "Turning off cptSpeed... | " & Format(Now - tmr, "hh:nn:ss")
+    
     cptSpeed False
-    'Debug.Print "Turning off cptSpeed...done. | " & Format(Now - tmr, "hh:nn:ss")
+    
     .Show 'modal to control changes to custom fields
   End With
 
 exit_here:
   On Error Resume Next
   Set mySaveLocal_frm = Nothing
+  'restore cpt-related settings
+  cptSaveSetting "Count", "blnShowStatusBarTaskCount", IIf(blnShowStatusBarTaskCount, 1, 0)
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", IIf(blnShowStatusBarFiscalPeriodCount, 1, 0)
   Application.StatusBar = ""
   cptSpeed False
   oTask.Delete
@@ -292,14 +314,13 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   Dim lngItem As Long
   Dim lngTask As Long
   Dim lngTaskCount As Long
+  Dim lngTextFileOrigin As Long
   'integers
   'doubles
   'booleans
   Dim blnMaster As Boolean
   Dim blnErrorTrapping As Boolean
   Dim blnClearExisting As Boolean
-  Dim blnShowStatusBarTaskCount As Boolean
-  Dim blnShowStatusBarFiscalPeriodCount As Boolean
   'variants
   Dim vMap As Variant
   'dates
@@ -312,25 +333,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   
   blnMaster = ActiveProject.Subprojects.Count > 0
   If blnMaster Then Set oMaster = ActiveProject
-  
-  'capture cpt-related settings
-  strSetting = cptGetSetting("Count", "blnShowStatusBarTaskCount")
-  If Len(strSetting) > 0 Then
-    blnShowStatusBarTaskCount = CBool(strSetting)
-  Else
-    blnShowStatusBarTaskCount = False
-  End If
-  
-  strSetting = cptGetSetting("Fiscal", "chkShowStatusBarFiscalPeriodCount")
-  If Len(strSetting) > 0 Then
-    blnShowStatusBarFiscalPeriodCount = CBool(strSetting)
-  Else
-    blnShowStatusBarFiscalPeriodCount = False
-  End If
-  'turn them off temporarily
-  cptSaveSetting "Count", "blnShowStatusBarTaskCount", 0
-  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", 0
-  
+    
   strServerURL = Application.Profiles.ActiveProfile.Server
   strProgramAcronym = cptGetProgramAcronym
   'save map
@@ -371,18 +374,15 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   End If
   
   'create map for export
-  'pjTextOriginDOS      1 DOS character set (including OS/2).
-  'pjTextOriginMac      2 Macintosh character set.
-  'pjTextOriginUnicode  3 Unicode character set.
-  'pjTextOriginWin      0 Windows character set.
+  '0=pjTextOriginWin; 1=pjTextOriginDOS; 2=pjTextOriginMac; 3=pjTextOriginUnicode
   lngTextFileOrigin = 3 'doesn't seem to make a difference
   strExportMapName = "cpt-ecf-to-lcf-export-map"
   Application.MapEdit Name:=strExportMapName, Create:=True, OverwriteExisting:=True, _
                       DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
                       FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
                       ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
-                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
-                      UseHtmlTemplate:=False, IncludeImage:=False
+                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), _
+                      TextFileOrigin:=lngTextFileOrigin, UseHtmlTemplate:=False, IncludeImage:=False
   
   'create map for import
   strImportMapName = "cpt-ecf-to-lcf-import-map"
@@ -390,8 +390,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
                       DataCategory:=pjMapTasks, CategoryEnabled:=True, TableName:="Entry", _
                       FieldName:="Unique ID", ExternalFieldName:="Unique ID", _
                       ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
-                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
-                      UseHtmlTemplate:=False, IncludeImage:=False
+                      HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), _
+                      TextFileOrigin:=lngTextFileOrigin, UseHtmlTemplate:=False, IncludeImage:=False
   
   'loop through map and add
   oSavedMap.Filter = 0
@@ -404,13 +404,13 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     Application.MapEdit Name:=strExportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, _
                         CategoryEnabled:=True, TableName:="Entry", FieldName:=strECF, ExternalFieldName:=strLCF, _
                         ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
-                        HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
-                        UseHtmlTemplate:=False, IncludeImage:=False
+                        HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), _
+                        TextFileOrigin:=lngTextFileOrigin, UseHtmlTemplate:=False, IncludeImage:=False
     Application.MapEdit Name:=strImportMapName, OverwriteExisting:=True, DataCategory:=pjMapTasks, _
                         CategoryEnabled:=True, TableName:="Entry", FieldName:=strLCF, ExternalFieldName:=strLCF, _
                         ExportFilter:="All Tasks", ImportMethod:=pjImportMerge, MergeKey:="Unique ID", _
-                        HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), TextFileOrigin:=lngTextFileOrigin, _
-                        UseHtmlTemplate:=False, IncludeImage:=False
+                        HeaderRow:=True, AssignmentData:=False, TextDelimiter:=Chr$(44), _
+                        TextFileOrigin:=lngTextFileOrigin, UseHtmlTemplate:=False, IncludeImage:=False
     oSavedMap.MoveNext
   Loop
   
@@ -456,9 +456,6 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
         'delete the csv
         Kill strFileName
         
-        'todo: capture starting view
-        'todo: restore starting view
-        'todo: delete view and table from subproject
       Next oSubproject
       Application.StatusBar = "ECF > LCF | " & Format(Now - tmr, "hh:nn:ss")
       oMaster.Activate
@@ -514,7 +511,7 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
   oSavedMap.Save strSavedMap, adPersistADTG
   Application.StatusBar = "ECF > LCF | " & Format(Now - tmr, "hh:nn:ss")
   MsgBox "Enteprise Custom Fields saved locally." & vbCrLf & vbCrLf & "Time: " & Format(Now - tmr, "hh:nn:ss"), vbInformation + vbOKOnly, "Complete"
-  'todo: run a validator using mapedit
+  'run a validator using mapedit
   If MsgBox("Validate now?", vbQuestion + vbYesNo, "ECF > LCF") = vbYes Then
     Dim oExcel As Excel.Application
     Dim oWorkbook As Excel.Workbook
@@ -567,7 +564,8 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
             strMsg = strMsg & "SUBPROJECT: " & oSubproject.InsertedProjectSummary.Name & vbCrLf
             strMsg = strMsg & "CUSTOM FIELD: " & FieldConstantToFieldName(lngLCF) & vbCrLf
             strMsg = strMsg & "CUSTOM FIELD NAME: " & vbCrLf & CustomFieldGetName(lngLCF) & vbCrLf & vbCrLf
-            strMsg = strMsg & "This may cause inaccuracies. Do you care? (Click No to ignore these messages.)"
+            strMsg = strMsg & "This may cause inaccuracies: do you care?" & vbCrLf & vbCrLf
+            strMsg = strMsg & "(Click No to ignore these messages.)"
             If MsgBox(strMsg, vbExclamation + vbYesNo, "ECF > LCF") = vbNo Then blnIgnoreMismatch = True
           End If
           'add a comment
@@ -681,9 +679,6 @@ Sub cptSaveLocal(ByRef mySaveLocal_frm As cptSaveLocal_frm)
 exit_here:
   On Error Resume Next
   Application.StatusBar = ""
-  'restore cpt-related settings
-  cptSaveSetting "Count", "blnShowStatusBarTaskCount", IIf(blnShowStatusBarTaskCount, 1, 0)
-  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", IIf(blnShowStatusBarFiscalPeriodCount, 1, 0)
   cptSpeed False
   If Len(strErrors) > 0 Then
     lngFile = FreeFile
@@ -886,7 +881,6 @@ Sub cptAnalyzeAutoMap(ByRef mySaveLocal_frm As cptSaveLocal_frm)
     'get available LCF
     For lngItem = 0 To dTypes.Count - 1
       For lngItem2 = 1 To dTypes.Items(lngItem)
-        'todo: account for both pjTask and pjResource
         If Len(CustomFieldGetName(FieldNameToFieldConstant(dTypes.Keys(lngItem) & lngItem2))) > 0 Then
           .MoveFirst
           .Find "TYPE='" & dTypes.Keys(lngItem) & "'"
@@ -1825,7 +1819,7 @@ Sub cptUpdateSaveLocalView(ByRef mySaveLocal_frm As cptSaveLocal_frm, Optional s
   'variants
   'dates
   
-  Debug.Print "triggered!" 'todo: remove
+  'Debug.Print "triggered!" 'todo: remove
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
