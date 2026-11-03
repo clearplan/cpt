@@ -1,5 +1,5 @@
 Attribute VB_Name = "cptCalendarExceptions_bas"
-'<cpt_version>v1.2.1</cpt_version>
+'<cpt_version>v1.2.2</cpt_version>
 Option Explicit
 Private Const THIS_MODULE As String = "cptCalendarExceptions_bas"
 
@@ -199,7 +199,7 @@ next_resource:
           End With
         Next
         'highlight duplicate start dates
-        lngStartCol = oWorksheet.Rows(1).Find(what:="START", lookat:=xlWhole).Column
+        lngStartCol = oWorksheet.Rows(1).Find(What:="START", lookat:=xlWhole).Column
         .ListColumns(lngStartCol).Range.FormatConditions.Delete
         .ListColumns(lngStartCol).Range.FormatConditions.AddUniqueValues
         With .ListColumns(lngStartCol).Range.FormatConditions(1)
@@ -211,7 +211,7 @@ next_resource:
           .StopIfTrue = False
         End With
         'collapse to level one if details
-        If blnDetail Then oWorksheet.Outline.ShowLevels RowLevels:=1
+        If blnDetail Then oWorksheet.Outline.ShowLevels Rowlevels:=1
       End With
     End If
   Next oWorksheet
@@ -290,19 +290,19 @@ Sub cptExportCalendarExceptions(ByRef oWorkbook As Excel.Workbook, ByRef oCalend
   Set oExcel = oWorksheet.Application
   oWorksheet.Activate
   oWorksheet.[A1:M1] = Array("CALENDAR", "EXCEPTION", "START", "FINISH", "TYPE", "WORKING_HOURS", "DAYS_OF_WEEK", "OCCURRENCES", "MONTH", "MONTH_DAY", "MONTH_ITEM", "MONTH_POSITION", "PERIOD")
-  lngCalendarCol = oWorksheet.Rows(1).Find(what:="CALENDAR", lookat:=xlWhole).Column
-  lngNameCol = oWorksheet.Rows(1).Find(what:="EXCEPTION", lookat:=xlWhole).Column
-  lngStartCol = oWorksheet.Rows(1).Find(what:="START", lookat:=xlWhole).Column
-  lngFinishCol = oWorksheet.Rows(1).Find(what:="FINISH", lookat:=xlWhole).Column
-  lngHoursCol = oWorksheet.Rows(1).Find(what:="WORKING_HOURS", lookat:=xlWhole).Column
-  lngTypeCol = oWorksheet.Rows(1).Find(what:="TYPE", lookat:=xlWhole).Column
-  lngDaysCol = oWorksheet.Rows(1).Find(what:="DAYS_OF_WEEK", lookat:=xlWhole).Column
-  lngOccurrencesCol = oWorksheet.Rows(1).Find(what:="OCCURRENCES", lookat:=xlWhole).Column
-  lngMonthCol = oWorksheet.Rows(1).Find(what:="MONTH", lookat:=xlWhole).Column
-  lngMonthDayCol = oWorksheet.Rows(1).Find(what:="MONTH_DAY", lookat:=xlWhole).Column
-  lngMonthItemCol = oWorksheet.Rows(1).Find(what:="MONTH_ITEM", lookat:=xlWhole).Column
-  lngMonthPositionCol = oWorksheet.Rows(1).Find(what:="MONTH_POSITION", lookat:=xlWhole).Column
-  lngPeriodCol = oWorksheet.Rows(1).Find(what:="PERIOD", lookat:=xlWhole).Column
+  lngCalendarCol = oWorksheet.Rows(1).Find(What:="CALENDAR", lookat:=xlWhole).Column
+  lngNameCol = oWorksheet.Rows(1).Find(What:="EXCEPTION", lookat:=xlWhole).Column
+  lngStartCol = oWorksheet.Rows(1).Find(What:="START", lookat:=xlWhole).Column
+  lngFinishCol = oWorksheet.Rows(1).Find(What:="FINISH", lookat:=xlWhole).Column
+  lngHoursCol = oWorksheet.Rows(1).Find(What:="WORKING_HOURS", lookat:=xlWhole).Column
+  lngTypeCol = oWorksheet.Rows(1).Find(What:="TYPE", lookat:=xlWhole).Column
+  lngDaysCol = oWorksheet.Rows(1).Find(What:="DAYS_OF_WEEK", lookat:=xlWhole).Column
+  lngOccurrencesCol = oWorksheet.Rows(1).Find(What:="OCCURRENCES", lookat:=xlWhole).Column
+  lngMonthCol = oWorksheet.Rows(1).Find(What:="MONTH", lookat:=xlWhole).Column
+  lngMonthDayCol = oWorksheet.Rows(1).Find(What:="MONTH_DAY", lookat:=xlWhole).Column
+  lngMonthItemCol = oWorksheet.Rows(1).Find(What:="MONTH_ITEM", lookat:=xlWhole).Column
+  lngMonthPositionCol = oWorksheet.Rows(1).Find(What:="MONTH_POSITION", lookat:=xlWhole).Column
+  lngPeriodCol = oWorksheet.Rows(1).Find(What:="PERIOD", lookat:=xlWhole).Column
   oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
   
   If oCalendar.Exceptions.Count > 0 Then
@@ -824,7 +824,7 @@ Sub cptCalendarCompareMain()
   Dim oExcel As Excel.Application
   Dim oMaster As MSProject.Project
   Dim oException As MSProject.Exception
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oCalendar As MSProject.Calendar
   'strings
   'longs
@@ -870,16 +870,16 @@ Sub cptCalendarCompareMain()
   'first export the master
   Set oMaster = ActiveProject
   Application.StatusBar = "Exporting Master project..."
-  oRecordset.AddNew Array(0), Array("0_" & oMaster.Name)
+  oRecordset.AddNew Array(0), Array("00_" & oMaster.Name)
   lngCalendars = oMaster.BaseCalendars.Count
   lngCalendar = 0
   For Each oCalendar In oMaster.BaseCalendars
     If oCalendar.Name <> "cptFiscalCalendar" Then
       For Each oException In oCalendar.Exceptions
         If oException.Occurrences > 1 Then
-          cptCalendarCompareDetail oRecordset, oExcel, oException, oMaster.Name
+          cptCalendarCompareDetail oRecordset, oExcel, oException, "00_" & oMaster.Name
         Else
-          oRecordset.AddNew Array(0, 1, 2, 3), Array("0_" & oMaster.Name, oException.Parent.Name, oException.Name, oException.Start)
+          oRecordset.AddNew Array(0, 1, 2, 3), Array("00_" & oMaster.Name, oException.Parent.Name, oException.Name, oException.Start)
         End If
       Next oException
     End If
@@ -889,26 +889,26 @@ Sub cptCalendarCompareMain()
   'then export the subs
   lngSubprojects = oMaster.Subprojects.Count
   lngSubproject = 0
-  For Each oSubProject In oMaster.Subprojects
+  For Each oSubproject In oMaster.Subprojects
     lngSubproject = lngSubproject + 1
     Application.StatusBar = "Exporting Subproject " & lngSubproject & " of " & lngSubprojects & ")..."
-    oRecordset.AddNew Array(0), Array(oSubProject.Index & "_" & oSubProject.SourceProject.Name)
-    lngCalendars = oSubProject.SourceProject.BaseCalendars.Count
+    oRecordset.AddNew Array(0), Array(Format(oSubproject.Index, "00") & "_" & oSubproject.SourceProject.Name)
+    lngCalendars = oSubproject.SourceProject.BaseCalendars.Count
     lngCalendar = 0
-    For Each oCalendar In oSubProject.SourceProject.BaseCalendars
+    For Each oCalendar In oSubproject.SourceProject.BaseCalendars
       lngCalendar = lngCalendar + 1
       Application.StatusBar = "Exporting Subproject " & lngSubproject & " of " & lngSubprojects & " | Calendar " & lngCalendar & " of " & lngCalendars & " (" & Format(lngCalendar / lngCalendars, "0%") & ")"
       If oCalendar.Name <> "cptFiscalCalendar" Then
         For Each oException In oCalendar.Exceptions
           If oException.Occurrences > 1 Then
-            cptCalendarCompareDetail oRecordset, oExcel, oException, oSubProject.SourceProject.Name
+            cptCalendarCompareDetail oRecordset, oExcel, oException, Format(oSubproject.Index, "00") & "_" & oSubproject.SourceProject.Name
           Else
-            oRecordset.AddNew Array(0, 1, 2, 3), Array(oSubProject.Index & "_" & oSubProject.SourceProject.Name, oException.Parent.Name, oException.Name, oException.Start)
+            oRecordset.AddNew Array(0, 1, 2, 3), Array(Format(oSubproject.Index, "00") & "_" & oSubproject.SourceProject.Name, oException.Parent.Name, oException.Name, oException.Start)
           End If
         Next oException
       End If
     Next oCalendar
-  Next oSubProject
+  Next oSubproject
   
   If oRecordset.RecordCount > 0 Then
     Application.StatusBar = "Creating report..."
@@ -938,7 +938,7 @@ Sub cptCalendarCompareMain()
     Set oWorksheet = oWorkbook.Worksheets.Add(oWorkbook.Sheets("Data"))
     oWorksheet.Name = "Compare"
     oWorksheet.[A1:C1] = Split("CALENDAR,EXCEPTION,DATE", ",")
-    If [COUNTA(DATA[EXCEPTION])] > 0 Then
+    If oWorksheet.Evaluate("COUNTA(DATA[EXCEPTION])") > 0 Then
       oWorksheet.[A2].Formula2 = "=UNIQUE(CHOOSECOLS(FILTER(DATA,LEN(DATA[EXCEPTION])>0),2,3,4))"
     Else
       oWorksheet.[A2] = "No Exceptions"
@@ -1030,7 +1030,7 @@ exit_here:
   Set oExcel = Nothing
   Set oMaster = Nothing
   Set oException = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oCalendar = Nothing
 
   Exit Sub
