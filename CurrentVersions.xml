@@ -332,7 +332,7 @@
 	<Module>
 		<Name>cptResetAll_frm</Name>
 		<FileName>cptResetAll_frm.frm</FileName>
-		<Version>v1.4.1</Version>
+		<Version>v1.5.0</Version>
 		<Type>3</Type>
 		<Directory>Core</Directory>
 	</Module>

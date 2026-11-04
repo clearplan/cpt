@@ -587,6 +587,7 @@ Sub cptResetAll()
   Dim oTask As MSProject.Task
   Dim rstSettings As Object 'ADODB.Recordset
   'strings
+  Dim strSetting As String
   Dim strDefaultView As String
   Dim strFilter As String
   Dim strOutlineLevel As String
@@ -736,6 +737,13 @@ Sub cptResetAll()
     End If
   Else 'prompt for defaults
     Call cptShowResetAll_frm
+  End If
+  
+  strSetting = cptGetSetting("ResetAll", "chkHideExternal")
+  If Len(strSetting) > 0 Then
+    OptionsViewEx DisplayExternalPredecessors:=CBool(strSetting), DisplayExternalPredecessors:=CBool(strSetting)
+  Else
+    OptionsViewEx DisplayExternalPredecessors:=False, DisplayExternalPredecessors:=False
   End If
   
   strSettings = cptGetSetting("ResetAll", "KeepPosition")
@@ -996,7 +1004,7 @@ Sub cptShowResetAll_frm()
   Dim oView As MSProject.View
   Dim rstSettings As Object 'ADODB.Recordset
   'strings
-  Dim strKeepPosition As String
+  Dim strSetting As String
   Dim strViewList As String
   Dim strDefaultView As String
   Dim strOutlineLevel As String
@@ -1138,12 +1146,19 @@ Sub cptShowResetAll_frm()
       End If
     End With
   End If
-  strKeepPosition = cptGetSetting("ResetAll", "KeepPosition")
-  If Len(strKeepPosition) > 0 Then
-    myResetAll_frm.chkKeepPosition = CBool(strKeepPosition)
+  strSetting = cptGetSetting("ResetAll", "KeepPosition")
+  If Len(strSetting) > 0 Then
+    myResetAll_frm.chkKeepPosition = CBool(strSetting)
   Else
     myResetAll_frm.chkKeepPosition.Value = False
   End If
+  strSetting = cptGetSetting("ResetAll", "chkHideExternal")
+  If Len(strSetting) > 0 Then
+    myResetAll_frm.chkHideExternal = CBool(strSetting)
+  Else
+    myResetAll_frm.chkHideExternal = False 'default
+  End If
+  myResetAll_frm.lblFileLocation = "%USERPROFILE%\cpt-backup\settings\" & cptGetSettingsFile("ResetAll")
   myResetAll_frm.Caption = "How would you like to Reset All? (" & cptGetVersion("cptResetAll_frm") & ")"
   myResetAll_frm.Show False
   
@@ -3349,12 +3364,12 @@ Function cptValidPath(strFullName As String) As String
     strReason = "folder does not exist"
     GoTo exit_here
   End If
-  'ensure folder is not read-only
+'  'ensure folder is not read-only
   'todo: this returns false positive on some systems...(?)
-  'If oFolder.Attributes And ReadOnly Then
-  '  strReason = "folder is read-only"
-  '  GoTo exit_here
-  'End If
+'  If (oFolder.Attributes And ReadOnly) = 1 Then
+'    strReason = "folder is read-only"
+'    GoTo exit_here
+'  End If
   'test for illegal characters in filename
   strFileName = Replace(strFullName, oFSO.GetParentFolderName(strFullName), "")
   For Each v In Split("<,>,?,[,],:,|,*", ",")
