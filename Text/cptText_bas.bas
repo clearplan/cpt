@@ -822,6 +822,9 @@ Sub cptCheckAnnoyances()
     lngTasks = ActiveProject.Tasks.Count
   End If
   
+  Dim blnIncludeMilestones As Boolean
+  blnIncludeMilestones = MsgBox("Include milestones?", vbQuestion + vbYesNo, "Find Annoyances") = vbYes
+  
   For Each oTask In ActiveProject.Tasks
     If oTask Is Nothing Then GoTo next_task
     If oTask.Summary Then
@@ -844,7 +847,7 @@ Sub cptCheckAnnoyances()
       End If
     End If
     If IsDate(oTask.ActualFinish) Then GoTo next_task
-    If oTask.Duration = 0 Then GoTo next_task 'todo: skip milestones or not?
+    If Not blnIncludeMilestones And oTask.Duration = 0 Then GoTo next_task
     If TimeValue(oTask.Finish) <> "5:00:00 PM" Or TimeValue(oTask.Start) <> "8:00:00 AM" Then
       strTimesList = strTimesList & oTask.UniqueID & vbTab
       strTimes = strTimes & oTask.UniqueID & "," & TimeValue(oTask.Start) & "," & TimeValue(oTask.Finish) & vbCrLf
@@ -932,12 +935,13 @@ next_task:
     Else
       lngCount = oDict.Count
     End If
-    If MsgBox(Format(lngCount, "#,##0") & " annoyance" & IIf(lngCount > 1, "s", "") & " found!" & vbCrLf & vbCrLf & "View report?", vbInformation + vbYesNo, "Annoyances") = vbYes Then
+    If MsgBox("Found " & Format(lngCount, "#,##0") & " annoying things!" & vbCrLf & vbCrLf & "View report?" & vbCrLf & vbCrLf & "Note: this tool focuses on incomplete tasks.", vbInformation + vbYesNo, "Annoyances") = vbYes Then
       lngFile = FreeFile
       strFileName = Environ("tmp") & "\annoyances.txt"
       Open strFileName For Output As lngFile
       Print #lngFile, "===== ODD TIMES ARE ANNOYING ====="
       If Len(strTimes) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strTimes, vbCrLf)), "#,##0")
         Print #lngFile, "UID,START,FINISH"
         Print #lngFile, strTimes
         Print #lngFile, "UID LIST: " & Replace(strTimesList, vbTab, ",")
@@ -947,6 +951,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "===== FRACTIONAL DURATIONS ARE ANNOYING ====="
       If Len(strDurations) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strDurations, vbCrLf)), "#,##0")
         Print #lngFile, "UID,DURATION"
         Print #lngFile, strDurations
         Print #lngFile, "UID LIST: " & Replace(strDurationsList, vbTab, ",")
@@ -956,6 +961,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "===== ELAPSED DURATIONS ARE ANNOYING ====="
       If Len(strElapsed) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strElapsed, vbCrLf)), "#,##0")
         Print #lngFile, "UID,DURATION"
         Print #lngFile, strElapsed
         Print #lngFile, "UID LIST: " & Replace(strElapsedList, vbTab, ",")
@@ -965,6 +971,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "===== SPLIT TASKS CAN BE ANNOYING ====="
       If Len(strSplitList) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strSplit, vbCrLf)), "#,##0")
         Print #lngFile, "UID,SplitParts"
         Print #lngFile, strSplit
         Print #lngFile, "UID LIST: " & Replace(strSplitList, vbTab, ",")
@@ -974,6 +981,7 @@ next_task:
       Print #lngFile, vbCrLf
       Print #lngFile, "===== FIXED COSTS ARE ANNOYING ====="
       If Len(strFixedCosts) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strFixedCosts, vbCrLf)), "#,##0")
         Print #lngFile, "UID,Fixed Costs"
         Print #lngFile, strFixedCosts
         Print #lngFile, "UID LIST: " & Replace(strFixedCostList, vbTab, ",")
@@ -985,6 +993,7 @@ next_task:
         Print #lngFile, "===== INACTIVE TASKS IN PROJECT STANDARD ARE ANNOYING ====="
         Print #lngFile, "===== AND WILL PROBABLY LEAD TO ANOMALOUS CALCULATIONS ===="
         If Len(strInactive) > 0 Then
+          Print #lngFile, "FOUND: " & Format(UBound(Split(strInactive, vbCrLf)), "#,##0")
           Print #lngFile, "UID,ACTIVE"
           Print #lngFile, strInactive
           Print #lngFile, "UID LIST: " & Replace(strInactiveList, vbTab, ",")
@@ -995,35 +1004,40 @@ next_task:
       End If
       Print #lngFile, "===== MANUALLY SCHEDULED TASKS ARE ANNOYING ====="
       If Len(strManual) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strManual, vbCrLf)), "#,##0")
         Print #lngFile, "UID,MANUALLY SCHEDULED"
         Print #lngFile, strManual
         Print #lngFile, "UID LIST: " & Replace(strManualList, vbTab, ",")
+        Print #lngFile, "HINT: Fill-down 'Auto Scheduled' in the 'Task Mode' field to fix this."
       Else
         Print #lngFile, "...nicely done: Automatic = copacetic."
       End If
       Print #lngFile, vbCrLf
       Print #lngFile, "===== SUPERFLUOUS SPACES ARE ANNOYING ====="
       If Len(strSpaces) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strSpaces, vbCrLf)), "#,##0")
         Print #lngFile, "UID,TASK NAME"
         Print #lngFile, strSpaces
         Print #lngFile, "UID LIST: " & Replace(strSpacesList, vbTab, ",")
-        Print #lngFile, "HINT: use our 'Trim Task Names' tool to fix this."
+        Print #lngFile, "HINT: use the 'Trim Task Names' tool to fix this."
       Else
         Print #lngFile, "...but you don't have any--good copy."
       End If
       Print #lngFile, vbCrLf
       Print #lngFile, "===== COMMAS IN TASK NAMES CAN BREAK THINGS ====="
       If Len(strCommas) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strCommas, vbCrLf)), "#,##0")
         Print #lngFile, "UID,TASK NAME"
         Print #lngFile, strCommas
         Print #lngFile, "UID LIST: " & Replace(strCommasList, vbTab, ",")
-        Print #lngFile, "HINT: use the 'Clean up annoyances' tool to fix this."
+        Print #lngFile, "HINT: use the 'Remove Annoyances' tool to fix this."
       Else
         Print #lngFile, "...but you already know this: zero found."
       End If
       Print #lngFile, vbCrLf
       Print #lngFile, "===== QUOTES IN TASK NAMES CAN BREAK THINGS ====="
       If Len(strQuotes) > 0 Then
+        Print #lngFile, "FOUND: " & Format(UBound(Split(strQuotes, vbCrLf)), "#,##0")
         Print #lngFile, "UID,TASK NAME"
         Print #lngFile, strQuotes
         Print #lngFile, "UID LIST: " & Replace(strQuotesList, vbTab, ",")
@@ -1126,6 +1140,7 @@ Sub cptCleanUpAnnoyances()
   If blnCommas Then
     SetAutoFilter "Name", pjAutoFilterCustom, "contains", ","
     SelectAll
+    Set oTasks = Nothing
     On Error Resume Next
     Set oTasks = ActiveSelection.Tasks
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
@@ -1141,6 +1156,7 @@ Sub cptCleanUpAnnoyances()
   If blnQuotes Then
     SetAutoFilter "Name", pjAutoFilterCustom, "contains", """"
     SelectAll
+    Set oTasks = Nothing
     On Error Resume Next
     Set oTasks = ActiveSelection.Tasks
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
