@@ -896,7 +896,7 @@ Sub cptCheckAnnoyances()
     
 next_task:
     lngTask = lngTask + 1
-    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")" & IIf(oDict.Count > 0, " | fount " & Format(oDict.Count, "#,##0") & " annoying things!", "")
+    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")" & IIf(oDict.Count > 0, " | found " & Format(oDict.Count, "#,##0") & " annoying things!", "")
   Next oTask
   
   If blnResources Then
