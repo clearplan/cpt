@@ -42,7 +42,7 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptText_bas", "cptBulkAppend", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptBulkAppend", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -86,7 +86,7 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptText_bas", "cptBulkPrepend", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptBulkPrepend", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -154,7 +154,7 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptText_bas", "cptEnumerate", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptEnumerate", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -238,7 +238,7 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptText_bas", "cptMyReplace", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptMyReplace", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -459,7 +459,7 @@ exit_here:
   Exit Sub
   
 err_here:
-  Call cptHandleErr("cptText_bas", "cptFindDuplicateTaskNames", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptFindDuplicateTaskNames", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -530,7 +530,7 @@ exit_here:
   Application.StatusBar = ""
   Exit Sub
 err_here:
-  Call cptHandleErr("cptText_bas", "cptTrimTaskNames", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptTrimTaskNames", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -607,7 +607,7 @@ exit_here:
   Set oTasks = Nothing
   Exit Sub
 err_here:
-  Call cptHandleErr("cptText_bas", "cptShowText_frm", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptShowText_frm", Err, Erl)
   Resume exit_here
   
 End Sub
@@ -722,7 +722,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptText_bas", "cptUpdatePreview", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptUpdatePreview", Err, Erl)
   Resume exit_here
 
 End Sub
@@ -750,7 +750,7 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptText_bas", "cptResetRowHeight", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptResetRowHeight", Err, Erl)
   Resume exit_here
 End Sub
 
@@ -877,7 +877,7 @@ Sub cptCheckAnnoyances()
     End If
     If cptRxTest(oTask.Name, "^ ") Or cptRxTest(oTask.Name, " $") Or cptRxTest(oTask.Name, " {2,}") Then
       strSpacesList = strSpacesList & oTask.UniqueID & vbTab
-      strSpaces = strSpaces & oTask.UniqueID & "," & oTask.Name & vbCrLf
+      strSpaces = strSpaces & oTask.UniqueID & ",[" & oTask.Name & "]" & vbCrLf 'brackets to emphasize leading and trailing spaces
       If Not oDict.Exists(oTask.UniqueID) Then oDict.Add oTask.UniqueID, oTask.UniqueID
     End If
     If cptRxTest(oTask.Name, ",") Then
@@ -893,10 +893,12 @@ Sub cptCheckAnnoyances()
     
 next_task:
     lngTask = lngTask + 1
-    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")" & IIf(oDict.Count > 0, " | " & Format(oDict.Count, "#,##0") & " found!", "")
+    Application.StatusBar = "Checking...(" & Format(lngTask / lngTasks, "0%") & ")" & IIf(oDict.Count > 0, " | fount " & Format(oDict.Count, "#,##0") & " annoying things!", "")
   Next oTask
   
   If blnResources Then
+    'todo: how checking for blnResources - master/sub?
+    'todo: is this actually sufficient for a master/sub setup?
     strProjectBaseCalendar = ActiveProject.Calendar.Name
     For Each oResource In ActiveProject.Resources
       If oResource.Type = pjResourceTypeWork Then
@@ -1005,6 +1007,7 @@ next_task:
         Print #lngFile, "UID,TASK NAME"
         Print #lngFile, strSpaces
         Print #lngFile, "UID LIST: " & Replace(strSpacesList, vbTab, ",")
+        Print #lngFile, "HINT: use our 'Trim Task Names' tool to fix this."
       Else
         Print #lngFile, "...but you don't have any--good copy."
       End If
@@ -1014,6 +1017,7 @@ next_task:
         Print #lngFile, "UID,TASK NAME"
         Print #lngFile, strCommas
         Print #lngFile, "UID LIST: " & Replace(strCommasList, vbTab, ",")
+        Print #lngFile, "HINT: use the 'Clean up annoyances' tool to fix this."
       Else
         Print #lngFile, "...but you already know this: zero found."
       End If
@@ -1023,6 +1027,7 @@ next_task:
         Print #lngFile, "UID,TASK NAME"
         Print #lngFile, strQuotes
         Print #lngFile, "UID LIST: " & Replace(strQuotesList, vbTab, ",")
+        Print #lngFile, "HINT: use the 'Remove Annoyances' tool to fix this."
       Else
         Print #lngFile, "...but you've already learned this lesson, I see."
       End If
@@ -1064,7 +1069,109 @@ exit_here:
 
   Exit Sub
 err_here:
-  Call cptHandleErr("cptText_bas", "cptCheckAnnoyances", Err, Erl)
+  Call cptHandleErr(THIS_MODULE, "cptCheckAnnoyances", Err, Erl)
   Resume exit_here
 End Sub
 
+Sub cptCleanUpAnnoyances()
+  'objects
+  Dim oTasks As MSProject.Tasks
+  'strings
+  Dim strOptions As String
+  Dim strMsg As String
+  'longs
+  Dim lngSpaces As Long
+  Dim lngCommas As Long
+  Dim lngQuotes As Long
+  'integers
+  'doubles
+  'booleans
+  Dim blnErrorTrapping As Boolean
+  Dim blnSpaces As Boolean
+  Dim blnCommas As Boolean
+  Dim blnQuotes As Boolean
+  Dim blnShowExternalSuccessors As Boolean
+  Dim blnShowExternalPredecessors As Boolean
+  'variants
+  Dim vOptions As Variant
+  'dates
+  
+  blnErrorTrapping = cptErrorTrapping
+  If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  'get options
+  vOptions = Split("Commas in Task Name,Quotes in Task Name", ",")
+  strOptions = cptGetListBoxData(vOptions, fmListStylePlain, fmMultiSelectMulti, "Clean up what:", "", False, True)
+  blnSpaces = InStr(strOptions, "Superfluous Spaces")
+  blnCommas = InStr(strOptions, "Commas in Task Name")
+  blnQuotes = InStr(strOptions, "Quotes in Task Name")
+  'prepare the view
+  ActiveWindow.TopPane.Activate
+  'capture starting point
+  strStartView = ActiveProject.CurrentView
+  strStartTable = ActiveProject.CurrentTable
+  strStartFilter = ActiveProject.CurrentFilter
+  strStartGroup = ActiveProject.CurrentGroup
+  blnShowExternalSuccessors = ActiveProject.ShowExternalSuccessors
+  blnShowExternalPredecessors = ActiveProject.ShowExternalPredecessors
+  
+  FilterClear
+  GroupClear
+  OptionsViewEx DisplaySummaryTasks:=True
+  SelectAll
+  OutlineShowAllTasks
+  Sort "ID"
+  OptionsViewEx DisplayExternalSuccessors:=False, DisplayExternalPredecessors:=False
+  
+  If blnCommas Then
+    SetAutoFilter "Name", pjAutoFilterCustom, "contains", ","
+    SelectAll
+    On Error Resume Next
+    Set oTasks = ActiveSelection.Tasks
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If Not oTasks Is Nothing Then
+      lngCommas = oTasks.Count
+      ReplaceEx "Name", "contains", ",", "-", True
+    Else
+      lngCommas = 0
+    End If
+    FilterClear
+  End If
+  
+  If blnQuotes Then
+    SetAutoFilter "Name", pjAutoFilterCustom, "contains", """"
+    SelectAll
+    On Error Resume Next
+    Set oTasks = ActiveSelection.Tasks
+    If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If Not oTasks Is Nothing Then
+      lngQuotes = oTasks.Count
+      ReplaceEx "Name", "contains", """", "-", True
+    Else
+      lngQuotes = 0
+    End If
+    FilterClear
+  End If
+  
+  strMsg = "Cleaned up:" & vbCrLf
+  strMsg = strMsg & Format(lngCommas, "#,##0") & " task" & IIf(lngCommas = 1, "", "s") & " with commas" & vbCrLf
+  strMsg = strMsg & Format(lngQuotes, "#,##0") & " task" & IIf(lngQuotes = 1, "", "s") & " with quotes" & vbCrLf & vbCrLf
+  MsgBox strMsg, vbInformation + vbOKOnly, "cptCleanUpAnnoyances"
+  
+  ViewApply strStartView
+  TableApply strStartTable
+  FilterApply strStartFilter
+  GroupApply strStartGroup
+  ActiveProject.ShowExternalPredecessors = blnShowExternalPredecessors
+  ActiveProject.ShowExternalSuccessors = blnShowExternalSuccessors
+  
+exit_here:
+  On Error Resume Next
+  Set oTasks = Nothing
+
+  Exit Sub
+err_here:
+  Call cptHandleErr(THIS_MODULE, "cptCleanUpAnnoyances", Err, Erl)
+  Resume exit_here
+
+End Sub
