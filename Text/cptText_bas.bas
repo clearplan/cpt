@@ -1106,12 +1106,21 @@ Sub cptCleanUpAnnoyances()
   Dim blnQuotes As Boolean
   Dim blnShowExternalSuccessors As Boolean
   Dim blnShowExternalPredecessors As Boolean
+  Dim blnShowStatusBarTaskCount As Boolean
+  Dim blnShowStatusBarFiscalPeriodCount As Boolean
   'variants
   Dim vOptions As Variant
   'dates
   
   blnErrorTrapping = cptErrorTrapping
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+  
+  'capture cpt stuff
+  blnShowStatusBarTaskCount = CBool(cptGetSetting("General", "blnShowStatusBarTaskCount", "0"))
+  blnShowStatusBarFiscalPeriodCount = CBool(cptGetSetting("Fiscal", "chkShowStatusBarFiscalPeriodCount", "0"))
+  'turn cpt stuff off
+  cptSaveSetting "General", "blnShowStatusBarTaskCount", 0
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", 0
   
   'get options
   vOptions = Split("Commas in Task Name,Quotes in Task Name", ",")
@@ -1138,7 +1147,8 @@ Sub cptCleanUpAnnoyances()
   OptionsViewEx DisplayExternalSuccessors:=False, DisplayExternalPredecessors:=False
   
   If blnCommas Then
-    SetAutoFilter "Name", pjAutoFilterCustom, "contains", ","
+    FilterEdit "cpt-annoyances", True, True, True, , , "Name", , "contains", ",", , , False
+    FilterApply "cpt-annoyances"
     SelectAll
     Set oTasks = Nothing
     On Error Resume Next
@@ -1146,7 +1156,11 @@ Sub cptCleanUpAnnoyances()
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If Not oTasks Is Nothing Then
       lngCommas = oTasks.Count
-      ReplaceEx "Name", "contains", ",", "-", True
+      If MsgBox("Replace " & Format(lngCommas, "#,##0") & " instances of [,] with [-]?", vbQuestion + vbYesNo, "Confirm:") = vbYes Then
+        ReplaceEx "Name", "contains", ",", "-", True
+      Else
+        lngCommas = 0
+      End If
     Else
       lngCommas = 0
     End If
@@ -1154,7 +1168,8 @@ Sub cptCleanUpAnnoyances()
   End If
   
   If blnQuotes Then
-    SetAutoFilter "Name", pjAutoFilterCustom, "contains", """"
+    FilterEdit "cpt-annoyances", True, True, True, , , "Name", , "contains", """", , , False
+    FilterApply "cpt-annoyances"
     SelectAll
     Set oTasks = Nothing
     On Error Resume Next
@@ -1162,7 +1177,11 @@ Sub cptCleanUpAnnoyances()
     If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
     If Not oTasks Is Nothing Then
       lngQuotes = oTasks.Count
-      ReplaceEx "Name", "contains", """", "-", True
+      If MsgBox("Replace " & Format(lngQuotes, "#,##0") & " instances of [""] with [-]?", vbQuestion + vbYesNo, "Confirm:") = vbYes Then
+        ReplaceEx "Name", "contains", """", "-", True
+      Else
+        lngQuotes = 0
+      End If
     Else
       lngQuotes = 0
     End If
@@ -1183,6 +1202,9 @@ Sub cptCleanUpAnnoyances()
   
 exit_here:
   On Error Resume Next
+  'restore cpt stuff
+  cptSaveSetting "General", "blnShowStatusBarTaskCount", IIf(blnShowStatusBarTaskCount, 1, 0)
+  cptSaveSetting "Fiscal", "chkShowStatusBarFiscalPeriodCount", IIf(blnShowStatusBarFiscalPeriodCount, 1, 0)
   Set oTasks = Nothing
 
   Exit Sub
