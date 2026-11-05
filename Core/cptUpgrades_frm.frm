@@ -14,7 +14,7 @@ Attribute VB_Creatable = False
 Attribute VB_PredeclaredId = True
 Attribute VB_Exposed = False
 
-'<cpt_version>v1.5.8</cpt_version>
+'<cpt_version>v1.5.9</cpt_version>
 '/===== IMPORTANT =====\
 'ALL CODE IN THIS MODULE MUST BE SELF-CONTAINED
 'DO NOT BUMP THE VERSION WHILE DEVELOPING OR IT WILL GET OVERWRITTEN NEXT TIME YOU OPEN THE FORM
@@ -392,17 +392,13 @@ next_module:     '</issue25>
   End If '</issue25>
 
   'reset the ribbon
-  strMsg = "<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>" & vbCrLf
-  strMsg = strMsg + "<mso:customUI "
-  strMsg = strMsg + "xmlns:mso=""http://schemas.microsoft.com/office/2009/07/customui"" >"
-  strMsg = strMsg + vbCrLf & "<mso:ribbon startFromScratch=""false"" >"
-  strMsg = strMsg + vbCrLf & "<mso:tabs>"
-  strMsg = strMsg + cptBuildRibbonTab()
-  'todo: need to get any additions made also...
-  strMsg = strMsg + vbCrLf & "</mso:tabs>"
-  strMsg = strMsg + vbCrLf & "</mso:ribbon>"
-  strMsg = strMsg + vbCrLf & "</mso:customUI>"
-  ActiveProject.SetCustomUI (strMsg)
+  Application.StatusBar = "Refreshing ribbon..."
+  cptSpeed True
+  FileNew
+  FileCloseEx pjDoNotSave
+  Application.StatusBar = "Refreshing ribbon...done."
+  cptSpeed False
+
   
 exit_here:
   On Error Resume Next
