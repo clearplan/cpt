@@ -28,7 +28,7 @@ Private dtPreviousPeriod As Date
 Sub cptDECM_GET_DATA()
   'Optional blnIncompleteOnly As Boolean = True, Optional blnDiscreteOnly As Boolean = True
   'objects
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim myDECM_frm As cptDECM_frm
   Dim oException As MSProject.Exception
   Dim oTasks As MSProject.Tasks
@@ -674,7 +674,7 @@ next_task:
     End If
     oRecordset.Close
     
-    If blnTaskHistoryExists Then 'get previous
+    If blnTaskHistoryExists Then 'get previous period, current period
       Set oRecordset = CreateObject("ADODB.Recordset")
       strSQL = "SELECT "
       strSQL = strSQL & "    MAX(STATUS_DATE) "
@@ -2800,14 +2800,13 @@ Sub DECM_06A210a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   strSQL = strSQL & "    INNER JOIN (SELECT * FROM [tasks.csv]  "
   strSQL = strSQL & "        WHERE AF IS NULL  " 'incomplete
   strSQL = strSQL & "        AND SUMMARY = 'No'  " 'non-summary
-  strSQL = strSQL & "        AND BLF <(SELECT MAX(BLF) FROM [tasks.csv] WHERE SUMMARY = 'No') " 'not last task/milestone/deliverable
+  strSQL = strSQL & "        AND FF <(SELECT MAX(FF) FROM [tasks.csv] WHERE SUMMARY = 'No' AND DUR>0) " 'not last task/milestone/deliverable
   strSQL = strSQL & "        ) AS PRED ON PRED.UID = LINKS.FROM) "
   strSQL = strSQL & "    INNER JOIN (SELECT * FROM [tasks.csv] "
   strSQL = strSQL & "        WHERE AF IS NULL " 'incomplete
   strSQL = strSQL & "        AND SUMMARY = 'No' " 'non-summary
-  strSQL = strSQL & "        AND BLF <(SELECT MAX(BLF) FROM [tasks.csv] WHERE SUMMARY = 'No') " 'not last task/milestone/deliverable
+  strSQL = strSQL & "        AND FF <(SELECT MAX(FF) FROM [tasks.csv] WHERE SUMMARY = 'No' AND DUR>0) " 'not last task/milestone/deliverable
   strSQL = strSQL & "        ) AS SUCC ON SUCC.UID = LINKS.TO "
-  'strSQL = strSQL & "WHERE (PRED.EVT = '" & strLOE & "' OR PRED.EVT IS NULL) " 'LOE/Null Pred EVT
   strSQL = strSQL & "WHERE PRED.EVT = '" & strLOE & "' "
   strSQL = strSQL & "AND (SUCC.EVT <> '" & strLOE & "' OR SUCC.EVT IS NULL) " 'LOE/Null Succ EVT
   With oRecordset
@@ -3441,32 +3440,34 @@ Private Sub DumpRecordsetToExcel(ByRef oRecordset As ADODB.Recordset)
   'variants
   'dates
   
-  On Error Resume Next
-  Set oExcel = GetObject(, "Excel.Application")
-  If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
-  If oExcel Is Nothing Then
-    Set oExcel = CreateObject("Excel.Application")
+  If Not oRecordset.EOF Then
+    On Error Resume Next
+    Set oExcel = GetObject(, "Excel.Application")
+    If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
+    If oExcel Is Nothing Then
+      Set oExcel = CreateObject("Excel.Application")
+    End If
+    oExcel.Visible = True
+    
+    Set oExcel = GetObject(, "Excel.Application")
+    Set oWorkbook = oExcel.Workbooks.Add
+    Set oWorksheet = oWorkbook.Sheets(1)
+    oWorksheet.Name = "AD HOC"
+    For lngItem = 0 To oRecordset.Fields.Count - 1
+      oWorksheet.Cells(1, lngItem + 1) = oRecordset.Fields(lngItem).Name
+    Next lngItem
+    oWorksheet.[A2].Select
+    oRecordset.MoveFirst
+    oWorksheet.[A2].CopyFromRecordset oRecordset
+    oExcel.ActiveWindow.Zoom = 85
+    oExcel.ActiveWindow.SplitRow = 1
+    oExcel.ActiveWindow.SplitColumn = 0
+    oExcel.ActiveWindow.FreezePanes = True
+    oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
+    oWorksheet.[A1].AutoFilter
+    oWorksheet.Columns.AutoFit
   End If
-  oExcel.Visible = True
   
-  Set oExcel = GetObject(, "Excel.Application")
-  Set oWorkbook = oExcel.Workbooks.Add
-  Set oWorksheet = oWorkbook.Sheets(1)
-  oWorksheet.Name = "AD HOC"
-  For lngItem = 0 To oRecordset.Fields.Count - 1
-    oWorksheet.Cells(1, lngItem + 1) = oRecordset.Fields(lngItem).Name
-  Next lngItem
-  oWorksheet.[A2].Select
-  oRecordset.MoveFirst
-  oWorksheet.[A2].CopyFromRecordset oRecordset
-  oExcel.ActiveWindow.Zoom = 85
-  oExcel.ActiveWindow.SplitRow = 1
-  oExcel.ActiveWindow.SplitColumn = 0
-  oExcel.ActiveWindow.FreezePanes = True
-  oWorksheet.Range(oWorksheet.[A1], oWorksheet.[A1].End(xlToRight)).Font.Bold = True
-  oWorksheet.[A1].AutoFilter
-  oWorksheet.Columns.AutoFit
-
 exit_here:
   On Error Resume Next
   Set oWorksheet = Nothing
@@ -3962,22 +3963,31 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
           End If
         ElseIf strMetric = "06A210a" Then 'LOE Driving Discrete
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT DISTINCT T1.[FROM],T2.TASK_NAME,T2.EVT,T1.TO,T3.TASK_NAME,T3.EVT "
-            strSQL = strSQL & "FROM ([links.csv] T1 "
-            strSQL = strSQL & "LEFT JOIN [tasks.csv] T2 ON T2.UID=T1.[FROM]) "
-            strSQL = strSQL & "LEFT JOIN [tasks.csv] T3 ON T3.UID=T1.TO "
-            strSQL = strSQL & "WHERE [FROM] IN (" & oDECM(strMetric) & ") "
-            strSQL = strSQL & "AND T2.EVT='" & strLOE & "' "
-            strSQL = strSQL & "AND T3.EVT<>'" & strLOE & "' "
+            strSQL = "SELECT DISTINCT [FROM], PRED.TASK_NAME,PRED.EVT, [TO], SUCC.TASK_NAME,SUCC.EVT "
+            strSQL = strSQL & "FROM ([links.csv] LINKS "
+            strSQL = strSQL & "    INNER JOIN (SELECT * FROM [tasks.csv]  "
+            strSQL = strSQL & "        WHERE AF IS NULL  " 'incomplete
+            strSQL = strSQL & "        AND SUMMARY = 'No'  " 'non-summary
+            strSQL = strSQL & "        AND FF <(SELECT MAX(FF) FROM [tasks.csv] WHERE SUMMARY = 'No' AND DUR=0) " 'not last task/milestone/deliverable
+            strSQL = strSQL & "        ) AS PRED ON PRED.UID = LINKS.FROM) "
+            strSQL = strSQL & "    INNER JOIN (SELECT * FROM [tasks.csv] "
+            strSQL = strSQL & "        WHERE AF IS NULL " 'incomplete
+            strSQL = strSQL & "        AND SUMMARY = 'No' " 'non-summary
+            strSQL = strSQL & "        AND FF <(SELECT MAX(FF) FROM [tasks.csv] WHERE SUMMARY = 'No' AND DUR=0) " 'not last task/milestone/deliverable
+            strSQL = strSQL & "        ) AS SUCC ON SUCC.UID = LINKS.TO "
+            strSQL = strSQL & "WHERE PRED.EVT = '" & strLOE & "' "
+            strSQL = strSQL & "AND (SUCC.EVT <> '" & strLOE & "' OR SUCC.EVT IS NULL) " 'LOE/Null Succ EVT
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
             oWorksheet.[A3:F3] = Split("FROM UID,FROM TASK NAME,FROM EVT,TO UID,TO TASK NAME,TO EVT", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
             oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            If oWorksheet.[A1048576].End(xlUp).Row > oWorksheet.[A3].Row Then
+              cptAddBorders oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
+            End If
           End If
         ElseIf strMetric = "06A211a" Then 'High Float
           If Len(oDECM(strMetric)) > 0 Then
@@ -4752,7 +4762,7 @@ Function cptGetOutOfSequence(ByRef myDECM_frm As cptDECM_frm) As String
   'objects
   Dim oOOS As Scripting.Dictionary
   Dim oCalendar As MSProject.Calendar
-  Dim oSubProject As MSProject.SubProject
+  Dim oSubproject As MSProject.SubProject
   Dim oTask As MSProject.Task
   Dim oLink As MSProject.TaskDependency
   Dim oExcel As Excel.Application
@@ -5112,7 +5122,7 @@ exit_here:
   oOOS.RemoveAll
   Set oOOS = Nothing
   Set oCalendar = Nothing
-  Set oSubProject = Nothing
+  Set oSubproject = Nothing
   Set oSubMap = Nothing
   Application.StatusBar = ""
   oExcel.EnableEvents = True
