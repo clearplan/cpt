@@ -1,6 +1,7 @@
 Attribute VB_Name = "cptTaskHistory_bas"
-'<cpt_version>v1.1.5</cpt_version>
+'<cpt_version>v1.1.6</cpt_version>
 Option Explicit
+Private Const THIS_MODULE As String = "cptTaskHistory_bas"
 Public oTaskHistory As ADODB.Recordset
 
 Sub cptShowTaskHistory_frm()
@@ -17,9 +18,12 @@ Sub cptShowTaskHistory_frm()
   'variants
   'dates
   
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+  
   'prevent spawning
   If Not cptGetUserForm("cptTaskHistory_frm") Is Nothing Then Exit Sub
-
+  
   If cptErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
   'ensure program acroynm
@@ -294,12 +298,14 @@ Sub cptExportTaskHistory(ByRef myTaskHistory_frm As cptTaskHistory_frm, Optional
   'strings
   'longs
   Dim lngItem As Long
+  Dim lngCol As Long
   'integers
   'doubles
   'booleans
   Dim blnErrorTrapping As Boolean
   'variants
   Dim vRow As Variant
+  Dim vCol As Variant
   'dates
   
   blnErrorTrapping = cptErrorTrapping
@@ -345,6 +351,11 @@ Sub cptExportTaskHistory(ByRef myTaskHistory_frm As cptTaskHistory_frm, Optional
     Application.StatusBar = "Importing data..."
     oWorksheet.[A4].CopyFromRecordset cptConvertFilteredRecordset(oTaskHistory)
     Application.StatusBar = "Formatting..."
+    'replace "1/0/1900" with "NA"
+    For Each vCol In Split("TASK_BLS,TASK_BLF,TASK_AS,TASK_AF", ",")
+      lngCol = oWorksheet.Rows(3).Find(vCol, lookat:=xlWhole).Column
+      oWorksheet.Range(oWorksheet.Cells(4, lngCol), oWorksheet.Cells(4, lngCol).End(xlDown)).Replace "1/0/1900", "NA", xlWhole
+    Next vCol
     oWorksheet.[A3].AutoFilter
     oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight)).Font.Bold = True
     oWorksheet.Columns.AutoFit
