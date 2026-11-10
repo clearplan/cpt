@@ -3109,7 +3109,7 @@ Sub DECM_06A505a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
   'X = count of in-progress tasks/activities & milestones with no actual start date or an actual finish date
   'Y = count of in-progress tasks/activities & milestones
   'X/Y <= 5%
-  strSQL = "SELECT UID,EVP,[AS] FROM [tasks.csv] "
+  strSQL = "SELECT UID,EVP,[AS],[AF] FROM [tasks.csv] "
   strSQL = strSQL & "WHERE SUMMARY='No' AND EVP<100 AND EVP>0 "
   With oRecordset
     If .State Then .Close
@@ -3118,7 +3118,7 @@ Sub DECM_06A505a(ByRef oDECM As Scripting.Dictionary, ByRef myDECM_frm As cptDEC
     If blnDumpToExcel Then DumpRecordsetToExcel oRecordset
     .Close
   End With
-  strSQL = "SELECT UID,EVP,[AS] FROM [tasks.csv] "
+  strSQL = "SELECT UID,EVP,[AS],[AF] FROM [tasks.csv] "
   strSQL = strSQL & "WHERE SUMMARY='No' AND EVP<100 AND EVP>0 "
   strSQL = strSQL & "AND ([AS] IS NULL OR [AF] IS NOT NULL)"
   With oRecordset
@@ -3807,7 +3807,6 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            oExcel.ActiveWindow.DisplayGridlines = False
           End If
         ElseIf strMetric = "11A101a" Then 'CA BAC = Sum(WP BAC)
           If Len(oDECM(strMetric)) > 0 Then
@@ -3906,7 +3905,6 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown))
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            oExcel.ActiveWindow.DisplayGridlines = False
           End If
         ElseIf strMetric = "CPT03" Then 'Leads
           If Len(oDECM(strMetric)) > 0 Then 'returns successor UID
@@ -3983,11 +3981,11 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
             oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight).End(xlDown)).Columns.AutoFit
-            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
-            cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
             If oWorksheet.[A1048576].End(xlUp).Row > oWorksheet.[A3].Row Then
               cptAddBorders oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
             End If
+            cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
+            cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
           End If
         ElseIf strMetric = "06A211a" Then 'High Float
           If Len(oDECM(strMetric)) > 0 Then
@@ -4056,6 +4054,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddBorders oWorksheet.Range(oWorksheet.[A4].End(xlDown), oWorksheet.[A4].End(xlToRight))
             cptAddBorders oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A4].End(xlToRight))
             cptAddShading oWorksheet.Range(oWorksheet.[A4], oWorksheet.[A4].End(xlToRight))
+            'add note about target UID
             oWorkbook.Worksheets("DECM Dashboard").Cells(oWorkbook.Worksheets("DECM Dashboard").Columns(1).Find(strMetric).Row, 8) = oWorksheet.[A3] & " [" & oWorksheet.[B3] & "] " & oWorksheet.[C3]
           End If
         ElseIf strMetric = "06A501a" Then 'Baselines
@@ -4084,7 +4083,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
-            Set oRange = oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
+            Set oRange = oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A1048576].End(xlUp))
             oRange.Columns.AutoFit
             cptAddBorders oRange
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
@@ -4102,7 +4101,7 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
-            Set oRange = oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A3].End(xlDown))
+            Set oRange = oWorksheet.Range(oWorksheet.[A3].End(xlToRight), oWorksheet.[A1048576].End(xlUp))
             oRange.Columns.AutoFit
             cptAddBorders oRange
             cptAddBorders oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
@@ -4112,12 +4111,12 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
           End If
         ElseIf strMetric = "06A505a" Then 'In-Progress Tasks w/o Actual Start
           If Len(oDECM(strMetric)) > 0 Then
-            strSQL = "SELECT UID,CAM,TASK_NAME,FS,[AS],EVP "
+            strSQL = "SELECT UID,CAM,TASK_NAME,FS,[AS],[AF],EVP "
             strSQL = strSQL & "FROM [tasks.csv] "
             strSQL = strSQL & "WHERE UID IN (" & oDECM(strMetric) & ") "
             strSQL = strSQL & "ORDER BY CAM"
             oRecordset.Open strSQL, strCon, adOpenKeyset, adLockReadOnly
-            oWorksheet.[A3:F3] = Split("UID,CAM,TASK NAME,FORECAST START,ACTUAL START,EV%", ",")
+            oWorksheet.[A3:G3] = Split("UID,CAM,TASK NAME,FORECAST START,ACTUAL START,ACTUAL FINISH,EV%", ",")
             oWorksheet.[A4].CopyFromRecordset oRecordset
             oWorksheet.[A3].End(xlToRight).Offset(-1, 0) = oRecordset.RecordCount
             oRecordset.Close
@@ -4127,7 +4126,6 @@ Sub cptDECM_EXPORT(ByRef myDECM_frm As cptDECM_frm, Optional blnDetail As Boolea
             cptAddShading oWorksheet.Range(oWorksheet.[A3], oWorksheet.[A3].End(xlToRight))
           End If
         ElseIf strMetric = "06A505b" Then 'Complete Tasks w/o Actual Finish
-          'todo: UID always first
           If Len(oDECM(strMetric)) > 0 Then
             strSQL = "SELECT UID,CAM,TASK_NAME,FF,AF,EVP "
             strSQL = strSQL & "FROM [tasks.csv] "
