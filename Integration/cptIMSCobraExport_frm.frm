@@ -704,7 +704,7 @@ Private Sub ExportBtn_Click()
     End If
     
     If WhatIf_CheckBox.Value = True Then 'v3.2
-        If Me.whatifBox.Value = "<None>" Then
+        If Me.whatifBox.Value = "<None>" Or Me.whatifBox = "" Then
             MsgBox "You must map a What-If Field."
             Exit Sub
         End If
@@ -1141,22 +1141,6 @@ Private Function PopulateCustFieldUsage() As Boolean
                 fCAID1t = True
                 Me.CAID1TxtBox.Value = docProp.Value
                 
-            Case "fCAID3"
-                
-                If docProp.Value = "<None>" Then
-                    fCAID3 = True
-                    Me.caID3Box.Value = docProp.Value
-                Else
-                    nameTest = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
-                    fCAID3 = True
-                    Me.caID3Box.Value = docProp.Value
-                End If
-                
-            Case "fCAID3t"
-                
-                fCAID3t = True
-                Me.CAID3TxtBox.Value = docProp.Value
-                
             Case "fCAID2"
             
                 If docProp.Value = "<None>" Then
@@ -1173,6 +1157,22 @@ Private Function PopulateCustFieldUsage() As Boolean
                 fCAID2t = True
                 Me.CAID2TxtBox.Value = docProp.Value
                 
+            Case "fCAID3"
+
+                If docProp.Value = "<None>" Then
+                    fCAID3 = True
+                    Me.caID3Box.Value = docProp.Value
+                Else
+                    nameTest = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
+                    fCAID3 = True
+                    Me.caID3Box.Value = docProp.Value
+                End If
+
+            Case "fCAID3t"
+
+                fCAID3t = True
+                Me.CAID3TxtBox.Value = docProp.Value
+
             Case "fWP"
                 
                 nameTest = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
@@ -1190,17 +1190,6 @@ Private Function PopulateCustFieldUsage() As Boolean
                 nameTest = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
                 fEVT = True
                 Me.evtBox.Value = docProp.Value
-                
-            Case "fCAID2"
-            
-                nameTest = ActiveProject.Application.FieldNameToFieldConstant(docProp.Value)
-                fCAID2 = True
-                Me.caID2Box.Value = docProp.Value
-                
-            Case "fCAID2t"
-            
-                fCAID2t = True
-                Me.CAID2TxtBox.Value = docProp.Value
                 
             Case "fMSID"
                 
@@ -1275,6 +1264,19 @@ Private Function PopulateCustFieldUsage() As Boolean
 NextDocProp:
     
     Next docProp
+
+    If Me.caID2Box.Value = "<None>" Then
+      'disable and hide
+      Me.CAID2TxtBox.Value = "" 'updates docprop
+      Me.CAID2TxtBox.Enabled = False
+      Me.CAID2TxtBox.Visible = False
+    End If
+    If Me.caID3Box.Value = "<None>" Then
+      'disable and hide
+      Me.CAID3TxtBox.Value = "" 'updates docprop
+      Me.CAID3TxtBox.Enabled = False
+      Me.CAID3TxtBox.Visible = False
+    End If
     
     Set docProps = Nothing
     Set curProj = Nothing
@@ -1309,6 +1311,10 @@ End Sub
 
 Private Sub WhatIf_CheckBox_Click() 'v3.2
     If Me.WhatIf_CheckBox.Value = True Then
+      If Len(Me.whatifBox) = 0 Then
+        MsgBox "You must map a what-if field.", vbExclamation + vbOKOnly, "IMS Export Utility"
+        Me.WhatIf_CheckBox.Value = False
+      End If
         Me.exportTPhaseCheckBox.Enabled = True
         Me.BcrBtn.Enabled = True 'v3.3.15
         Me.TotalProjBtn.Enabled = True 'v3.3.15
