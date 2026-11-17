@@ -64,6 +64,7 @@ Private Type ACTrowWP
     Prog As Integer
 End Type
 Private Type WPDataCheck
+
     WP_ID As String
     ID_Test As String
     EVT_Test As String
@@ -71,13 +72,14 @@ Private Type WPDataCheck
     EVT_Error As Boolean
 End Type
 Private Type CAMDataCheck
-    
+
     ID_str As String '**CAID1/CAID2/CAID3**
     CAM_Test As String
     CAM_Error As Boolean
     
 End Type
 Private Type TaskDataCheck
+    SRC As String
     UID As String
     WP As String
     CAID1 As String
@@ -353,7 +355,8 @@ Private Sub DataChecks(ByVal curProj As Project)
     Dim tempBWork As Double
     Dim tempFWork As Double 'v3.3.0
     Dim tempTSVWork As Double 'v3.3.2
-
+    Dim blnMaster As Boolean
+    blnMaster = ActiveProject.Subprojects.Count > 0
     Dim docProps As DocumentProperties
 
     Set docProps = curProj.CustomDocumentProperties
@@ -381,6 +384,10 @@ Private Sub DataChecks(ByVal curProj As Project)
     fPCNT = docProps("fPCNT").Value
 
     destFolder = SetDirectory(curProj.ProjectSummaryTask.Project)
+    If Len(destFolder) = 0 Then
+      Set docProps = Nothing
+      Exit Sub
+    End If
 
     taskCount = 0
     taskFound = False
@@ -409,6 +416,7 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                         With TaskChecks(taskCount)
 
+                            .SRC = cptRxMatch(cursproj.Name, "[^/\\<>]+$")
                             .UID = t.UniqueID
                             .WP = t.GetField(FieldNameToFieldConstant(fWP))
                             .CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
@@ -475,7 +483,7 @@ Private Sub DataChecks(ByVal curProj As Project)
                                         End If
                                     End If
                                 End If
-                                
+
                                 If .AssignmentFStart = "NA" Then 'v3.3.0
                                     .AssignmentFStart = tAss.Start
                                 Else
@@ -497,7 +505,7 @@ Private Sub DataChecks(ByVal curProj As Project)
                                     .AssignmentTSVCost = .AssignmentTSVCost + get_assignment_timescalevalues(tAss)
                                 End If
                                 .AssignmentFCost = .AssignmentFCost + tAss.Cost 'v3.3.0
-                                
+
                                 If tAss.BaselineWork = "" Or tAss.ResourceType <> pjResourceTypeWork Then 'v3.2.1
                                     tempBWork = 0
                                     tempTSVWork = 0 'v3.3.2
@@ -507,7 +515,7 @@ Private Sub DataChecks(ByVal curProj As Project)
                                 End If
                                 .AssignmentBWork = .AssignmentBWork + tempBWork / 60 'v3.3.2
                                 .AssignmentTSVWork = .AssignmentTSVWork + tempTSVWork / 60 'v3.3.2
-                                
+
                                 If tAss.Work = "" Or tAss.ResourceType <> pjResourceTypeWork Then 'v3.3.0
                                     tempFWork = 0
                                 Else
@@ -543,113 +551,114 @@ Private Sub DataChecks(ByVal curProj As Project)
 
                     With TaskChecks(taskCount)
 
+                        .SRC = cptRxMatch(curProj.Name, "[^/\\<>]+$")
                         .UID = t.UniqueID
-                            .WP = t.GetField(FieldNameToFieldConstant(fWP))
-                            .CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
-                            If CAID2_Used = True Then
-                                .CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
-                            End If
-                            If CAID3_Used = True Then
-                                .CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
-                            End If
-                            .EVT = t.GetField(FieldNameToFieldConstant(fEVT))
-                            If Milestones_Used = True Then
-                                .MSID = t.GetField(FieldNameToFieldConstant(fMilestone))
-                                .MSWeight = t.GetField(FieldNameToFieldConstant(fMilestoneWeight))
-                            End If
-                            If t.GetField(pjTaskBaselineWork) <> "" Then 'v3.4.6
-                                .BWork = t.BaselineWork / 60 'v3.3.2
-                            Else
-                                .BWork = 0
-                            End If
-                            If t.GetField(pjTaskBaselineCost) <> "" Then 'v3.4.6
-                                .BCost = t.BaselineCost
-                            Else
-                                .BCost = 0
-                            End If
-                            .FWork = t.Work / 60 'v3.3.2
-                            .FCost = t.Cost 'v3.3.0
-                            .CAM = t.GetField(FieldNameToFieldConstant(fCAM))
-                            .AssignmentBStart = "NA"
-                            .AssignmentBFinish = "NA"
-                            .AssignmentFStart = "NA" 'v3.3.0
-                            .AssignmentFFinish = "NA" 'v3.3.0
-                            .AssignmentBCost = 0
-                            .AssignmentBWork = 0
-                            .AssignmentFCost = 0 'v3.3.0
-                            .AssignmentFWork = 0 'v3.3.0
-                            .AssignmentTSVWork = 0 'v3.3.2
-                            .AssignmentTSVCost = 0 'v3.3.2
-                            .BStart = t.BaselineStart
-                            .BFinish = t.BaselineFinish
-                            .FStart = t.Start 'v3.3.0
-                            .FFinish = t.Finish 'v3.3.0
+                        .WP = t.GetField(FieldNameToFieldConstant(fWP))
+                        .CAID1 = t.GetField(FieldNameToFieldConstant(fCAID1))
+                        If CAID2_Used = True Then
+                            .CAID2 = t.GetField(FieldNameToFieldConstant(fCAID2))
+                        End If
+                        If CAID3_Used = True Then
+                            .CAID3 = t.GetField(FieldNameToFieldConstant(fCAID3))
+                        End If
+                        .EVT = t.GetField(FieldNameToFieldConstant(fEVT))
+                        If Milestones_Used = True Then
+                            .MSID = t.GetField(FieldNameToFieldConstant(fMilestone))
+                            .MSWeight = t.GetField(FieldNameToFieldConstant(fMilestoneWeight))
+                        End If
+                        If t.GetField(pjTaskBaselineWork) <> "" Then 'v3.4.6
+                            .BWork = t.BaselineWork / 60 'v3.3.2
+                        Else
+                            .BWork = 0
+                        End If
+                        If t.GetField(pjTaskBaselineCost) <> "" Then 'v3.4.6
+                            .BCost = t.BaselineCost
+                        Else
+                            .BCost = 0
+                        End If
+                        .FWork = t.Work / 60 'v3.3.2
+                        .FCost = t.Cost 'v3.3.0
+                        .CAM = t.GetField(FieldNameToFieldConstant(fCAM))
+                        .AssignmentBStart = "NA"
+                        .AssignmentBFinish = "NA"
+                        .AssignmentFStart = "NA" 'v3.3.0
+                        .AssignmentFFinish = "NA" 'v3.3.0
+                        .AssignmentBCost = 0
+                        .AssignmentBWork = 0
+                        .AssignmentFCost = 0 'v3.3.0
+                        .AssignmentFWork = 0 'v3.3.0
+                        .AssignmentTSVWork = 0 'v3.3.2
+                        .AssignmentTSVCost = 0 'v3.3.2
+                        .BStart = t.BaselineStart
+                        .BFinish = t.BaselineFinish
+                        .FStart = t.Start 'v3.3.0
+                        .FFinish = t.Finish 'v3.3.0
 
-                            Set tasses = t.Assignments
-                            .AssignmentCount = tasses.Count
+                        Set tasses = t.Assignments
+                        .AssignmentCount = tasses.Count
 
-                            For Each tAss In tasses
+                        For Each tAss In tasses
 
-                                If tAss.BaselineStart <> "NA" Then
-                                    If .AssignmentBStart = "NA" Then
+                            If tAss.BaselineStart <> "NA" Then
+                                If .AssignmentBStart = "NA" Then
+                                    .AssignmentBStart = tAss.BaselineStart
+                                Else
+                                    If tAss.BaselineStart < .AssignmentBStart Then
                                         .AssignmentBStart = tAss.BaselineStart
-                                    Else
-                                        If tAss.BaselineStart < .AssignmentBStart Then
-                                            .AssignmentBStart = tAss.BaselineStart
-                                        End If
                                     End If
                                 End If
+                            End If
 
-                                If tAss.BaselineFinish <> "NA" Then
-                                    If .AssignmentBFinish = "NA" Then
+                            If tAss.BaselineFinish <> "NA" Then
+                                If .AssignmentBFinish = "NA" Then
+                                    .AssignmentBFinish = tAss.BaselineFinish
+                                Else
+                                    If tAss.BaselineFinish > .AssignmentBFinish Then
                                         .AssignmentBFinish = tAss.BaselineFinish
-                                    Else
-                                        If tAss.BaselineFinish > .AssignmentBFinish Then
-                                            .AssignmentBFinish = tAss.BaselineFinish
-                                        End If
                                     End If
                                 End If
-                                
-                                If .AssignmentFStart = "NA" Then 'v3.3.0
+                            End If
+                            
+                            If .AssignmentFStart = "NA" Then 'v3.3.0
+                                .AssignmentFStart = tAss.Start
+                            Else
+                                If tAss.Start < .AssignmentFStart Then
                                     .AssignmentFStart = tAss.Start
-                                Else
-                                    If tAss.Start < .AssignmentFStart Then
-                                        .AssignmentFStart = tAss.Start
-                                    End If
                                 End If
+                            End If
 
-                                If .AssignmentFFinish = "NA" Then 'v3.3.0
+                            If .AssignmentFFinish = "NA" Then 'v3.3.0
+                                .AssignmentFFinish = tAss.Finish
+                            Else
+                                If tAss.Finish > .AssignmentFFinish Then
                                     .AssignmentFFinish = tAss.Finish
-                                Else
-                                    If tAss.Finish > .AssignmentFFinish Then
-                                        .AssignmentFFinish = tAss.Finish
-                                    End If
                                 End If
+                            End If
 
-                                .AssignmentBCost = .AssignmentBCost + tAss.BaselineCost
-                                If tAss.ResourceType <> pjResourceTypeWork Then 'v3.3.2
-                                    .AssignmentTSVCost = .AssignmentTSVCost + get_assignment_timescalevalues(tAss)
-                                End If
-                                .AssignmentFCost = .AssignmentFCost + tAss.Cost 'v3.3.0
-                                
-                                If tAss.BaselineWork = "" Or tAss.ResourceType <> pjResourceTypeWork Then 'v3.2.1
-                                    tempBWork = 0
-                                    tempTSVWork = 0 'v3.3.2
-                                Else
-                                    tempBWork = tAss.BaselineWork
-                                    tempTSVWork = get_assignment_timescalevalues(tAss) 'v3.3.2
-                                End If
-                                .AssignmentBWork = .AssignmentBWork + tempBWork / 60 'v3.3.2
-                                .AssignmentTSVWork = .AssignmentTSVWork + tempTSVWork / 60 'v3.3.2
-                                
-                                If tAss.Work = "" Or tAss.ResourceType <> pjResourceTypeWork Then 'v3.3.0
-                                    tempFWork = 0
-                                Else
-                                    tempFWork = tAss.Work
-                                End If
-                                .AssignmentFWork = .AssignmentFWork + tempFWork / 60 'v3.3.2
+                            .AssignmentBCost = .AssignmentBCost + tAss.BaselineCost
+                            If tAss.ResourceType <> pjResourceTypeWork Then 'v3.3.2
+                                .AssignmentTSVCost = .AssignmentTSVCost + get_assignment_timescalevalues(tAss)
+                            End If
+                            .AssignmentFCost = .AssignmentFCost + tAss.Cost 'v3.3.0
+                            
+                            If tAss.BaselineWork = "" Or tAss.ResourceType <> pjResourceTypeWork Then 'v3.2.1
+                                tempBWork = 0
+                                tempTSVWork = 0 'v3.3.2
+                            Else
+                                tempBWork = tAss.BaselineWork
+                                tempTSVWork = get_assignment_timescalevalues(tAss) 'v3.3.2
+                            End If
+                            .AssignmentBWork = .AssignmentBWork + tempBWork / 60 'v3.3.2
+                            .AssignmentTSVWork = .AssignmentTSVWork + tempTSVWork / 60 'v3.3.2
+                            
+                            If tAss.Work = "" Or tAss.ResourceType <> pjResourceTypeWork Then 'v3.3.0
+                                tempFWork = 0
+                            Else
+                                tempFWork = tAss.Work
+                            End If
+                            .AssignmentFWork = .AssignmentFWork + tempFWork / 60 'v3.3.2
 
-                            Next tAss
+                        Next tAss
 
                     End With
 
@@ -668,13 +677,13 @@ Private Sub DataChecks(ByVal curProj As Project)
     Print #1, "Tasks Missing Data - The following tasks are assumed to be EV Relevant Activities due to User population of one or more of the following data values: Work Package ID; Earned Value Technique; Baseline Work; Baseline Cost"
 
     If CAID3_Used = True And CAID2_Used = True Then
-        Print #1, vbCrLf & "UID," & fCAID1t & "," & fCAID2t & "," & fCAID3t & ",CAM,WP,EVT,Baseline Value,Baseline Start,Baseline Finish,Milestone ID (As Req),Milestone Weight (As Req)"
+        Print #1, vbCrLf & IIf(blnMaster, "PROJECT,", "") & "UID," & fCAID1t & "," & fCAID2t & "," & fCAID3t & ",CAM,WP,EVT,Baseline Value,Baseline Start,Baseline Finish,Milestone ID (As Req),Milestone Weight (As Req)"
     End If
     If CAID3_Used = False And CAID2_Used = True Then
-        Print #1, vbCrLf & "UID," & fCAID1t & "," & fCAID2t & ",CAM,WP,EVT,Baseline Value,Baseline Start,Baseline Finish,Milestone ID (As Req),Milestone Weight (As Req)"
+        Print #1, vbCrLf & IIf(blnMaster, "PROJECT,", "") & "UID," & fCAID1t & "," & fCAID2t & ",CAM,WP,EVT,Baseline Value,Baseline Start,Baseline Finish,Milestone ID (As Req),Milestone Weight (As Req)"
     End If
     If CAID3_Used = False And CAID2_Used = False Then
-        Print #1, vbCrLf & "UID," & fCAID1t & ",CAM,WP,EVT,Baseline Value,Baseline Start,Baseline Finish,Milestone ID (As Req),Milestone Weight (As Req)"
+        Print #1, vbCrLf & IIf(blnMaster, "PROJECT,", "") & "UID," & fCAID1t & ",CAM,WP,EVT,Baseline Value,Baseline Start,Baseline Finish,Milestone ID (As Req),Milestone Weight (As Req)"
     End If
 
     '**Evaluate WP and CAM data**
@@ -835,7 +844,7 @@ next_task:
 
                     With TaskChecks(X)
 
-                        errorStr = .UID & ","
+                        errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                         If .CAID1 = "" Then
                             errorStr = errorStr & "MISSING,"
                         Else
@@ -908,7 +917,7 @@ next_task:
 
                     With TaskChecks(X)
 
-                        errorStr = .UID & ","
+                        errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                         If .CAID1 = "" Then
                             errorStr = errorStr & "MISSING,"
                         Else
@@ -977,7 +986,7 @@ next_task:
 
                     With TaskChecks(X)
 
-                        errorStr = .UID & ","
+                        errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                         If .CAID1 = "" Then
                             errorStr = errorStr & "MISSING,"
                         Else
@@ -1102,7 +1111,7 @@ next_task:
 
     Print #1, vbCrLf & vbCrLf & "Task Assignment Baseline Discrepancies - The following Tasks have vertical traceability errors with their Assignment Baseline Values and/or Baseline Dates. Note that tasks with mixed elements of cost (labor & material/cost) that include labor rates may result in false positives." 'v3.3.0
 
-    Print #1, vbCrLf & "UID,Task Baseline Work,Assignment Baseline Work,Assignment TimeScaled Work,Task Baseline Cost,Assignment Baseline Cost,Assignment TimeScaled Cost,Task Baseline Start,Assignment Baseline Start,Task Baseline Finish,Assignment Baseline Finish, Assignment Count" 'v3.3.2
+    Print #1, vbCrLf & IIf(blnMaster, "Project,", "") & "UID,Task Baseline Work,Assignment Baseline Work,Assignment TimeScaled Work,Task Baseline Cost,Assignment Baseline Cost,Assignment TimeScaled Cost,Task Baseline Start,Assignment Baseline Start,Task Baseline Finish,Assignment Baseline Finish, Assignment Count" 'v3.3.2
 
     ErrorCounter = 0
 
@@ -1116,7 +1125,7 @@ next_task:
 
                     ErrorCounter = ErrorCounter + 1
 
-                    errorStr = .UID & ","
+                    errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                     errorStr = errorStr & .BWork & ","
                     errorStr = errorStr & .AssignmentBWork & ","
                     errorStr = errorStr & .AssignmentTSVWork & "," 'v3.3.2
@@ -1140,7 +1149,7 @@ next_task:
             
                 ErrorCounter = ErrorCounter + 1
                 
-                errorStr = .UID & ","
+                errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                 errorStr = errorStr & .BWork & ","
                 errorStr = errorStr & .AssignmentBWork & ","
                 errorStr = errorStr & .AssignmentTSVWork & "," 'v3.3.2
@@ -1168,7 +1177,7 @@ next_task:
 
     Print #1, vbCrLf & vbCrLf & "Task Assignment Forecast Discrepancies - The following Tasks have potential vertical traceability errors with their Assignment Forecast Values and/or Forecast Dates"
 
-    Print #1, vbCrLf & "UID,Task Work,Assignment Work,Task Cost,Assignment Cost,Task Start,Assignment Start,Task Finish,Assignment Finish, Assignment Count"
+    Print #1, vbCrLf & IIf(blnMaster, "Project,", "") & "UID,Task Work,Assignment Work,Task Cost,Assignment Cost,Task Start,Assignment Start,Task Finish,Assignment Finish, Assignment Count"
 
     ErrorCounter = 0
 
@@ -1182,7 +1191,7 @@ next_task:
 
                     ErrorCounter = ErrorCounter + 1
 
-                    errorStr = .UID & ","
+                    errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                     errorStr = errorStr & .FWork & ","
                     errorStr = errorStr & .AssignmentFWork & ","
                     errorStr = errorStr & .FCost & ","
@@ -1204,7 +1213,7 @@ next_task:
             
                 ErrorCounter = ErrorCounter + 1
                 
-                errorStr = .UID & ","
+                errorStr = IIf(blnMaster, .SRC & ",", "") & .UID & ","
                 errorStr = errorStr & .FWork & ","
                 errorStr = errorStr & .AssignmentFWork & ","
                 errorStr = errorStr & .FCost & ","
@@ -1228,7 +1237,7 @@ next_task:
 
     Close #1
     
-    cptBeautifyDataCheck ACTfilename
+    cptBeautifyDataCheck ACTfilename, blnMaster
     
     MsgBox "Data Check Report saved to: " & vbCrLf & destFolder & "\" & Replace(ACTfilename, "csv", "xlsx"), vbInformation + vbOKOnly, "Data Check"
 
@@ -3702,7 +3711,11 @@ Private Function BrowseForFolder(Optional OpenAt As Variant) As Variant 'v3.4.2
     BrowseForFolder = ShellApp.Self.Path
     On Error GoTo 0
     Set ShellApp = Nothing
-    If IsEmpty(BrowseForFolder) Then GoTo Invalid
+    If IsEmpty(BrowseForFolder) Then
+      GoTo Invalid
+    Else
+      noFolderSelected = False
+    End If
     Select Case Mid(BrowseForFolder, 2, 1)
         Case Is = ":"
             If Left(BrowseForFolder, 1) = ":" Then GoTo Invalid
@@ -3945,7 +3958,7 @@ Optional ByVal ProjID As String, Optional ByVal whatifRevision As Boolean = Fals
 
 End Function
 
-Sub cptBeautifyDataCheck(strFileName As String)
+Sub cptBeautifyDataCheck(strFileName As String, blnMaster As Boolean)
   'objects
   Dim oExcel As Excel.Application
   Dim c As Excel.Range
@@ -3978,6 +3991,8 @@ Sub cptBeautifyDataCheck(strFileName As String)
 
   strFileName = Left(strFileName, Len(strFileName) - 3) & "xlsx"
   If Dir(strFileName) <> vbNullString Then Kill strFileName
+  MsgBox "If your company requires sensitivity labeling, please do that in the Excel window now.", vbExclamation + vbOKOnly, "DataChecks"
+  Application.ActivateMicrosoftApp pjMicrosoftExcel
   oWorkbook.SaveAs strFileName, FileFormat:=51
   Set oWorksheet = oWorkbook.Worksheets(1)
   Set oDataChecks = CreateObject("Scripting.Dictionary")
@@ -3998,14 +4013,14 @@ Sub cptBeautifyDataCheck(strFileName As String)
     oWorksheet.Range(oWorksheet.Cells(lngFirstRow, 1), oWorksheet.Cells(lngLastRow, 100)).Clear
     oExcel.ActiveWindow.Zoom = 85
     'find header row
-    strFirstRow = "UID"
+    strFirstRow = IIf(blnMaster, "Project", "UID")
     If oDataChecks.Keys(lngItem) = "CAMErrors" Then strFirstRow = "CA ID String"
     If oDataChecks.Keys(lngItem) = "WorkPackageErrors" Then strFirstRow = "Work Package"
     'find first row
     lngFirstRow = oNewSheet.Columns(1).Find(strFirstRow).Row
     'find lastrow again
     lngLastRow = oNewSheet.[A1048576].End(xlUp).Row
-    lngLastCol = 10
+    lngLastCol = IIf(blnMaster, 11, 10)
     'deal with title
     oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol)).Merge True
     oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol)).Style = "Note"
@@ -4015,11 +4030,10 @@ Sub cptBeautifyDataCheck(strFileName As String)
     oNewSheet.[A1].WrapText = True
     oNewSheet.[A1].RowHeight = 30
     'make it a table, name it, format it
+    lngLastCol = oNewSheet.Cells(lngFirstRow, oNewSheet.Columns.Count).End(xlToLeft).Column
     If lngLastRow - lngFirstRow > 2 Then
-      lngLastCol = oNewSheet.Cells(lngFirstRow, 1).End(xlToRight).Column
       Set oListObject = oNewSheet.ListObjects.Add(xlSrcRange, oNewSheet.Range(oNewSheet.Cells(lngFirstRow, 1).End(xlDown), oNewSheet.Cells(lngFirstRow, lngLastCol)), , xlYes)
     Else
-      lngLastCol = oNewSheet.Cells(lngLastRow, oNewSheet.Columns.Count).End(xlToLeft).Column
       oNewSheet.Rows(lngLastRow).Insert
       Set oListObject = oNewSheet.ListObjects.Add(xlSrcRange, oNewSheet.Range(oNewSheet.Cells(lngFirstRow, 1), oNewSheet.Cells(lngFirstRow, lngLastCol)), , xlYes)
       lngLastRow = lngLastRow + 1

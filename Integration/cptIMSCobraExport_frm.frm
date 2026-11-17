@@ -1097,12 +1097,30 @@ Private Function VerifyTitles() As Boolean
     VerifyTitles = TitlesComplete
 
 End Function
+
 Private Function PopulateCustFieldUsage() As Boolean
 
     Dim curProj As Project
     Dim docProp As DocumentProperty
     Dim docProps As DocumentProperties
-    Dim fProject, fCAID1, fCAID1t, fCAID3, fCAID3t, fWP, fCAM, fEVT, fCAID2, fCAID2t, fMSID, fMSW, fBCR, fWhatIf, fPCNT, fAssignPcnt, fResID, dateFmt As Boolean 'v3.3.0, v3.3.5, v3.4.3
+    Dim fProject As Boolean
+    Dim fCAID1 As Boolean
+    Dim fCAID1t As Boolean
+    Dim fCAID3 As Boolean
+    Dim fCAID3t As Boolean
+    Dim fWP As Boolean
+    Dim fCAM As Boolean
+    Dim fEVT As Boolean
+    Dim fCAID2 As Boolean
+    Dim fCAID2t As Boolean
+    Dim fMSID As Boolean
+    Dim fMSW As Boolean
+    Dim fBCR As Boolean
+    Dim fWhatIf As Boolean
+    Dim fPCNT As Boolean
+    Dim fAssignPcnt As Boolean
+    Dim fResID As Boolean
+    Dim dateFmt As Boolean  'v3.3.0, v3.3.5, v3.4.3
     Dim nameTest As Double
     
     Set curProj = ActiveProject
