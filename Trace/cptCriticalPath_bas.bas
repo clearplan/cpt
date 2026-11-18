@@ -329,7 +329,7 @@ Sub DrivingPaths()
     SubPaths = CBool(cptGetSetting("DrivingPath", "chkSubPaths", 0)) 'CBool(cptGetSetting(cptSettingFeature, cptSubPathSetting, 0))
     PathCount = cptGetSetting("DrivingPath", "txtPathCount", 3) 'cptGetSetting(cptSettingFeature, cptPathCountSetting, 0)
     userView = cptGetSetting("DrivingPath", "cboUserView", "<Default>") 'cptGetSetting(cptSettingFeature, cptViewSetting)
-    'ganttFormatOverride = CBool(cptGetSetting("DrivingPath", "chkGanttFormat", 1)) 'CBool(cptGetSetting(cptSettingFeature, cptGanttSetting, 0))
+    ganttFormatOverride = CBool(cptGetSetting("DrivingPath", "chkGanttFormat", 1)) 'CBool(cptGetSetting(cptSettingFeature, cptGanttSetting, 0))
     
     'v3.5.0 update to set custom fields in subproject schedule that align with the master project
     Dim origGroupField As Long
