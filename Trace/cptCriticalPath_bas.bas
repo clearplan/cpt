@@ -504,7 +504,10 @@ ShowAndTell:
     'Create and Apply the "ClearPlan Driving Path" Table, View, Group, and Filter
     SetupCPView GroupField, curProj, analysisTaskUID
     
-    If Not (export_to_PPT) Then MsgBox "Analysis complete: " & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbInformation + vbOKOnly, "ClearPlan Critical Path Analyzer"
+    If Not (export_to_PPT) Then
+      cptSpeed False
+      MsgBox "Analysis complete: " & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbInformation + vbOKOnly, "Driving Paths"
+    End If
     
     GoTo CleanUp
     
