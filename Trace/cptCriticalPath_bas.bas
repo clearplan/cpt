@@ -140,10 +140,8 @@ Sub DrivingPaths()
             .PathField_Combobox.AddItem CustTextFields(i)
             .SubPath_Combobox.AddItem CustTextFields(i)
         Next i
-        
-        .pathCnt_txtBox.Value = 3
-        
-        .Caption = "cptCritical Path " & cptGetVersion(MODULE_NAME)
+                
+        .Caption = "Driving Paths (" & cptGetVersion(MODULE_NAME) & ")"
         
         With .UserView_Combobox
             .AddItem "<Default>"
@@ -168,11 +166,151 @@ Sub DrivingPaths()
             .pathCnt_txtBox.Visible = True
         End If
         
+        'migrate legacy settings
+        Dim lngFieldConstant As Long
+        Dim strCustomFieldName As String
+        Dim strSetting As String
+        'migrate [Driving Path Group]
+        strSetting = cptGetSetting("Driving Path Group", "GUID")
+        If Len(strSetting) > 0 Then
+          lngFieldConstant = cptGetSetting("Driving Path Group", "GUID")
+          strCustomFieldName = cptGetSetting("Driving Path Group", "Name")
+          If lngFieldConstant > 0 Then
+            cptSaveSetting "DrivingPath", "cboGroup", lngFieldConstant & "|" & strCustomFieldName
+          End If
+        End If
+        cptDeleteSettingSection "Driving Paths", True
+        'migrate [SubPath Group]
+        strSetting = cptGetSetting("SubPath Group", "GUID")
+        If Len(strSetting) > 0 Then
+          lngFieldConstant = cptGetSetting("SubPath Group", "GUID")
+          strCustomFieldName = cptGetSetting("SubPath Group", "Name")
+          If lngFieldConstant > 0 Then
+            cptSaveSetting "DrivingPath", "cboSubPath", lngFieldConstant & "|" & strCustomFieldName
+          End If
+        End If
+        cptDeleteSettingSection "SubPath Group", True
+        'migrate [Driving Paths]
+        strSetting = cptGetSetting("Driving Paths", "GUID")
+        If Len(strSetting) > 0 Then
+          lngFieldConstant = cptGetSetting("Driving Paths", "GUID")
+          strCustomFieldName = cptGetSetting("Driving Paths", "Name")
+          If lngFieldConstant > 0 Then
+            cptSaveSetting "DrivingPath", "cboPath", lngFieldConstant & "|" & strCustomFieldName
+          End If
+        End If
+        strSetting = cptGetSetting("Driving Paths", "Gantt Format")
+        If Len(strSetting) > 0 Then
+          cptSaveSetting "DrivingPath", "chkGanttFormat", CBool(strSetting)
+        End If
+        strSetting = cptGetSetting("Driving Paths", "Path Count")
+        If Len(strSetting) > 0 Then
+          cptSaveSetting "DrivingPath", "txtPathCount", strSetting
+        End If
+        strSetting = cptGetSetting("Driving Paths", "User View")
+        If Len(strSetting) > 0 Then
+          cptSaveSetting "DrivingPath", "cboUserView", strSetting
+        End If
+        strSetting = cptGetSetting("Driving Paths", "Subpaths")
+        If Len(strSetting) > 0 Then
+          cptSaveSetting "DrivingPath", "chkSubPaths", strSetting
+        End If
+        cptDeleteSettingSection "Driving Paths", True
+        
+        'load saved settings
+        Dim strMsg As String
+        Dim lngResponse As Long
+        Dim lngItem As Long
+        Dim strDefaultFieldName As String
+        Dim vField As Variant
+        Dim oComboBox As MSForms.ComboBox
+        Dim vControl As Variant
+        
+        For Each vField In Split("cboPath|CP Driving Paths|PathField_Combobox;" & _
+                                  "cboGroup|CP Driving Path Group ID|GroupField_Combobox;" & _
+                                  "cboSubPath|CP SubPath Group ID|SubPath_Combobox", ";")
+          strSetting = cptGetSetting("DrivingPath", CStr(Split(vField, "|")(0)))
+          strDefaultFieldName = Split(vField, "|")(1)
+          Set oComboBox = .Controls(CStr(Split(vField, "|")(2)))
+          If Len(strSetting) > 0 Then
+            lngFieldConstant = Split(strSetting, "|")(0)
+            strCustomFieldName = Split(strSetting, "|")(1)
+            'user saved native field name, update it
+            If strCustomFieldName = FieldConstantToFieldName(lngFieldConstant) Then
+              strCustomFieldName = CustomFieldGetName(lngFieldConstant)
+              cptSaveSetting "DrivingPath", CStr(Split(vField, "|")(0)), lngFieldConstant & "|" & strCustomFieldName
+            End If
+            'validate saved custom field name still matches
+            If cptCustomFieldExists(strCustomFieldName) > 0 Then
+              oComboBox.Value = strCustomFieldName
+            Else
+              'look for existing default
+              If cptCustomFieldExists(strDefaultFieldName) > 0 Then
+                cptSaveSetting "DrivingPath", CStr(Split(vField, "|")(0)), FieldNameToFieldConstant(strDefaultFieldName) & "|" & strDefaultFieldName
+                oComboBox.Value = strDefaultFieldName
+              Else
+                strMsg = Split(vField, "|")(1) & " Field:" & vbCrLf & vbCrLf
+                strMsg = strMsg & "Saved field '" & strCustomFieldName & "' (" & FieldConstantToFieldName(lngFieldConstant) & ") is now named '" & CustomFieldGetName(lngFieldConstant) & "'!" & vbCrLf & vbCrLf
+                strMsg = strMsg & "Click Yes to keep '" & CustomFieldGetName(lngFieldConstant) & "'" & vbCrLf
+                strMsg = strMsg & "Click No to rename it to '" & strDefaultFieldName & "'" & vbCrLf
+                strMsg = strMsg & "Click Cancel to do nothing"
+                lngResponse = MsgBox(strMsg, vbExclamation + vbYesNoCancel, "Driving Paths")
+                If lngResponse = vbYes Then
+                  cptSaveSetting "DrivingPath", CStr(Split(vField, "|")(0)), FieldNameToFieldConstant(strDefaultFieldName) & "|" & CustomFieldGetName(lngFieldConstant)
+                  oComboBox.Value = CustomFieldGetName(lngFieldConstant)
+                ElseIf lngResponse = vbNo Then
+                  'update the comboboxes
+                  For Each vControl In Split("PathField_Combobox,GroupField_Combobox,SubPath_Combobox", ",")
+                    For lngItem = 0 To .Controls(CStr(vControl)).ListCount - 1
+                      If .Controls(CStr(vControl)).List(lngItem) = CustomFieldGetName(lngFieldConstant) Then
+                        .Controls(CStr(vControl)).List(lngItem) = strDefaultFieldName
+                        Exit For
+                      ElseIf .Controls(CStr(vControl)).List(lngItem) = FieldConstantToFieldName(lngFieldConstant) Then
+                        .Controls(CStr(vControl)).List(lngItem) = strDefaultFieldName
+                        Exit For
+                      End If
+                    Next lngItem
+                  Next vControl
+                  CustomFieldRename lngFieldConstant, strDefaultFieldName
+                  oComboBox.Value = strDefaultFieldName
+                ElseIf lngResponse = vbCancel Then
+                  'do nothing
+                End If
+              End If
+            End If
+          Else
+            If cptCustomFieldExists(strDefaultFieldName) > 0 Then
+              oComboBox.Value = strDefaultFieldName
+              cptSaveSetting "DrivingPath", CStr(Split(vField, "|")(0)), FieldNameToFieldConstant(strDefaultFieldName) & "|" & strDefaultFieldName
+            End If
+          End If
+        Next vField
+        
+        .SubPath_Checkbox.Value = CBool(cptGetSetting("DrivingPath", "chkSubPaths", 0)) 'default=false
+        
+        .SubPath_Combobox.Enabled = .SubPath_Checkbox
+        
+        .pathCnt_txtBox.Value = cptGetSetting("DrivingPath", "txtPathCount", 3)
+        
+        ganttFormatOverride = CBool(cptGetSetting("DrivingPath", "chkGanttFormat", 1))
+        .ganttFormatCheckBox.Value = ganttFormatOverride
+        strSetting = cptGetSetting("DrivingPath", "cboUserView")
+        If Len(strSetting) > 0 And strSetting <> "<Default>" Then
+          If cptViewExists(strSetting) Then
+            .UserView_Combobox.Value = strSetting
+          Else
+            MsgBox "The saved view '" & strSetting & "' no longer exists (or is no longer valid)." & vbCrLf & vbCrLf & "Please select a new view.", vbExclamation + vbOKOnly, "Driving Paths"
+          End If
+        End If
+        .UserView_Combobox.Enabled = Not ganttFormatOverride 'this is either-or because user's ganttbarformats may have conditions (i.e., Critical) applied in unreachable ways
+        
         .Show
         
         If .Tag = "cancel" Then
             Set critPathFieldMapForm = Nothing
             Set curProj = Nothing
+            Set t = Nothing
+            Set oComboBox = Nothing
             Exit Sub
         End If
     
@@ -183,13 +321,15 @@ Sub DrivingPaths()
     curProj.Application.ScreenUpdating = False
     
     'v3.5.3 - get user settings from settings file
-    CritField = cptGetCustomFieldName("Driving Paths")
-    GroupField = cptGetCustomFieldName("Driving Path Group")
-    SubPathField = cptGetCustomFieldName("SubPath Group")
-    SubPaths = cptGetSetting(cptSettingFeature, cptSubPathSetting)
-    PathCount = cptGetSetting(cptSettingFeature, cptPathCountSetting)
-    userView = cptGetSetting(cptSettingFeature, cptViewSetting)
-    ganttFormatOverride = cptGetSetting(cptSettingFeature, cptGanttSetting)
+    Dim strProgramAcronym As String
+    strProgramAcronym = cptGetProgramAcronym 'required for cptGetSettings
+    CritField = Split(cptGetSetting("DrivingPath", "cboPath"), "|")(1) ' cptGetCustomFieldName("Driving Paths")
+    GroupField = Split(cptGetSetting("DrivingPath", "cboGroup"), "|")(1) 'cptGetCustomFieldName("Driving Path Group")
+    SubPathField = Split(cptGetSetting("DrivingPath", "cboSubPath"), "|")(1) 'cptGetCustomFieldName("SubPath Group")
+    SubPaths = CBool(cptGetSetting("DrivingPath", "chkSubPaths", 0)) 'CBool(cptGetSetting(cptSettingFeature, cptSubPathSetting, 0))
+    PathCount = cptGetSetting("DrivingPath", "txtPathCount", 3) 'cptGetSetting(cptSettingFeature, cptPathCountSetting, 0)
+    userView = cptGetSetting("DrivingPath", "cboUserView", "<Default>") 'cptGetSetting(cptSettingFeature, cptViewSetting)
+    'ganttFormatOverride = CBool(cptGetSetting("DrivingPath", "chkGanttFormat", 1)) 'CBool(cptGetSetting(cptSettingFeature, cptGanttSetting, 0))
     
     'v3.5.0 update to set custom fields in subproject schedule that align with the master project
     Dim origGroupField As Long
@@ -220,7 +360,7 @@ Sub DrivingPaths()
     If SubPaths Then
         SetGroupCPFieldLookupTable GroupField, CritField, SubPaths, curProj, SubPathField
     Else
-        SetGroupCPFieldLookupTable GroupField, CritField, SubPaths, curProj
+        SetGroupCPFieldLookupTable GroupField:=GroupField, CritField:=CritField, SubPaths:=SubPaths, currentProject:=curProj
     End If
     
     'Erase previous Crit and Group field values
@@ -364,7 +504,7 @@ ShowAndTell:
     'Create and Apply the "ClearPlan Driving Path" Table, View, Group, and Filter
     SetupCPView GroupField, curProj, analysisTaskUID
     
-    If Not (export_to_PPT) Then MsgBox "Complete" & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbOKOnly, "ClearPlan Critical Path Analyzer"
+    If Not (export_to_PPT) Then MsgBox "Analysis complete: " & vbCr & vbCr & MaxPathsFound & " path(s) identified.", vbInformation + vbOKOnly, "ClearPlan Critical Path Analyzer"
     
     GoTo CleanUp
     
@@ -390,7 +530,9 @@ CleanUp:
     
     'release project variable
     Set curProj = Nothing
+    
     Set subProjIndexCache = Nothing
+    Set oComboBox = Nothing
 
 End Sub
 
@@ -452,13 +594,11 @@ Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritFie
     If SubPaths Then
         currentProject.Application.CustomFieldPropertiesEx FieldID:=FieldNameToFieldConstant(SubPathField), Attribute:=pjFieldAttributeNone, SummaryCalc:=pjCalcNone, GraphicalIndicators:=False, AutomaticallyRolldownToAssn:=False
     End If
-    'currentProject.Application.CustomFieldRename FieldID:=FieldNameToFieldConstant(CritField), NewName:="CP Driving Paths"
     
     'Setup Lookup Table Properties
     currentProject.Application.CustomFieldPropertiesEx FieldID:=FieldNameToFieldConstant(GroupField), Attribute:=pjFieldAttributeNone
     currentProject.Application.CustomOutlineCodeEditEx FieldID:=FieldNameToFieldConstant(GroupField), OnlyLookUpTableCodes:=True, OnlyLeaves:=False, LookupDefault:=False, SortOrder:=0
     currentProject.Application.CustomFieldPropertiesEx FieldID:=FieldNameToFieldConstant(GroupField), Attribute:=pjFieldAttributeValueList, SummaryCalc:=pjCalcNone, GraphicalIndicators:=False, AutomaticallyRolldownToAssn:=False
-    'currentProject.Application.CustomFieldRename FieldID:=FieldNameToFieldConstant(GroupField), NewName:="CP Driving Path Group ID"
     
     'Assign Lookup Table Values
     Dim pathNum As Integer
@@ -472,48 +612,55 @@ Private Sub SetGroupCPFieldLookupTable(ByVal GroupField As String, ByVal CritFie
 End Sub
 Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, ByVal tUID As String)
 'Setup CP View with Table & Grouping by Path Value
-
-    Dim t As Task 'used to store user selected anlaysis task
     
-    If userView <> "<Default>" Then
+    Dim strView As String
+    Dim strTable As String
+    Dim strFilter As String
+    Dim strGroup As String
+    strView = "*ClearPlan Driving Path View"
+    strTable = "*ClearPlan Driving Path Table"
+    strFilter = "*ClearPlan Driving Path Filter"
+    strGroup = "*ClearPlan Driving Path Group"
+    ActiveWindow.TopPane.Activate
+    If Not ganttFormatOverride And userView <> "<Default>" Then
         curProj.Application.ViewApply Name:=userView
     Else
     
         'Create CP Driving Path Table
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, FieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, Create:=True, ShowAddNewColumn:=True, OverwriteExisting:=True, FieldName:="ID", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, LockFirstColumn:=True, ColumnPosition:=0
         
         'Add fields to CP Driving Path Table
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Unique ID", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1, LockFirstColumn:=True
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:=GroupField, Title:="Driving Path", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Name", Width:=45, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=2
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Duration", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=3
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Start", Width:=15, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=4
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Finish", Width:=15, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=5
-        curProj.Application.TableEditEx Name:="*ClearPlan Driving Path Table", TaskTable:=True, NewFieldName:="Total Slack", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=6
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:="Unique ID", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1, LockFirstColumn:=True
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:=GroupField, Title:="Driving Path", Width:=5, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=1
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:="Name", Width:=45, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=2
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:="Duration", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=3
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:="Start", Width:=15, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=4
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:="Finish", Width:=15, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=5
+        curProj.Application.TableEditEx Name:=strTable, TaskTable:=True, NewFieldName:="Total Slack", Width:=10, ShowInMenu:=False, DateFormat:=pjDate_mm_dd_yy, ColumnPosition:=6
 
     End If
 
     'Create CP Driving Path Filter
-    curProj.Application.FilterEdit Name:="*ClearPlan Driving Path Filter", TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=GroupField, test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
+    curProj.Application.FilterEdit Name:=strFilter, TaskFilter:=True, Create:=True, OverwriteExisting:=True, FieldName:=GroupField, Test:="is greater than", Value:="0", ShowInMenu:=False, ShowSummaryTasks:=False
     
     'On Error Resume Next
     
     'Create CP Driving Path Group
-    Dim cpGroup As Group
-    Set cpGroup = curProj.TaskGroups.Add(Name:="*ClearPlan Driving Path Group", FieldName:=GroupField)
+    Dim cpGroup As MSProject.Group
+    Set cpGroup = curProj.TaskGroups.Add(Name:=strGroup, FieldName:=GroupField)
     
     If SubPaths Then cpGroup.GroupCriteria.Add FieldName:=SubPathField, Ascending:=True
     
     'Create and apply CP Driving Path view if necessary
-    If userView = "<Default>" Then
-        curProj.Application.ViewEditSingle Name:="*ClearPlan Driving Path View", Create:=True, ShowInMenu:=True, Table:="*ClearPlan Driving Path Table", Filter:="*ClearPlan Driving Path Filter", Group:="*ClearPlan Driving Path Group"
+    If ganttFormatOverride Or userView = "<Default>" Then
+        curProj.Application.ViewEditSingle Name:=strView, Create:=True, ShowInMenu:=True, Table:=strTable, Filter:=strFilter, Group:=strGroup
         
         'Apply the CP Driving Path view
-        curProj.Application.ViewApply Name:="*ClearPlan Driving Path View"
+        curProj.Application.ViewApply Name:=strView
         curProj.Application.GanttBarEditEx Item:="1", RightText:="" '2.4.2 - remove resource names from view
     Else
-        curProj.Application.FilterApply Name:="*ClearPlan Driving Path Filter"
-        curProj.Application.GroupApply Name:="*ClearPlan Driving Path Group"
+        curProj.Application.FilterApply Name:=strFilter
+        curProj.Application.GroupApply Name:=strGroup
     End If
     
     'Sort the View by Finish, then by Duration to produce Waterfall Gantt
@@ -523,42 +670,40 @@ Private Sub SetupCPView(ByVal GroupField As String, ByVal curProj As Project, By
     curProj.Application.SelectAll
     curProj.Application.ZoomTimescale Selection:=True
     
-    curProj.Application.SelectRow 1
-    
-    If SubPaths Then curProj.Application.SelectRow 2
-    
-    'Iterate through each task in view and color the Gantt bars based on CP Group Code
     If ganttFormatOverride Then
-        For Each t In ActiveProject.Tasks
-            If Not t Is Nothing Then 'Fix issue 44 for v2.8
-            
-                Dim pathValue As Integer
-                
-                pathValue = Val(t.GetField(FieldNameToFieldConstant(GroupField)))
-            
-                If pathValue = 0 Then
-                    GoTo NextTask
-                End If
-                
-                If t.Milestone = True Then
-                    GoTo NextTask
-                End If
-            
-                If masterProj Then
-                    t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue), ProjectName:=curProj.Subprojects(t.Project).Path
-                Else
-                    t.Application.GanttBarFormatEx TaskID:=t.ID, GanttStyle:=1, StartColor:=StoplightColor(MaxPathsFound, pathValue), MiddleColor:=StoplightColor(MaxPathsFound, pathValue), EndColor:=StoplightColor(MaxPathsFound, pathValue)
-                End If
-    
+      Dim oTasks As MSProject.Tasks
+      Dim oTask As MSProject.Task
+      Dim pathValue As Long
+      Dim lngGroupField As Long
+      Dim lngStoplightColor As Long
+      Dim oStoplightColors As Scripting.Dictionary
+      lngGroupField = FieldNameToFieldConstant(GroupField)
+      Set oTasks = ActiveSelection.Tasks
+      If Not oTasks Is Nothing Then
+        If oTasks.Count > 0 Then
+          For Each oTask In oTasks
+            If oTask.Milestone Then GoTo next_task
+            pathValue = Val(oTask.GetField(lngGroupField))
+            If pathValue = 0 Then GoTo next_task 'filter prevents this, but be explicit
+            lngStoplightColor = StoplightColor(MaxPathsFound, pathValue)
+            FindEx "Unique ID", "equals", oTask.UniqueID
+            If masterProj Then
+              GanttBarFormatEx TaskID:=oTask.ID, GanttStyle:=1, StartColor:=lngStoplightColor, MiddleColor:=lngStoplightColor, EndColor:=lngStoplightColor, ProjectName:=curProj.Subprojects(oTask.Project).Path
+            Else
+              GanttBarFormatEx TaskID:=oTask.ID, GanttStyle:=1, StartColor:=lngStoplightColor, MiddleColor:=lngStoplightColor, EndColor:=lngStoplightColor
             End If
-    
-NextTask:
-    
-        Next t
+next_task:
+          Next oTask
+        End If
+      End If
+      Set oTask = Nothing
+      Set oTasks = Nothing
     End If
-    
+
     'select the users original analysis task
+    SelectBeginning
     curProj.Application.FindEx "UniqueID", "equals", tUID
+    Set cpGroup = Nothing
 
 End Sub
 
@@ -628,6 +773,8 @@ Private Sub CleanCritFlag(ByVal curProj As Project)
         End If
     Next t
 
+  Set t = Nothing
+
 End Sub
 
 Private Sub CleanViews(ByVal curProj As Project)
@@ -658,6 +805,11 @@ Private Sub CleanViews(ByVal curProj As Project)
     curProj.TaskFilters("*ClearPlan Driving Path Filter").Delete
     curProj.TaskGroups("*ClearPlan Driving Path Group").Delete
     On Error GoTo 0
+    
+    Set allViews = Nothing
+    Set allTables = Nothing
+    Set allFilters = Nothing
+    Set allGroups = Nothing
 
 End Sub
 
@@ -1146,7 +1298,7 @@ Function get_subProj_index(ByVal mProj As Project, ByVal subprojectFilename As S
 
     'No suitable task found (e.g., empty subproject)  fall back to 0
     get_subProj_index = 0
-
+   
 End Function
 
 Function get_tdp_MasterUID(ByVal subP_UID As Long, ByVal subP_Index As Integer) As Long

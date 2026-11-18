@@ -54,6 +54,9 @@ Sub cptExportCriticalPath(ByRef oProject As MSProject.Project, Optional blnSendE
   'variants
   Dim vPath As Variant
 
+  'check for an update
+  'If Not cptProceedOnUpdate(THIS_MODULE) Then GoTo exit_here
+
   blnErrorTrapping = True
   If blnErrorTrapping Then On Error GoTo err_here Else On Error GoTo 0
 
