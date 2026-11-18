@@ -4005,7 +4005,7 @@ Sub cptBeautifyDataCheck(strFileName As String, blnMaster As Boolean)
 
   For lngItem = oDataChecks.Count - 1 To 0 Step -1
     Set oNewSheet = oWorkbook.Worksheets.Add '(After:=ActiveWorkbook.Worksheets(ActiveWorkbook.Worksheets.Count))
-    oNewSheet.Name = "CHECK_" & lngItem + 1
+    oNewSheet.Name = Replace(oDataChecks.Keys(lngItem), "TaskAssignment", "Assignment") '"CHECK_" & lngItem + 1
     lngFirstRow = oDataChecks.Items(lngItem)
     lngLastRow = oWorksheet.[A1048576].End(xlUp).Row
     vArray = oWorksheet.Range(oWorksheet.Cells(lngFirstRow, 1), oWorksheet.Cells(lngLastRow, 100))
@@ -4022,13 +4022,17 @@ Sub cptBeautifyDataCheck(strFileName As String, blnMaster As Boolean)
     lngLastRow = oNewSheet.[A1048576].End(xlUp).Row
     lngLastCol = IIf(blnMaster, 11, 10)
     'deal with title
-    oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol)).Merge True
-    oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol)).Style = "Note"
-    oNewSheet.[A1].Font.Bold = True
-    oNewSheet.[A1].HorizontalAlignment = xlCenter
-    oNewSheet.[A1].VerticalAlignment = xlCenter
-    oNewSheet.[A1].WrapText = True
-    oNewSheet.[A1].RowHeight = 30
+    With oNewSheet.Range(oNewSheet.[A1], oNewSheet.Cells(1, lngLastCol))
+      .Merge True
+      .Style = "Note"
+    End With
+    With oNewSheet.[A1]
+      .Font.Bold = True
+      .HorizontalAlignment = xlCenter
+      .VerticalAlignment = xlCenter
+      .WrapText = True
+      .RowHeight = 30
+    End With
     'make it a table, name it, format it
     lngLastCol = oNewSheet.Cells(lngFirstRow, oNewSheet.Columns.Count).End(xlToLeft).Column
     If lngLastRow - lngFirstRow > 2 Then
@@ -4045,12 +4049,34 @@ Sub cptBeautifyDataCheck(strFileName As String, blnMaster As Boolean)
     'shading
     cptAddShading oListObject.HeaderRowRange
     oListObject.HeaderRowRange.Font.Bold = True
+    If oDataChecks.Keys(lngItem) = "TasksMissingData" Then
+      'conditional formatting
+      If lngLastRow - lngFirstRow > 2 Then
+        With oListObject.DataBodyRange
+          .FormatConditions.Delete
+          .FormatConditions.Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""MISSING"""
+          .FormatConditions(.FormatConditions.Count).SetFirstPriority
+          With .FormatConditions(1).Font
+            .Color = -16754788
+            .TintAndShade = 0
+          End With
+          With .FormatConditions(1).Interior
+            .PatternColorIndex = xlAutomatic
+            .Color = 10284031
+            .TintAndShade = 0
+          End With
+          .FormatConditions(1).StopIfTrue = False
+        End With
+      End If
+    End If
     'autofilter
     oListObject.Range.Columns.AutoFit
     'deal with footer
     If lngLastCol < 10 Then lngLastCol = 10
-    oNewSheet.Range(oNewSheet.Cells(lngLastRow, 1), oNewSheet.Cells(lngLastRow, lngLastCol)).Merge True
-    oNewSheet.Range(oNewSheet.Cells(lngLastRow, 1), oNewSheet.Cells(lngLastRow, lngLastCol)).Style = "Note"
+    With oNewSheet.Range(oNewSheet.Cells(lngLastRow, 1), oNewSheet.Cells(lngLastRow, lngLastCol))
+      .Merge True
+      .Style = "Note"
+    End With
     oNewSheet.Cells(lngLastRow, 1).Font.Bold = True
     oNewSheet.Cells(lngLastRow, 1).HorizontalAlignment = xlLeft
     With oExcel.ActiveWindow
